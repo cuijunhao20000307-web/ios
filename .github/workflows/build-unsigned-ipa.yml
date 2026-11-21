@@ -1,0 +1,41 @@
+name: Build PocketLedger unsigned IPA
+on:
+  workflow_dispatch:
+jobs:
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build app for physical iPhone (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild -project PocketLedger.xcodeproj \
+            -scheme PocketLedger -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath "$RUNNER_TEMP/Build" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build 2>&1 | tee "$RUNNER_TEMP/xcodebuild.log"
+      - name: Package unsigned IPA
+        run: |
+          set -eu
+          APP="$RUNNER_TEMP/Build/Build/Products/Release-iphoneos/PocketLedger.app"
+          test -d "$APP"
+          mkdir -p package/Payload
+          cp -R "$APP" package/Payload/
+          cd package
+          zip -qry PocketLedger-v0.3.0-unsigned.ipa Payload
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketLedger-v0.3.0-unsigned-ipa
+          path: package/PocketLedger-v0.3.0-unsigned.ipa
+          if-no-files-found: error
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketLedger-build-log
+          path: ${{ runner.temp }}/xcodebuild.log
+          if-no-files-found: ignore
