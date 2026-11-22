@@ -1698,80 +1698,85 @@ struct BankSecurityCardView: View {
     }
     // Read-only viewer: no TextField or accidental editing of stored bank codes.
     // A separate device-owner check is required before displaying all values.
+    // All five printed columns must remain visible, even with Duo's side rail.
+    // The old hard minimum of 380pt caused both edge columns to be cropped.
     private func savedCodeGrid(_ value: BankSecurityCard) -> some View {
         GeometryReader { geo in
-            let width = max(0, geo.size.width - 24)
             let columnCount = 5
             let rowCount = (value.codes.count + columnCount - 1) / columnCount
-            let gap: CGFloat = 7
-            let gridWidth = max(380, min(width, 620))
-            let cellWidth = (gridWidth - CGFloat(columnCount - 1) * gap) / CGFloat(columnCount)
+            let available = max(0, geo.size.width - 20)
+            let gridWidth = min(available, 660)
+            let gap: CGFloat = gridWidth < 320 ? 3 : 7
+            let cellWidth = max(0, (gridWidth - CGFloat(columnCount - 1) * gap) / CGFloat(columnCount))
+            let numberFont = min(19, max(9, cellWidth * 0.235))
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 9) {
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 7) {
                         Image(systemName: "lock.shield.fill")
                             .foregroundStyle(LedgerTheme.accent)
                         Text(L("인증된 보안카드 조회"))
                             .font(.subheadline.weight(.semibold))
-                        Spacer()
+                            .lineLimit(1).minimumScaleFactor(0.75)
+                        Spacer(minLength: 2)
                         Text("\(value.codes.filter { $0.count == 4 }.count)/\(value.codes.count)")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                     }
                     Text(L("보안카드 전체 번호는 다른 사람에게 공개하지 마세요."))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    ScrollView(.horizontal, showsIndicators: width < gridWidth) {
-                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: columnCount), spacing: 11) {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: columnCount),
+                        spacing: gridWidth < 320 ? 9 : 12
+                    ) {
                         ForEach(0..<(rowCount * columnCount), id: \.self) { cell in
-                            // Fixed paper-card position, independent of entry direction.
+                            // Preserve paper-card order: 01..07, 08..14, ...
                             let index = (cell % columnCount) * rowCount + cell / columnCount
                             if index < value.codes.count {
-                                VStack(spacing: 7) {
+                                VStack(spacing: 5) {
                                     Text(String(format: "%02d", index + 1))
-                                        .font(.caption.monospacedDigit())
+                                        .font(.system(size: min(13, max(9, cellWidth * 0.25)),
+                                                      weight: .regular, design: .monospaced))
                                         .foregroundStyle(.secondary)
                                     Group {
                                         if value.codes[index].count == 4 {
-                                            HStack(spacing: 5) {
+                                            HStack(spacing: gridWidth < 320 ? 1 : 4) {
                                                 Text(String(value.codes[index].prefix(2)))
                                                 Rectangle()
                                                     .fill(Color.secondary.opacity(0.30))
-                                                    .frame(width: 1, height: 18)
+                                                    .frame(width: 1, height: 17)
                                                 Text(String(value.codes[index].suffix(2)))
                                             }
+                                            .frame(maxWidth: .infinity)
                                         } else {
                                             Text("—")
                                         }
                                     }
-                                    .font(.system(size: min(19, max(12, cellWidth * 0.23)),
-                                                  weight: .semibold, design: .monospaced))
-                                    .lineLimit(1).minimumScaleFactor(0.78)
-                                    .frame(width: cellWidth, height: 48)
+                                    .font(.system(size: numberFont, weight: .semibold, design: .monospaced))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.75)
+                                    .frame(width: cellWidth, height: gridWidth < 320 ? 40 : 46)
                                     .background(Color(uiColor: .secondarySystemFill),
-                                                in: RoundedRectangle(cornerRadius: 10))
+                                                in: RoundedRectangle(cornerRadius: gridWidth < 320 ? 8 : 10))
                                     .privacySensitive()
                                 }
+                                .frame(width: cellWidth)
                             } else {
-                                Color.clear.frame(height: 76)
+                                Color.clear.frame(width: cellWidth, height: 65)
                             }
                         }
-                        }
-                        .frame(width: gridWidth)
                     }
-                    .frame(width: width)
-                    Button {
-                        closeGrid()
-                    } label: {
+                    .frame(width: gridWidth)
+                    Button { closeGrid() } label: {
                         Label(L("번호 숨기기"), systemImage: "eye.slash")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.bordered)
                     .padding(.top, 4)
                 }
-                .padding(12)
-                .frame(width: width, alignment: .leading)
+                .frame(width: gridWidth, alignment: .leading)
+                .padding(.vertical, 12)
+                .frame(maxWidth: .infinity)
             }
         }
         .privacySensitive()
@@ -1779,23 +1784,30 @@ struct BankSecurityCardView: View {
 
     private func codeGrid(_ value: BankSecurityCard) -> some View {
         GeometryReader { geo in
-            let width = max(0, geo.size.width - 24)
+            let available = max(0, geo.size.width - 20)
+            let gridWidth = min(available, 660)
             ScrollViewReader { scroll in
                 ScrollView {
                     VStack(spacing: 14) {
                         Toggle(L("내용 표시"), isOn: $reveal)
                         Text("\(value.codes.filter { $0.count == 4 }.count) / \(value.codes.count)")
-                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .trailing)
-                        ScrollView(.horizontal, showsIndicators: width < 380) {
-                            // Keep 5 printed columns on every iPhone screen size.
-                            columns(value, width: max(380, min(width, 620)))
-                        }
-                        .frame(width: width)
-                    }.frame(width: width).padding(12)
+                        // Editing is also fully visible without a horizontal swipe.
+                        columns(value, width: gridWidth)
+                            .frame(width: gridWidth)
+                    }
+                    .frame(width: gridWidth)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
                 }
                 .onChange(of: focused) { _, index in
-                    if let index { withAnimation(.easeInOut(duration: 0.18)) { scroll.scrollTo(index, anchor: .center) } }
+                    if let index {
+                        withAnimation(.easeInOut(duration: 0.18)) {
+                            scroll.scrollTo(index, anchor: .center)
+                        }
+                    }
                 }
             }
         }
@@ -1810,32 +1822,41 @@ struct BankSecurityCardView: View {
             }
         }
     }
+
     private func columns(_ value: BankSecurityCard, width: CGFloat) -> some View {
         let count = 5
         let rows = (value.codes.count + count - 1) / count
-        let gap: CGFloat = 6
+        let gap: CGFloat = width < 320 ? 3 : 6
         let cellWidth = max(0, (width - CGFloat(count - 1) * gap) / CGFloat(count))
-        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: count), spacing: 12) {
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: count), spacing: 10) {
             ForEach(0..<(rows * count), id: \.self) { cell in
                 let index = value.vertical ? (cell % count) * rows + cell / count : cell
                 if index < value.codes.count {
                     VStack(spacing: 4) {
                         Text(String(format: "%02d", index + 1))
-                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            .font(.system(size: min(13, max(9, cellWidth * 0.25)), design: .monospaced))
+                            .foregroundStyle(.secondary)
                         Group {
                             if reveal { TextField("----", text: codeBinding(index)) }
                             else { SecureField("----", text: codeBinding(index)) }
                         }
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.center)
-                        .font(.system(size: min(19, max(12, cellWidth * 0.24)), weight: .medium, design: .monospaced))
+                        .font(.system(size: min(19, max(10, cellWidth * 0.24)),
+                                      weight: .medium, design: .monospaced))
                         .focused($focused, equals: index)
-                        .frame(width: cellWidth, height: 44)
-                        .background(Color(uiColor: .secondarySystemFill), in: RoundedRectangle(cornerRadius: 10))
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(focused == index ? Color.teal : Color.clear, lineWidth: 1.5))
+                        .frame(width: cellWidth, height: width < 320 ? 40 : 44)
+                        .background(Color(uiColor: .secondarySystemFill),
+                                    in: RoundedRectangle(cornerRadius: width < 320 ? 8 : 10))
+                        .overlay(RoundedRectangle(cornerRadius: width < 320 ? 8 : 10)
+                            .strokeBorder(focused == index ? Color.teal : Color.clear, lineWidth: 1.5))
                         .accessibilityLabel(L("코드 입력") + " " + String(index + 1))
-                    }.id(index)
-                } else { Color.clear.frame(height: 64) }
+                    }
+                    .frame(width: cellWidth)
+                    .id(index)
+                } else {
+                    Color.clear.frame(width: cellWidth, height: 64)
+                }
             }
         }
     }

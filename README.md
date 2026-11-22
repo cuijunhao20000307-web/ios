@@ -1,4 +1,8 @@
-# PocketLedger v0.4.37
+# PocketLedger v0.4.38
+
+## v0.4.38 Adaptive five-column security card grid (Build 45)
+The Face ID-protected read-only security-card grid and the editing grid now fit their available width on inner and cover screens without any horizontal scrolling. They preserve five columns and the original printed card positions, adapt typography and inter-column spacing on narrow layouts, and avoid the previous hard-coded minimum of 380pt which cropped edge columns. Existing stored codes, two-digit forward/reverse lookup, monthly fixed expenses and backup restore behavior are unchanged.
+
 
 ## v0.4.37 Fixed monthly expenses (Build 44)
 Added Credit card repayment and Mobile phone bill spending categories with localized labels. The new Settings > Monthly fixed expenses sheet and Recurring tab let users add, edit, pause or delete monthly expenses, choose category, amount (KRW), due day (1–31), start date and optional payment source. Existing salary schedules are unchanged. Entries post when the app is next opened after the due date; months without the selected day use their final day. Existing posted entries remain unchanged when a rule is edited. Existing recurring IDs prevent duplicate automatic entries for the same month. Credit card repayments may double count spending if individual purchases are already recorded. The independent iCloud backup restore password input fix remains included.
