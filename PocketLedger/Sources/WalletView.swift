@@ -15,6 +15,8 @@ struct WalletView: View {
     @State private var showAccount = false
     @State private var selectedCard: UUID?
     @State private var cinematicFullDetail = false
+    @State private var editWalletTransaction: MoneyEntry?
+    @GestureState private var cinemaDrag: DeckDragState?
     @Namespace private var cardTransition
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var deckDragging = false
@@ -137,6 +139,7 @@ struct WalletView: View {
             }
         }
         .sheet(isPresented: $showCard) { CardForm() }
+        .sheet(item: $editWalletTransaction) { TransactionForm(existing: $0) }
         .sheet(item: $editPaymentCard, onDismiss: {
             if let id = selectedCard, !store.data.cards.contains(where: { $0.id == id }) { closeCard() }
         }) { CardForm(existing: $0) }
@@ -184,7 +187,7 @@ struct WalletView: View {
             : min(available * 0.90, size.height * 0.50)
         let cardHeight = cardWidth / 1.586
         let step = cardWidth * (wide ? 0.148 : 0.162)
-        let pileX = max(16, (available - cardWidth) / 2)
+        let pileX = max(16, (available - cardWidth) / 2 + (wide ? 17 : 0))
         let pileY: CGFloat = wide ? 68 : 82
         let selectedX: CGFloat = wide ? 50 : pileX
         let selectedY: CGFloat = wide ? (size.height - cardHeight) * 0.49 : 14
@@ -192,6 +195,7 @@ struct WalletView: View {
         let detailWidth: CGFloat = wide ? min(available * 0.41, 282) : cardWidth
         let detailX: CGFloat = wide ? available - detailWidth - 12 : pileX
         let detailY: CGFloat = wide ? 14 : selectedY + cardHeight + 25
+        let railX = size.width - (wide ? 34.0 : 53.0)
         let detailHeight: CGFloat = wide ? max(120, size.height - 30) :
             max(120, size.height - detailY - 10)
         return ZStack(alignment: .topLeading) {
@@ -211,11 +215,9 @@ struct WalletView: View {
             }
             if let id = selectedCard,
                let active = cards.first(where: { $0.id == id }) {
-                CinematicCardTransactions(entries: store.entries(in: .now)
+                CinematicCardTransactions(entries: store.data.entries
                     .filter { $0.sourceId == active.id }, wide: wide,
-                    onTransaction: { edit in editPaymentCard = active;
-                        // Transaction edit remains in the detailed card view.
-                        cinematicFullDetail = true })
+                    onTransaction: { editWalletTransaction = $0 })
                     .frame(width: detailWidth, height: detailHeight, alignment: .top)
                     .position(x: detailX + detailWidth / 2,
                               y: detailY + detailHeight / 2)
@@ -232,13 +234,15 @@ struct WalletView: View {
                 LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                     .frame(width: cardWidth, height: cardHeight)
                     .position(x: x + cardWidth / 2, y: y + cardHeight / 2)
+                    .offset(y: cinemaDrag?.id == card.id ? (cinemaDrag?.translation ?? 0) : 0)
                     .opacity(isOpen && !isSelected ? 0 : 1)
-                    .zIndex(isSelected ? 50 : Double(index) + 2)
+                    .zIndex(cinemaDrag?.id == card.id ? 60 : (isSelected ? 50 : Double(index) + 2))
                     .animation(reduceMotion ? nil :
                                .timingCurve(0.22, 0.78, 0.16, 1, duration: 0.44),
                                value: selectedCard)
                     .contentShape(Rectangle())
-                    .onTapGesture { if selectedCard == nil { openCard(card.id) } }
+                    .onTapGesture { if selectedCard == nil && cinemaDrag == nil { openCard(card.id) } }
+                    .simultaneousGesture(cinemaReorderGesture(card.id, step: step))
                     .accessibilityLabel(card.name + " " + L("카드 선택"))
                     .accessibilityAddTraits(.isButton)
             }
@@ -306,7 +310,7 @@ struct WalletView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
-            .position(x: size.width - 34, y: wide ? 148 : 255)
+            .position(x: railX, y: wide ? 148 : 255)
             .zIndex(100)
             Button {
                 if selectedCard != nil { closeCard() }
@@ -321,11 +325,38 @@ struct WalletView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.primary)
-            .position(x: size.width - 34, y: size.height - 42)
+            .position(x: railX, y: size.height - 42)
             .zIndex(100)
         }
         .frame(width: size.width, height: size.height, alignment: .topLeading)
         .clipped()
+    }
+
+    private func cinemaReorderGesture(_ id: UUID, step: CGFloat) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.27, maximumDistance: 12)
+            .sequenced(before: DragGesture(minimumDistance: 0))
+            .updating($cinemaDrag) { value, state, _ in
+                switch value {
+                case .first(true): state = DeckDragState(id: id)
+                case .second(true, let movement):
+                    state = DeckDragState(id: id, translation: movement?.translation.height ?? 0)
+                default: break
+                }
+            }
+            .onEnded { value in
+                guard selectedCard == nil, search.isEmpty,
+                      case .second(true, let movement) = value,
+                      let movement,
+                      let origin = store.data.cards.firstIndex(where: { $0.id == id }) else { return }
+                let target = min(max(0, origin + Int((movement.translation.height / step).rounded())),
+                                 store.data.cards.count - 1)
+                if origin != target {
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.28)) {
+                        store.data.cards.move(fromOffsets: IndexSet(integer: origin),
+                                              toOffset: target > origin ? target + 1 : target)
+                    }
+                }
+            }
     }
 
     private var walletSections: some View {
