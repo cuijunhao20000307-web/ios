@@ -229,6 +229,8 @@ enum PrivateReminders {
 }
 
 struct PrivateWalletView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -258,16 +260,18 @@ struct PrivateWalletView: View {
     @State private var confirmEmpty = false
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Group {
                 if let archive {
                     List {
                         Section {
-                            Picker("분류", selection: $section) {
-                                Text("보관함").tag(0)
-                                Text("구독").tag(1)
-                                Text("휴지통").tag(2)
-                                Text("설정").tag(3)
+                            Picker(L("분류"), selection: $section) {
+                                Text(L("보관함")).tag(0)
+                                Text(L("구독")).tag(1)
+                                Text(L("휴지통")).tag(2)
+                                Text(L("설정")).tag(3)
                             }.pickerStyle(.segmented)
                         }
                         if section == 0 { records(archive) }
@@ -275,23 +279,23 @@ struct PrivateWalletView: View {
                         else if section == 2 { trash(archive) }
                         else { settings }
                     }
-                    .searchable(text: $search, prompt: "이름 검색")
+                    .searchable(text: $search, prompt: L("이름 검색"))
                 } else {
                     VStack(spacing: 18) {
                         Image(systemName: "lock.shield.fill").font(.system(size: 52)).foregroundStyle(LedgerTheme.accent)
-                        Text("개인정보 보관함").font(.title.bold())
+                        Text(L("개인정보 보관함")).font(.title.bold())
                         Text("Face ID / Touch ID 또는 기기 암호로 보호됩니다.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                        Button("보관함 열기") { Task { await unlock() } }.buttonStyle(.borderedProminent).disabled(authenticating)
+                        Button(L("보관함 열기")) { Task { await unlock() } }.buttonStyle(.borderedProminent).disabled(authenticating)
                     }.padding(24)
                 }
             }
-            .navigationTitle("나의 디지털 지갑")
+            .navigationTitle(L("나의 디지털 지갑"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("닫기")) { dismiss() } }
                 if archive != nil {
                     ToolbarItem(placement: .primaryAction) {
-                        Button { lock() } label: { Image(systemName: "lock") }.accessibilityLabel("잠그기")
+                        Button { lock() } label: { Image(systemName: "lock") }.accessibilityLabel(L("잠그기"))
                     }
                 }
             }
@@ -329,17 +333,17 @@ struct PrivateWalletView: View {
                         if backupMode == "export" {
                             Text("보관함 및 구독 정보만 포함합니다. 기존 가계부 거래·통장 비밀코드는 포함하지 않습니다.")
                             SecureField("백업 비밀번호 (12자 이상)", text: $password)
-                            SecureField("비밀번호 확인", text: $confirmation)
+                            SecureField(L("비밀번호 확인"), text: $confirmation)
                         } else {
                             Text("복원하면 현재 보관함과 구독이 백업 내용으로 교체됩니다. 기존 가계부 기록은 유지됩니다.")
-                            SecureField("백업 비밀번호", text: $password)
+                            SecureField(L("백업 비밀번호"), text: $password)
                         }
                         Button(backupMode == "export" ? "암호화 파일 만들기" : "교체 및 복원", role: backupMode == "export" ? nil : .destructive) {
                             performBackup()
                         }.disabled(password.isEmpty || (backupMode == "export" && (password.count < 12 || password != confirmation)))
                     }
-                    .navigationTitle("암호화 백업")
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("취소") { resetBackup() } } }
+                    .navigationTitle(L("암호화 백업"))
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { resetBackup() } } }
                     .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
                 }
             }
@@ -357,9 +361,9 @@ struct PrivateWalletView: View {
                     backupMode = "import"
                 } catch { self.error = error.localizedDescription }
             }
-            .alert("확인", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("확인") { error = nil } } message: { Text(error ?? "") }
+            .alert(L("확인"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button(L("확인")) { error = nil } } message: { Text(error ?? "") }
             .confirmationDialog("휴지통을 영구 삭제할까요?", isPresented: $confirmEmpty) {
-                Button("영구 삭제", role: .destructive) {
+                Button(L("영구 삭제"), role: .destructive) {
                     guard var a = archive else { return }
                     a.records.removeAll {$0.deletedAt != nil}
                     a.subscriptions.removeAll {$0.deletedAt != nil}
@@ -409,7 +413,7 @@ struct PrivateWalletView: View {
     private func matches(_ title: String) -> Bool { search.isEmpty || title.localizedCaseInsensitiveContains(search) }
     @ViewBuilder private func records(_ a: PrivateArchive) -> some View {
         Section {
-            Button { record = PrivateRecord() } label: { Label("정보 추가", systemImage: "plus.circle.fill") }
+            Button { record = PrivateRecord() } label: { Label(L("정보 추가"), systemImage: "plus.circle.fill") }
         }
         ForEach(PrivateKind.allCases) { kind in
             let rows = a.records.filter {$0.kind == kind && $0.deletedAt == nil && matches($0.title)}.sorted {
@@ -417,7 +421,7 @@ struct PrivateWalletView: View {
                 return $0.title.localizedStandardCompare($1.title) == .orderedAscending
             }
             if !rows.isEmpty {
-                Section(kind.rawValue) {
+                Section(L(kind.rawValue)) {
                     ForEach(rows) { row in
                         Button { record = row } label: {
                             HStack {
@@ -430,7 +434,7 @@ struct PrivateWalletView: View {
                             Button(role: .destructive) {
                                 var n = a
                                 if let i = n.records.firstIndex(where: {$0.id == row.id}) { n.records[i].deletedAt = .now; _ = commit(n) }
-                            } label: { Label("휴지통", systemImage: "trash") }
+                            } label: { Label(L("휴지통"), systemImage: "trash") }
                         }
                     }
                 }
@@ -441,12 +445,12 @@ struct PrivateWalletView: View {
     @ViewBuilder private func subscriptions(_ a: PrivateArchive) -> some View {
         let active = a.subscriptions.filter {$0.deletedAt == nil && $0.enabled}
         let monthly = active.reduce(0.0) {$0 + Double($1.amount) * $1.cycle.monthlyFactor}
-        Section("월 예상 구독료") {
+        Section(L("월 예상 구독료")) {
             Text(DisplayCurrency.format(Int(monthly.rounded()))).font(.title.bold())
             Text("직접 입력한 원화 기준 예상액 · 자동 결제 및 거래 기록과 별도").font(.caption).foregroundStyle(.secondary)
-            Button { subscription = PrivateSubscription() } label: { Label("구독 추가", systemImage: "plus.circle.fill") }
+            Button { subscription = PrivateSubscription() } label: { Label(L("구독 추가"), systemImage: "plus.circle.fill") }
         }
-        Section("나의 구독") {
+        Section(L("나의 구독")) {
             ForEach(a.subscriptions.filter {$0.deletedAt == nil && matches($0.title)}.sorted {($0.dates().first ?? .distantFuture) < ($1.dates().first ?? .distantFuture)}) { row in
                 Button { subscription = row } label: {
                     VStack(alignment: .leading, spacing: 5) {
@@ -461,22 +465,22 @@ struct PrivateWalletView: View {
                             n.subscriptions[i].deletedAt = .now
                             if commit(n) { Task { await PrivateReminders.refresh(n.subscriptions) } }
                         }
-                    } label: { Label("휴지통", systemImage: "trash") }
+                    } label: { Label(L("휴지통"), systemImage: "trash") }
                 }
             }
         }
         Section { Text("알림을 허용하면 결제 전날 오전 9시에 일반 알림을 표시합니다. 알림 개수 제한으로 가까운 일정부터 등록되며, 보관함을 열면 다시 계산합니다.").font(.caption).foregroundStyle(.secondary) }
     }
     @ViewBuilder private func trash(_ a: PrivateArchive) -> some View {
-        Section("삭제된 정보") {
+        Section(L("삭제된 정보")) {
             ForEach(a.records.filter {$0.deletedAt != nil}) { row in
-                HStack { Text(row.title); Spacer(); Button("복원") {
+                HStack { Text(row.title); Spacer(); Button(L("복원")) {
                     var n = a
                     if let i = n.records.firstIndex(where: {$0.id == row.id}) { n.records[i].deletedAt = nil; _ = commit(n) }
                 }.buttonStyle(.borderless) }
             }
             ForEach(a.subscriptions.filter {$0.deletedAt != nil}) { row in
-                HStack { Text(row.title); Spacer(); Button("복원") {
+                HStack { Text(row.title); Spacer(); Button(L("복원")) {
                     var n = a
                     if let i = n.subscriptions.firstIndex(where: {$0.id == row.id}) {
                         n.subscriptions[i].deletedAt = nil
@@ -484,18 +488,18 @@ struct PrivateWalletView: View {
                     }
                 }.buttonStyle(.borderless) }
             }
-            Button("휴지통 비우기", role: .destructive) { confirmEmpty = true }
+            Button(L("휴지통 비우기"), role: .destructive) { confirmEmpty = true }
         }
     }
     private var settings: some View {
         Group {
-            Section("보관함 화면 설정") {
-                Picker("글꼴", selection: $font) { ForEach(["기본", "둥근 글꼴", "고정폭"], id: \.self) { Text($0) } }
-                Picker("글자 크기", selection: $size) { ForEach(["작게","기본","크게"], id: \.self) { Text($0) } }
+            Section(L("보관함 화면 설정")) {
+                Picker(L("글꼴"), selection: $font) { ForEach(["기본", "둥근 글꼴", "고정폭"], id: \.self) { Text($0) } }
+                Picker(L("글자 크기"), selection: $size) { ForEach(["작게","기본","크게"], id: \.self) { Text($0) } }
             }
-            Section("백업 및 복원") {
-                Button { backupMode = "export" } label: { Label("암호화 백업 내보내기", systemImage: "square.and.arrow.up") }
-                Button { showImport = true } label: { Label("암호화 백업 가져오기", systemImage: "square.and.arrow.down") }
+            Section(L("백업 및 복원")) {
+                Button { backupMode = "export" } label: { Label(L("암호화 백업 내보내기"), systemImage: "square.and.arrow.up") }
+                Button { showImport = true } label: { Label(L("암호화 백업 가져오기"), systemImage: "square.and.arrow.down") }
                 Text("파일 앱에서 iCloud Drive 또는 기기 저장소를 직접 선택할 수 있습니다. 자동 iCloud 동기화는 제공되지 않으며 비밀번호를 잊으면 백업을 복원할 수 없습니다.").font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -503,6 +507,8 @@ struct PrivateWalletView: View {
 }
 
 struct PrivateRecordEditor: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -512,15 +518,17 @@ struct PrivateRecordEditor: View {
     @State private var visible = false
     @State private var failed = false
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Form {
-                Section("기본 정보") {
-                    Picker("종류", selection: $record.kind) { ForEach(PrivateKind.allCases) { Text($0.rawValue).tag($0) } }
-                    TextField("이름", text: $record.title)
-                    Toggle("즐겨찾기", isOn: $record.favorite)
+                Section(L("기본 정보")) {
+                    Picker(L("종류"), selection: $record.kind) { ForEach(PrivateKind.allCases) { Text(L($0.rawValue)).tag($0) } }
+                    TextField(L("이름"), text: $record.title)
+                    Toggle(L("즐겨찾기"), isOn: $record.favorite)
                     if record.kind == .card || record.kind == .account {
-                        Picker("가계부 연결", selection: $record.link) {
-                            Text("연결 안 함").tag(Optional<UUID>.none)
+                        Picker(L("가계부 연결"), selection: $record.link) {
+                            Text(L("연결 안 함")).tag(Optional<UUID>.none)
                             if record.kind == .card {
                                 ForEach(store.data.cards) { Text($0.name).tag(Optional($0.id)) }
                             } else {
@@ -529,28 +537,28 @@ struct PrivateRecordEditor: View {
                         }
                     }
                 }
-                Section("보호된 정보") {
-                    Toggle("내용 표시", isOn: $visible)
+                Section(L("보호된 정보")) {
+                    Toggle(L("내용 표시"), isOn: $visible)
                     ForEach(record.kind.fields, id: \.self) { field in
                         HStack {
                             let binding = Binding(get: {record.fields[field] ?? ""}, set: {record.fields[field] = $0})
                             if visible {
-                                TextField(field, text: binding).autocorrectionDisabled().textInputAutocapitalization(.never)
+                                TextField(L(field), text: binding).autocorrectionDisabled().textInputAutocapitalization(.never)
                                 Button {
                                     UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: binding.wrappedValue]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)])
                                 } label: { Image(systemName: "doc.on.doc") }.buttonStyle(.borderless).disabled(binding.wrappedValue.isEmpty).accessibilityLabel(field + " 복사")
                             } else {
-                                SecureField(field, text: binding).autocorrectionDisabled().textInputAutocapitalization(.never)
+                                SecureField(L(field), text: binding).autocorrectionDisabled().textInputAutocapitalization(.never)
                             }
                         }
                     }
                     Text("복사한 정보는 이 기기에서 60초 후 만료되도록 설정됩니다.").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("정보 편집")
+            .navigationTitle(L("정보 편집"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("저장") {
+                ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("저장")) {
                     var value = record
                     value.fields = value.fields.filter {value.kind.fields.contains($0.key)}
                     if save(value) { dismiss() } else { failed = true }
@@ -559,12 +567,14 @@ struct PrivateRecordEditor: View {
             .onChange(of: record.kind) { _, _ in record.link = nil }
             .onChange(of: phase) { _, p in if p != .active { visible = false }; if p == .background { dismiss() } }
             .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
-            .alert("저장 실패", isPresented: $failed) { Button("확인") {} } message: { Text("기존 데이터는 변경되지 않았습니다.") }
+            .alert(L("저장 실패"), isPresented: $failed) { Button(L("확인")) {} } message: { Text("기존 데이터는 변경되지 않았습니다.") }
         }
     }
 }
 
 struct PrivateSubscriptionEditor: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -574,32 +584,34 @@ struct PrivateSubscriptionEditor: View {
     @State private var amount = ""
     @State private var failed = false
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Form {
-                TextField("구독 서비스 이름", text: $item.title)
-                TextField("결제 금액 (원)", text: $amount).keyboardType(.numberPad)
-                Picker("결제 주기", selection: $item.cycle) { ForEach(BillingCycle.allCases) { Text($0.rawValue).tag($0) } }
-                DatePicker("첫 결제일", selection: $item.firstDate, displayedComponents: .date)
-                Picker("결제 수단", selection: $item.source) {
-                    Text("미지정").tag(Optional<UUID>.none)
+                TextField(L("구독 서비스 이름"), text: $item.title)
+                TextField(L("결제 금액 (원)"), text: $amount).keyboardType(.numberPad)
+                Picker(L("결제 주기"), selection: $item.cycle) { ForEach(BillingCycle.allCases) { Text(L($0.rawValue)).tag($0) } }
+                DatePicker(L("첫 결제일"), selection: $item.firstDate, displayedComponents: .date)
+                Picker(L("결제 수단"), selection: $item.source) {
+                    Text(L("미지정")).tag(Optional<UUID>.none)
                     ForEach(store.data.cards) { Text($0.name).tag(Optional($0.id)) }
                     ForEach(store.data.accounts) { Text($0.nickname).tag(Optional($0.id)) }
                 }
-                Toggle("사용 중", isOn: $item.enabled)
-                Toggle("결제 전날 알림", isOn: $item.remind)
+                Toggle(L("사용 중"), isOn: $item.enabled)
+                Toggle(L("결제 전날 알림"), isOn: $item.remind)
             }
-            .navigationTitle("구독 편집")
+            .navigationTitle(L("구독 편집"))
             .onAppear { amount = item.amount > 0 ? String(item.amount) : "" }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("저장") {
+                ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("저장")) {
                     item.amount = amount.toMoneyInt
                     if save(item) { dismiss() } else { failed = true }
                 }.disabled(item.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || amount.toMoneyInt <= 0 || amount.toMoneyInt > 1_000_000_000) }
             }
             .onChange(of: phase) { _, p in if p == .background { dismiss() } }
             .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
-            .alert("저장 실패", isPresented: $failed) { Button("확인") {} }
+            .alert(L("저장 실패"), isPresented: $failed) { Button(L("확인")) {} }
         }
     }
 }

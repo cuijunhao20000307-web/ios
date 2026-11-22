@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct HistoryView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var monthOffset = 0
@@ -17,12 +19,14 @@ struct HistoryView: View {
     }
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("거래 내역").font(.system(size: 30, weight: .bold))
-                        Text("지출과 수입을 한눈에").font(.subheadline).foregroundStyle(LedgerTheme.subtext)
+                        Text(L("거래 내역")).font(.system(size: 30, weight: .bold))
+                        Text(L("지출과 수입을 한눈에")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
                     }
                     Spacer()
                     Button { showAdd = true } label: {
@@ -41,8 +45,8 @@ struct HistoryView: View {
                 .padding(15)
                 .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 17))
 
-                Picker("거래 구분", selection: $filter) {
-                    ForEach(["전체", "지출", "수입"], id: \.self) { Text($0).tag($0) }
+                Picker(L("거래 구분"), selection: $filter) {
+                    ForEach(["전체", "지출", "수입"], id: \.self) { Text(L($0)).tag($0) }
                 }.pickerStyle(.segmented)
 
                 Surface {
@@ -57,8 +61,8 @@ struct HistoryView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .contextMenu {
-                                    Button("수정", systemImage: "pencil") { editing = entry }
-                                    Button("삭제", systemImage: "trash", role: .destructive) { removing = entry }
+                                    Button(L("수정"), systemImage: "pencil") { editing = entry }
+                                    Button(L("삭제"), systemImage: "trash", role: .destructive) { removing = entry }
                                 }
                                 if entry.id != filtered.last?.id { Divider().opacity(0.48) }
                             }
@@ -83,6 +87,8 @@ struct HistoryView: View {
 }
 
 struct TransactionForm: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -97,40 +103,42 @@ struct TransactionForm: View {
     private var valid: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && amount.toMoneyInt > 0 }
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Form {
-                Section("거래 내용") {
-                    Picker("종류", selection: $kind) {
-                        ForEach(MoneyKind.allCases) { Text($0.rawValue).tag($0) }
+                Section(L("거래 내용")) {
+                    Picker(L("종류"), selection: $kind) {
+                        ForEach(MoneyKind.allCases) { Text(L($0.rawValue)).tag($0) }
                     }.pickerStyle(.segmented)
                     TextField("예: 점심 식사", text: $title)
                     HStack {
-                        Text("금액")
+                        Text(L("금액"))
                         Spacer()
                         TextField("0", text: $amount).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                        Text("원").foregroundStyle(.secondary)
+                        Text(L("원")).foregroundStyle(.secondary)
                     }
-                    Picker("카테고리", selection: $category) {
-                        ForEach(MoneyCategory.allCases) { Text($0.rawValue).tag($0) }
+                    Picker(L("카테고리"), selection: $category) {
+                        ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) }
                     }
-                    DatePicker("날짜", selection: $date, displayedComponents: .date)
+                    DatePicker(L("날짜"), selection: $date, displayedComponents: .date)
                 }
-                Section("결제 수단 · 선택") {
-                    Picker("지갑", selection: $sourceChoice) {
-                        Text("선택 안 함").tag("none")
+                Section(L("결제 수단 · 선택")) {
+                    Picker(L("지갑"), selection: $sourceChoice) {
+                        Text(L("선택 안 함")).tag("none")
                         ForEach(store.data.cards) { card in Text("카드 · " + card.name).tag(card.id.uuidString) }
                         ForEach(store.data.accounts) { account in Text("통장 · " + account.nickname).tag(account.id.uuidString) }
                     }
-                    Text("거래는 홈의 가계부 잔액에 자동 반영됩니다. 은행 계좌의 실제 잔액과는 연동되지 않습니다.")
+                    Text(L("거래는 홈의 가계부 잔액에 자동 반영됩니다. 은행 계좌의 실제 잔액과는 연동되지 않습니다."))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(existing == nil ? "거래 추가" : "거래 수정")
+            .navigationTitle(L(existing == nil ? "거래 추가" : "거래 수정"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { save() }.fontWeight(.semibold).disabled(!valid)
+                    Button(L("저장")) { save() }.fontWeight(.semibold).disabled(!valid)
                 }
             }
             .onAppear {

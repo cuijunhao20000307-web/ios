@@ -20,3 +20,5 @@ Card list is a compact Apple Wallet-inspired stack with a list-view toggle and s
 
 ## v0.4.2 balance and currency
 Home ledger balance is opening account balances plus all recorded income minus expenses through today. Old manually entered balances are interpreted as opening balances; adjust them if they already include historical transactions. Display currency is optional manual-rate conversion of existing KRW data; amounts and input remain KRW and are not relabeled. No live exchange-rate or real bank integration.
+
+Language selector supports Korean, simplified/traditional Chinese, Japanese, English, Spanish, French, and German. Main interface labels have translations; secondary strings may fall back to English or Korean until localization is complete. User content and persistent identifiers remain unchanged. Language and currency are independent preferences.

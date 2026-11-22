@@ -12,6 +12,8 @@ struct Surface<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         content
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -20,30 +22,38 @@ struct Surface<Content: View>: View {
 }
 
 struct SectionHeading: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     let title: String
     var detail: String? = nil
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         HStack(alignment: .firstTextBaseline) {
-            Text(title).font(.system(size: 20, weight: .bold))
+            Text(L(title)).font(.system(size: 20, weight: .bold))
             Spacer()
-            if let detail { Text(detail).font(.system(size: 12, weight: .medium)).foregroundStyle(LedgerTheme.subtext) }
+            if let detail { Text(L(detail)).font(.system(size: 12, weight: .medium)).foregroundStyle(LedgerTheme.subtext) }
         }
     }
 }
 
 struct EmptyContent: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     var symbol: String
     var title: String
     var subtitle: String
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         VStack(spacing: 11) {
             Image(systemName: symbol)
                 .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(LedgerTheme.accent)
                 .padding(18)
                 .background(LedgerTheme.accent.opacity(0.08), in: Circle())
-            Text(title).font(.headline).foregroundStyle(LedgerTheme.text)
-            Text(subtitle).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
+            Text(L(title)).font(.headline).foregroundStyle(LedgerTheme.text)
+            Text(L(subtitle)).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -52,9 +62,13 @@ struct EmptyContent: View {
 }
 
 struct EntryLine: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     let entry: MoneyEntry
     let source: String?
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         HStack(spacing: 13) {
             Image(systemName: entry.category.icon)
                 .font(.system(size: 18, weight: .semibold))
@@ -64,7 +78,7 @@ struct EntryLine: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.title).font(.system(size: 15, weight: .semibold)).lineLimit(1)
                 HStack(spacing: 5) {
-                    Text(entry.category.rawValue)
+                    Text(L(entry.category.rawValue))
                     if let source { Text("· " + source).lineLimit(1) }
                     Text("· " + entry.date.formatted(.dateTime.month().day().locale(Locale(identifier: "ko_KR"))))
                 }
@@ -81,9 +95,13 @@ struct EntryLine: View {
 }
 
 struct WalletCardArt: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     let card: PaymentCard
     let spent: Int
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         VStack(alignment: .leading, spacing: 20) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {

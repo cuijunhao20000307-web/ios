@@ -11,22 +11,26 @@ extension UUID {
 }
 
 struct RecurringView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var showSubscriptions = false
     @State private var showForm = false
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 HStack {
-                    Text("자동 기록").font(.system(size: 30, weight: .bold))
+                    Text(L("자동 기록")).font(.system(size: 30, weight: .bold))
                     Spacer()
-                    Button { showForm = true } label: { Label("추가", systemImage: "plus.circle.fill") }
+                    Button { showForm = true } label: { Label(L("추가"), systemImage: "plus.circle.fill") }
                 }
                 Surface {
                     Button { showSubscriptions = true } label: {
                         HStack {
-                            Label("나의 구독 관리", systemImage: "calendar.badge.clock")
+                            Label(L("나의 구독 관리"), systemImage: "calendar.badge.clock")
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
                         }
@@ -47,7 +51,7 @@ struct RecurringView: View {
                                 if let i = store.data.recurringRules.firstIndex(where: {$0.id == rule.id}) { store.data.recurringRules[i].enabled = v; store.processRecurring() }
                             })).labelsHidden()
                         }
-                        Button("삭제", role: .destructive) { store.data.recurringRules.removeAll { $0.id == rule.id } }
+                        Button(L("삭제"), role: .destructive) { store.data.recurringRules.removeAll { $0.id == rule.id } }
                             .font(.caption)
                     }
                 }
@@ -59,6 +63,8 @@ struct RecurringView: View {
 }
 
 struct RecurringForm: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -70,26 +76,28 @@ struct RecurringForm: View {
     @State private var startDate = Date()
     @State private var sourceId: UUID?
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Form {
-                TextField("항목 이름", text: $title)
-                TextField("금액 (원)", text: $amount).keyboardType(.numberPad)
-                Picker("구분", selection: $kind) { ForEach(MoneyKind.allCases) { Text($0.rawValue).tag($0) } }
+                TextField(L("항목 이름"), text: $title)
+                TextField(L("금액 (원)"), text: $amount).keyboardType(.numberPad)
+                Picker(L("구분"), selection: $kind) { ForEach(MoneyKind.allCases) { Text(L($0.rawValue)).tag($0) } }
                     .onChange(of: kind) { _, v in category = v == .income ? .salary : .bills }
-                Picker("분류", selection: $category) { ForEach(MoneyCategory.allCases) { Text($0.rawValue).tag($0) } }
+                Picker(L("분류"), selection: $category) { ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) } }
                 Stepper("매월 \(day)일", value: $day, in: 1...31)
-                DatePicker("시작일", selection: $startDate, displayedComponents: .date)
-                Picker("결제 수단", selection: $sourceId) {
-                    Text("미지정").tag(Optional<UUID>.none)
+                DatePicker(L("시작일"), selection: $startDate, displayedComponents: .date)
+                Picker(L("결제 수단"), selection: $sourceId) {
+                    Text(L("미지정")).tag(Optional<UUID>.none)
                     ForEach(store.data.cards) { card in Text(card.name).tag(Optional(card.id)) }
                     ForEach(store.data.accounts) { account in Text(account.nickname).tag(Optional(account.id)) }
                 }
                 Text("29~31일이 없는 달에는 해당 월의 마지막 날에 기록합니다. 과거 날짜부터 시작하면 이전 달 내역도 생성됩니다.").font(.caption).foregroundStyle(.secondary)
             }
-            .navigationTitle("자동 기록 추가")
+            .navigationTitle(L("자동 기록 추가"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("저장") {
+                ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("저장")) {
                     store.data.recurringRules.append(RecurringRule(title: title.trimmingCharacters(in: .whitespacesAndNewlines), amount: amount.toMoneyInt, kind: kind, category: category, day: day, sourceId: sourceId, startDate: startDate))
                     store.processRecurring(); dismiss()
                 }.disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || amount.toMoneyInt == 0) }

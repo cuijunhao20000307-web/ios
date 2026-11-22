@@ -1,7 +1,10 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
+    @AppStorage("appLanguage") private var appLanguage = "system"
     @AppStorage("displayCurrency") private var currency = "KRW"
     @AppStorage("displayCurrencyRevision") private var currencyRevision = 0
     @State private var exchangeRateText = ""
@@ -27,16 +30,28 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("설정").font(.system(size: 30, weight: .bold))
-                    Text("가계부를 내 방식대로").font(.subheadline).foregroundStyle(LedgerTheme.subtext)
+                    Text(L("설정")).font(.system(size: 30, weight: .bold))
+                    Text(L("가계부를 내 방식대로")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
+                }
+                Surface {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionHeading(title: "언어")
+                        Picker(L("언어"), selection: $appLanguage) {
+                            ForEach(AppLocalization.options, id: \.0) { option in
+                                Text(option.0 == "system" ? L(option.1) : option.1).tag(option.0)
+                            }
+                        }.pickerStyle(.menu)
+                    }
                 }
                 Surface {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionHeading(title: "표시 통화")
-                        Picker("통화", selection: $currency) {
+                        Picker(L("통화"), selection: $currency) {
                             ForEach(DisplayCurrency.allCases) { item in
                                 Text(item.formattedName).tag(item.rawValue)
                             }
@@ -44,8 +59,8 @@ struct SettingsView: View {
                         if currency != "KRW" {
                             Text("1 " + currency + " = KRW").font(.caption)
                             HStack {
-                                TextField("직접 입력 환율", text: $exchangeRateText).keyboardType(.decimalPad)
-                                Button("저장") {
+                                TextField(L("직접 입력 환율"), text: $exchangeRateText).keyboardType(.decimalPad)
+                                Button(L("저장")) {
                                     if let value = parseRate, value > 0 {
                                         UserDefaults.standard.set(value, forKey: "displayRate." + currency)
                                         currencyRevision += 1
@@ -53,10 +68,10 @@ struct SettingsView: View {
                                 }.disabled(parseRate == nil)
                             }
                             if DisplayCurrency.selected.rate == nil {
-                                Text("환율을 저장하기 전에는 원화로 표시합니다.").font(.caption).foregroundStyle(.orange)
+                                Text(L("환율을 저장하기 전에는 원화로 표시합니다.")).font(.caption).foregroundStyle(.orange)
                             }
                         }
-                        Text("기존 데이터와 입력 금액은 KRW로 유지합니다. 다른 통화는 직접 설정한 환율로 환산한 참고 금액입니다. 실시간 환율은 제공하지 않습니다.")
+                        Text(L("기존 데이터와 입력 금액은 KRW로 유지합니다. 다른 통화는 직접 설정한 환율로 환산한 참고 금액입니다. 실시간 환율은 제공하지 않습니다."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
@@ -64,11 +79,11 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         SectionHeading(title: "월 예산")
                         HStack {
-                            TextField("예산", text: $budgetText).keyboardType(.numberPad)
+                            TextField(L("예산"), text: $budgetText).keyboardType(.numberPad)
                                 .font(.system(.body, design: .rounded))
                                 .minimumScaleFactor(0.75)
-                            Text("원").foregroundStyle(LedgerTheme.subtext).fixedSize()
-                            Button("저장") { store.data.monthlyBudget = max(1, budgetText.toMoneyInt) }
+                            Text(L("원")).foregroundStyle(LedgerTheme.subtext).fixedSize()
+                            Button(L("저장")) { store.data.monthlyBudget = max(1, budgetText.toMoneyInt) }
                                 .fontWeight(.semibold).fixedSize().disabled(budgetText.toMoneyInt < 1)
                         }
                     }
@@ -76,9 +91,9 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionHeading(title: "화면 테마")
-                        Picker("테마", selection: $store.data.appearance) {
+                        Picker(L("테마"), selection: $store.data.appearance) {
                             ForEach(AppearanceMode.allCases) { mode in
-                                Text(mode == .system ? "자동" : mode.rawValue).tag(mode)
+                                Text(L(mode == .system ? "시스템 설정" : mode.rawValue)).tag(mode)
                             }
                         }.pickerStyle(.segmented)
                     }
@@ -86,7 +101,7 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 18) {
                         SectionHeading(title: "메뉴 위치")
-                        Label("시스템 자동 배치", systemImage: "rectangle.split.3x1")
+                        Label(L("시스템 자동 배치"), systemImage: "rectangle.split.3x1")
                             .font(.body)
                         Text("iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다.")
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
@@ -99,7 +114,7 @@ struct SettingsView: View {
                             if wantsLock && !LocalUnlock.isAvailable() { deviceAuthUnavailable = true }
                             else { store.data.appLockEnabled = wantsLock }
                         })) {
-                            Label("앱 열기 잠금", systemImage: "faceid")
+                            Label(L("앱 열기 잠금"), systemImage: "faceid")
                         }
                         .tint(LedgerTheme.accent)
                         Text("활성화 시 앱 재실행 또는 백그라운드 복귀 후 Face ID / 기기 암호가 필요합니다. 비밀코드 확인에는 별도 인증을 사용합니다.")
@@ -110,7 +125,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionHeading(title: "데이터")
                         Button { showPrivateSettings = true } label: {
-                            Label("보관함 백업 · 글꼴 · 휴지통", systemImage: "lock.doc")
+                            Label(L("보관함 백업 · 글꼴 · 휴지통"), systemImage: "lock.doc")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         Divider()
@@ -118,24 +133,24 @@ struct SettingsView: View {
                             do { exportURL = try store.exportTransactionsCSV() }
                             catch { exportError = true }
                         } label: {
-                            Label("거래 내역 CSV 내보내기", systemImage: "square.and.arrow.up")
+                            Label(L("거래 내역 CSV 내보내기"), systemImage: "square.and.arrow.up")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .accessibilityHint("계좌번호 및 비밀코드를 제외한 거래 내역을 파일로 공유합니다")
                         if let exportURL {
                             ShareLink(item: exportURL) {
-                                Label("CSV 파일 공유하기", systemImage: "doc.text")
+                                Label(L("CSV 파일 공유하기"), systemImage: "doc.text")
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
                         Divider()
                         Button { confirmSample = true } label: {
-                            Label("예시 데이터 채우기", systemImage: "sparkles")
+                            Label(L("예시 데이터 채우기"), systemImage: "sparkles")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         Divider()
                         Button(role: .destructive) { confirmReset = true } label: {
-                            Label("가계부 기록 삭제 (보관함 제외)", systemImage: "trash")
+                            Label(L("가계부 기록 삭제 (보관함 제외)"), systemImage: "trash")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -143,9 +158,9 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 10) {
                         SectionHeading(title: "안내")
-                        Label("기기 내부 저장 · 별도 서버 없음", systemImage: "iphone")
-                        Label("은행 · 카드 실시간 연동 없음", systemImage: "wifi.slash")
-                        Label("통장 비밀코드는 백업·동기화하지 않음", systemImage: "lock.shield")
+                        Label(L("기기 내부 저장 · 별도 서버 없음"), systemImage: "iphone")
+                        Label(L("은행 · 카드 실시간 연동 없음"), systemImage: "wifi.slash")
+                        Label(L("통장 비밀코드는 백업·동기화하지 않음"), systemImage: "lock.shield")
                         Text("이 앱은 개인 기록용 가계부 프로토타입입니다. 실제 결제 또는 은행 로그인 기능을 제공하지 않습니다.")
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext).padding(.top, 5)
                     }
@@ -162,10 +177,10 @@ struct SettingsView: View {
         .onAppear { budgetText = String(store.data.monthlyBudget); loadRate() }
         .onChange(of: currency) { _, _ in loadRate(); currencyRevision += 1 }
         .alert("파일을 만들 수 없습니다", isPresented: $exportError) {
-            Button("확인", role: .cancel) { }
+            Button(L("확인"), role: .cancel) { }
         } message: { Text("저장 공간을 확인한 후 다시 시도하세요.") }
         .alert("기기 인증을 사용할 수 없어요", isPresented: $deviceAuthUnavailable) {
-            Button("확인", role: .cancel) { }
+            Button(L("확인"), role: .cancel) { }
         } message: {
             Text("iPhone에 Face ID 또는 잠금 암호를 설정한 뒤 다시 시도하세요.")
         }

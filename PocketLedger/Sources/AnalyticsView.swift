@@ -2,6 +2,8 @@ import SwiftUI
 import Charts
 
 struct AnalyticsView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @State private var monthOffset = 0
     private var month: Date { Calendar.current.date(byAdding: .month, value: monthOffset, to: .now) ?? .now }
@@ -12,9 +14,11 @@ struct AnalyticsView: View {
         }
     }
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                Text("지출 분석").font(.system(size: 30, weight: .bold))
+                Text(L("지출 분석")).font(.system(size: 30, weight: .bold))
                 HStack {
                     Button { monthOffset -= 1 } label: { Image(systemName: "chevron.left") }
                     Spacer()

@@ -1,12 +1,16 @@
 import SwiftUI
 
 struct AnimatedWalletCard: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     let card: PaymentCard
     let spent: Int
     let onEdit: () -> Void
     @State private var expanded = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         VStack(spacing: 0) {
             Button {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.78)) { expanded.toggle() }
@@ -20,7 +24,7 @@ struct AnimatedWalletCard: View {
                 HStack {
                     Text("이번 달 사용: \(spent.won)").font(.subheadline)
                     Spacer()
-                    Button("카드 수정", action: onEdit).fontWeight(.semibold)
+                    Button(L("카드 수정"), action: onEdit).fontWeight(.semibold)
                 }.padding(16).background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 16))
                     .transition(.move(edge: .top).combined(with: .opacity))
             }

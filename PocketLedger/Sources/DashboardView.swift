@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct DashboardView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var monthOffset = 0
@@ -20,13 +22,15 @@ struct DashboardView: View {
     }
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("나의 가계부")
+                        Text(L("나의 가계부"))
                             .font(.system(size: 30, weight: .bold, design: .rounded))
-                        Text("오늘도 현명하게 관리해요")
+                        Text(L("오늘도 현명하게 관리해요"))
                             .font(.system(size: 14)).foregroundStyle(LedgerTheme.subtext)
                     }
                     Spacer()
@@ -37,7 +41,7 @@ struct DashboardView: View {
                             .foregroundStyle(.white)
                             .background(LedgerTheme.accent, in: Circle())
                     }
-                    .accessibilityLabel("거래 추가")
+                    .accessibilityLabel(L("거래 추가"))
                 }
                 if store.data.isSample {
                     Label("샘플 데이터 · 설정에서 초기화 가능", systemImage: "info.circle")
@@ -46,14 +50,14 @@ struct DashboardView: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                         HStack {
-                            Text("현재 가계부 잔액").font(.system(size: 13, weight: .medium)).opacity(0.8)
+                            Text(L("현재 가계부 잔액")).font(.system(size: 13, weight: .medium)).opacity(0.8)
                             Spacer()
                             Image(systemName: "wallet.pass.fill").font(.system(size: 20))
                         }
                         Text(balance.won)
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .minimumScaleFactor(0.65).lineLimit(1)
-                        Text("기초 잔액 + 수입 − 지출 · 오늘까지")
+                        Text(L("기초 잔액 + 수입 − 지출 · 오늘까지"))
                             .font(.system(size: 12)).opacity(0.75)
                     }
                     .foregroundStyle(.white)
@@ -113,7 +117,7 @@ struct DashboardView: View {
                                     HStack(spacing: 12) {
                                         Image(systemName: category.icon).foregroundStyle(category.color)
                                             .frame(width: 30)
-                                        Text(category.rawValue).font(.system(size: 14, weight: .medium))
+                                        Text(L(category.rawValue)).font(.system(size: 14, weight: .medium))
                                         Spacer()
                                         Text(amount.won).font(.system(size: 14, weight: .semibold))
                                     }
@@ -157,7 +161,7 @@ struct DashboardView: View {
                     .foregroundStyle(tint)
                     .padding(9)
                     .background(tint.opacity(0.11), in: Circle())
-                Text(title).font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
+                Text(L(title)).font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                 Text(value.won).font(.system(size: 19, weight: .bold, design: .rounded))
                     .minimumScaleFactor(0.65).lineLimit(1)
             }

@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct PocketLedgerApp: App {
     @StateObject private var store = LedgerStore()
+    @AppStorage("appLanguage") private var appLanguage = "system"
     @AppStorage("displayCurrency") private var currency = "KRW"
     @AppStorage("displayCurrencyRevision") private var currencyRevision = 0
 
@@ -10,6 +11,8 @@ struct PocketLedgerApp: App {
         WindowGroup {
             AppShell()
                 .environmentObject(store)
+                .environment(\.locale, AppLocalization.locale)
+                .environment(\.appLanguageRevision, appLanguage)
                 .environment(\.displayCurrencyRevision, currency + String(currencyRevision))
                 .preferredColorScheme(store.data.appearance.colorScheme)
                 .tint(LedgerTheme.accent)
@@ -18,12 +21,16 @@ struct PocketLedgerApp: App {
 }
 
 struct AppShell: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab: WalletTab = .home
     @State private var unlocked = false
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         ZStack {
             LedgerTheme.background.ignoresSafeArea()
             if store.data.appLockEnabled && !unlocked {
@@ -54,7 +61,7 @@ struct AppShell: View {
         if #available(iOS 18.0, *) {
             TabView(selection: $tab) {
                 ForEach(WalletTab.allCases) { item in
-                    Tab(item.rawValue, systemImage: item.symbol, value: item) {
+                    Tab(L(item.rawValue), systemImage: item.symbol, value: item) {
                         page(for: item)
                     }
                 }
@@ -64,7 +71,7 @@ struct AppShell: View {
             TabView(selection: $tab) {
                 ForEach(WalletTab.allCases) { item in
                     page(for: item)
-                        .tabItem { Label(item.rawValue, systemImage: item.symbol) }
+                        .tabItem { Label(L(item.rawValue), systemImage: item.symbol) }
                         .tag(item)
                 }
             }
@@ -84,17 +91,21 @@ struct AppShell: View {
 }
 
 struct LockedView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     let onUnlock: () -> Void
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         VStack(spacing: 18) {
             Image(systemName: "lock.shield.fill")
                 .font(.system(size: 48)).foregroundStyle(LedgerTheme.accent)
                 .frame(width: 90, height: 90)
                 .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 26))
-            Text("나의 가계부").font(.system(size: 29, weight: .bold))
-            Text("보호된 가계부입니다").font(.subheadline).foregroundStyle(LedgerTheme.subtext)
+            Text(L("나의 가계부")).font(.system(size: 29, weight: .bold))
+            Text(L("보호된 가계부입니다")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
             Button(action: onUnlock) {
-                Label("Face ID / 기기 암호로 열기", systemImage: "faceid")
+                Label(L("Face ID / 기기 암호로 열기"), systemImage: "faceid")
                     .font(.system(size: 15, weight: .bold)).frame(maxWidth: 280)
                     .padding(15).foregroundStyle(.white)
                     .background(LedgerTheme.accent, in: RoundedRectangle(cornerRadius: 15))

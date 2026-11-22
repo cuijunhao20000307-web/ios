@@ -55,7 +55,7 @@ enum LocalUnlock {
 
     static func authorize() async -> Bool {
         let context = LAContext()
-        context.localizedCancelTitle = "취소"
+        context.localizedCancelTitle = L("취소")
         do {
             return try await context.evaluatePolicy(
                 .deviceOwnerAuthentication,

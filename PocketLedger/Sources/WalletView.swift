@@ -3,6 +3,8 @@ import UIKit
 import UniformTypeIdentifiers
 
 struct WalletView: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var showPrivateWallet = false
@@ -18,12 +20,14 @@ struct WalletView: View {
     @State private var unlockFailed = false
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 22) {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("지갑").font(.largeTitle.bold())
+                        Text(L("지갑")).font(.largeTitle.bold())
                     }
                     Spacer()
                     Button { section == 0 ? (showCard = true) : (showAccount = true) } label: {
@@ -31,11 +35,11 @@ struct WalletView: View {
                             .foregroundStyle(.white).frame(width: 46, height: 46)
                             .background(LedgerTheme.accent, in: Circle())
                     }
-                    .accessibilityLabel(section == 0 ? "카드 추가" : "통장 추가")
+                    .accessibilityLabel(L(section == 0 ? "카드 추가" : "통장 추가"))
                 }
-                Picker("지갑", selection: $section) {
-                    Text("카드 지갑").tag(0)
-                    Text("통장 지갑").tag(1)
+                Picker(L("지갑"), selection: $section) {
+                    Text(L("카드 지갑")).tag(0)
+                    Text(L("통장 지갑")).tag(1)
                 }.pickerStyle(.segmented)
                 if section == 0 { cardsContent } else { accountsContent }
                 Surface {
@@ -43,8 +47,8 @@ struct WalletView: View {
                         HStack {
                             Image(systemName: "lock.shield.fill").font(.title2)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("개인정보 보관함").font(.headline)
-                                Text("카드 · 계좌 · 신분증 · 비밀번호 · 구독").font(.caption).foregroundStyle(.secondary)
+                                Text(L("개인정보 보관함")).font(.headline)
+                                Text(L("카드 · 계좌 · 신분증 · 비밀번호 · 구독")).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Image(systemName: "chevron.right").font(.caption)
@@ -56,15 +60,15 @@ struct WalletView: View {
             .frame(maxWidth: 780).frame(maxWidth: .infinity)
         }
         .background(LedgerTheme.background)
-        .searchable(text: $search, prompt: "카드 및 은행 검색")
+        .searchable(text: $search, prompt: L("카드 및 은행 검색"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Button { withAnimation(.easeInOut(duration: 0.25)) { stacked.toggle() } } label: {
-                        Label(stacked ? "목록 보기" : "겹쳐 보기", systemImage: stacked ? "list.bullet" : "rectangle.stack")
+                        Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "list.bullet" : "rectangle.stack")
                     }
-                    Button { showPrivateWallet = true } label: { Label("개인정보 보관함", systemImage: "lock.shield") }
+                    Button { showPrivateWallet = true } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
                 } label: { Image(systemName: "ellipsis.circle") }
             }
         }
@@ -77,12 +81,12 @@ struct WalletView: View {
         .sheet(isPresented: $showAccount) { BankAccountForm() }
         .sheet(item: $editAccount) { BankAccountForm(existing: $0) }
         .alert("보호된 코드", isPresented: $secretShown) {
-            Button("닫기") { revealedSecret = nil }
+            Button(L("닫기")) { revealedSecret = nil }
         } message: {
             Text(revealedSecret ?? "저장된 코드가 없습니다.")
         }
-        .alert("인증 실패", isPresented: $unlockFailed) {
-            Button("확인", role: .cancel) { }
+        .alert(L("인증 실패"), isPresented: $unlockFailed) {
+            Button(L("확인"), role: .cancel) { }
         } message: {
             Text("Face ID 또는 기기 암호 인증을 완료해야 확인할 수 있습니다.")
         }
@@ -166,17 +170,17 @@ struct WalletView: View {
                             Text(account.balance.won)
                                 .font(.system(size: 29, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
                             HStack {
-                                Label("비밀코드 보호", systemImage: "lock.shield.fill")
+                                Label(L("비밀코드 보호"), systemImage: "lock.shield.fill")
                                     .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                                 Spacer()
-                                Button("코드 확인") { Task { await reveal(account) } }
+                                Button(L("코드 확인")) { Task { await reveal(account) } }
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(LedgerTheme.accent)
                             }
                         }
                     }
                 }
-                Text("통장 잔액은 직접 입력한 기초 잔액입니다. 홈의 가계부 잔액은 거래에 따라 계산합니다.")
+                Text(L("통장 잔액은 직접 입력한 기초 잔액입니다. 홈의 가계부 잔액은 거래에 따라 계산합니다."))
                     .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
             }
         }
@@ -192,6 +196,8 @@ struct WalletView: View {
 // The ledger keeps only public metadata and the last four digits.
 // All complete card details live in the existing protected wallet archive.
 struct LedgerStackCard: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     let card: PaymentCard
     let spent: Int
     var record: PrivateRecord? = nil
@@ -208,6 +214,8 @@ struct LedgerStackCard: View {
         return "••••  ••••  ••••  " + card.lastFour
     }
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         GeometryReader { geo in
             let pad = max(12, geo.size.width * 0.055)
             VStack(alignment: .leading, spacing: 5) {
@@ -224,17 +232,17 @@ struct LedgerStackCard: View {
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 4) {
                         if let holder = record?.fields["카드 소유자"], !holder.isEmpty {
-                            Text("사용자 이름").font(.caption2).opacity(0.75)
+                            Text(L("사용자 이름")).font(.caption2).opacity(0.75)
                             Text(holder).font(.subheadline.bold()).lineLimit(1).privacySensitive()
                         } else {
-                            Text("이번 달 사용").font(.caption2).opacity(0.75)
+                            Text(L("이번 달 사용")).font(.caption2).opacity(0.75)
                             Text(spent.won).font(.subheadline.bold()).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 4)
                     if let expiry = record?.fields["유효기간"], !expiry.isEmpty {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("유효기간").font(.caption2).opacity(0.75)
+                            Text(L("유효기간")).font(.caption2).opacity(0.75)
                             Text(expiry).font(.subheadline.bold()).privacySensitive()
                         }
                     }
@@ -301,6 +309,8 @@ private enum LinkedCardVault {
 }
 
 struct LedgerCardDetail: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.scenePhase) private var phase
@@ -317,6 +327,8 @@ struct LedgerCardDetail: View {
     private var accent: Color { Color.teal }
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         Group {
             if let card {
                 ScrollView {
@@ -331,17 +343,17 @@ struct LedgerCardDetail: View {
                             Button {
                                 Task { await unlock(copy: false) }
                             } label: {
-                                Label(authorized ? "정보 잠그기" : "카드번호 보기", systemImage: authorized ? "lock" : "lock.open")
+                                Label(L(authorized ? "정보 잠그기" : "카드번호 보기"), systemImage: authorized ? "lock" : "lock.open")
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                             }.buttonStyle(.bordered).disabled(busy)
                             Button {
                                 Task { await unlock(copy: true) }
                             } label: {
-                                Label(copied ? "복사 완료" : "카드번호 복사", systemImage: "doc.on.doc")
+                                Label(L(copied ? "복사 완료" : "카드번호 복사"), systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                             }.buttonStyle(.borderedProminent).disabled(busy)
                         }.tint(accent)
-                        Text("카드 정보").font(.title2.bold())
+                        Text(L("카드 정보")).font(.title2.bold())
                         VStack(spacing: 0) {
                             HStack(spacing: 14) {
                                 badge("lock.shield")
@@ -366,7 +378,7 @@ struct LedgerCardDetail: View {
                             Divider()
                             info("카드 브랜드", value: authorized ? record?.fields["카드 브랜드"] : nil)
                         }
-                        Text("이번 달 사용").font(.title2.bold())
+                        Text(L("이번 달 사용")).font(.title2.bold())
                         Surface {
                             VStack(alignment: .leading, spacing: 9) {
                                 Text(store.spent(on: card, in: .now).won).font(.title.bold())
@@ -387,7 +399,7 @@ struct LedgerCardDetail: View {
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button { clear(); edit = true } label: { Image(systemName: "square.and.pencil") }
-                            .accessibilityLabel("카드 수정")
+                            .accessibilityLabel(L("카드 수정"))
                     }
                 }
                 .sheet(isPresented: $edit, onDismiss: { if self.card == nil { dismiss() } }) {
@@ -400,7 +412,7 @@ struct LedgerCardDetail: View {
         .onChange(of: phase) { _, p in if p == .background { clear() } }
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
         .onDisappear { clear() }
-        .alert("확인", isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button("확인") {error = nil} } message: { Text(error ?? "") }
+        .alert(L("확인"), isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button(L("확인")) {error = nil} } message: { Text(error ?? "") }
     }
     private func badge(_ icon: String) -> some View {
         Image(systemName: icon).foregroundStyle(accent).frame(width: 46, height: 46)
@@ -408,7 +420,7 @@ struct LedgerCardDetail: View {
     }
     private func info(_ name: String, value: String?) -> some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(name).font(.subheadline).foregroundStyle(.secondary)
+            Text(L(name)).font(.subheadline).foregroundStyle(.secondary)
             Text(value.flatMap { $0.isEmpty ? nil : $0 } ?? (authorized ? "미등록" : "••••"))
                 .font(.headline).privacySensitive()
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
@@ -448,6 +460,8 @@ struct LedgerCardDetail: View {
 }
 
 struct CardForm: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -476,61 +490,63 @@ struct CardForm: View {
     }
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Form {
-                Section("카드") {
-                    TextField("카드 별칭", text: $name)
-                    TextField("카드사", text: $issuer)
-                    TextField("카드번호 마지막 4자리", text: $lastFour)
+                Section(L("카드")) {
+                    TextField(L("카드 별칭"), text: $name)
+                    TextField(L("카드사"), text: $issuer)
+                    TextField(L("카드번호 마지막 4자리"), text: $lastFour)
                         .keyboardType(.numberPad)
                         .onChange(of: lastFour) { _, value in lastFour = String(value.filter(\.isNumber).prefix(4)) }
                         .disabled(!digits.isEmpty)
-                    Picker("카드 색상", selection: $tone) {
-                        ForEach(WalletTone.allCases) { Text($0.rawValue).tag($0) }
+                    Picker(L("카드 색상"), selection: $tone) {
+                        ForEach(WalletTone.allCases) { Text(L($0.rawValue)).tag($0) }
                     }
                     HStack {
-                        Text("월 사용 한도")
+                        Text(L("월 사용 한도"))
                         Spacer()
-                        TextField("선택", text: $limit).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                        Text("원").foregroundStyle(.secondary)
+                        TextField(L("선택"), text: $limit).keyboardType(.numberPad).multilineTextAlignment(.trailing)
+                        Text(L("원")).foregroundStyle(.secondary)
                     }
                 }
-                Section("전체 카드 정보 · 보호됨") {
+                Section(L("전체 카드 정보 · 보호됨")) {
                     if protectedRecord == nil {
                         Button { Task { await openProtected() } } label: {
-                            Label("기기 인증 후 카드번호 · CVC 등록", systemImage: "lock.shield")
+                            Label(L("기기 인증 후 카드번호 · CVC 등록"), systemImage: "lock.shield")
                         }.disabled(busy)
                         Text("기존 보안 정보는 잠긴 상태에서 수정하거나 덮어쓰지 않습니다.")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Picker("카드 브랜드", selection: field("카드 브랜드", fallback: "기타")) {
-                            ForEach(brands, id: \.self) { Text($0).tag($0) }
+                        Picker(L("카드 브랜드"), selection: field("카드 브랜드", fallback: "기타")) {
+                            ForEach(brands, id: \.self) { Text(L($0)).tag($0) }
                         }
-                        Toggle("보안 정보 표시", isOn: $visible)
+                        Toggle(L("보안 정보 표시"), isOn: $visible)
                         if visible {
-                            TextField("전체 카드번호", text: field("카드번호")).keyboardType(.numberPad)
+                            TextField(L("전체 카드번호"), text: field("카드번호")).keyboardType(.numberPad)
                             TextField("CVC", text: field("CVC")).keyboardType(.numberPad)
                         } else {
-                            SecureField("전체 카드번호", text: field("카드번호")).keyboardType(.numberPad)
+                            SecureField(L("전체 카드번호"), text: field("카드번호")).keyboardType(.numberPad)
                             SecureField("CVC", text: field("CVC")).keyboardType(.numberPad)
                         }
-                        TextField("사용자 이름", text: field("카드 소유자")).textInputAutocapitalization(.characters)
-                        TextField("유효기간 (MM/YY)", text: field("유효기간")).keyboardType(.numbersAndPunctuation)
+                        TextField(L("사용자 이름"), text: field("카드 소유자")).textInputAutocapitalization(.characters)
+                        TextField(L("유효기간 (MM/YY)"), text: field("유효기간")).keyboardType(.numbersAndPunctuation)
                         if !digits.isEmpty { Text("카드번호 끝자리: " + effectiveLastFour).font(.caption).foregroundStyle(.secondary) }
                         Text("전체 카드번호 및 CVC는 선택 항목이며 기기 전용 Keychain에 저장됩니다. 실제 CVC 저장은 권장하지 않습니다.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                if existing != nil { Section { Button("이 카드 삭제", role: .destructive) { confirmDelete = true } } }
+                if existing != nil { Section { Button(L("이 카드 삭제"), role: .destructive) { confirmDelete = true } } }
             }
-            .navigationTitle(existing == nil ? "카드 등록" : "카드 수정")
+            .navigationTitle(L(existing == nil ? "카드 등록" : "카드 수정"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("저장") { save() }.disabled(!valid || busy) }
+                ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(L("저장")) { save() }.disabled(!valid || busy) }
             }
             .confirmationDialog("카드를 삭제할까요?", isPresented: $confirmDelete) {
-                Button("삭제", role: .destructive) { Task { await delete() } }
+                Button(L("삭제"), role: .destructive) { Task { await delete() } }
             } message: { Text("연결된 보안 정보는 인증 후 보관함 휴지통으로 이동합니다.") }
             .onAppear {
                 if let existing {
@@ -543,7 +559,7 @@ struct CardForm: View {
                 if p == .background { protectedRecord = nil; dismiss() }
             }
             .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
-            .alert("확인", isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button("확인") {error = nil} } message: { Text(error ?? "") }
+            .alert(L("확인"), isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button(L("확인")) {error = nil} } message: { Text(error ?? "") }
         }
     }
     private func field(_ key: String, fallback: String = "") -> Binding<String> {
@@ -592,6 +608,8 @@ struct CardForm: View {
 }
 
 struct BankAccountForm: View {
+    @Environment(\.appLanguageRevision) private var languageRefresh
+    @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
@@ -606,44 +624,46 @@ struct BankAccountForm: View {
     @State private var saveError = false
 
     var body: some View {
+        let _ = languageRefresh
+        let _ = moneyRefresh
         NavigationStack {
             Form {
-                Section("통장 정보") {
+                Section(L("통장 정보")) {
                     TextField("통장 별칭 (예: 월급 통장)", text: $nickname)
-                    TextField("은행명", text: $bank)
-                    TextField("계좌번호 · 선택", text: $accountNumber).keyboardType(.numbersAndPunctuation)
+                    TextField(L("은행명"), text: $bank)
+                    TextField(L("계좌번호 · 선택"), text: $accountNumber).keyboardType(.numbersAndPunctuation)
                     HStack {
-                        Text("기초 잔액 (KRW)")
+                        Text(L("기초 잔액 (KRW)"))
                         Spacer()
                         TextField("0", text: $balance).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                        Text("원").foregroundStyle(.secondary)
+                        Text(L("원")).foregroundStyle(.secondary)
                     }
-                    Picker("색상", selection: $tone) {
-                        ForEach(WalletTone.allCases) { Text($0.rawValue).tag($0) }
+                    Picker(L("색상"), selection: $tone) {
+                        ForEach(WalletTone.allCases) { Text(L($0.rawValue)).tag($0) }
                     }
                 }
-                Section("비밀코드 · 선택") {
+                Section(L("비밀코드 · 선택")) {
                     SecureField(existing == nil ? "새 비밀코드 입력" : "변경할 비밀코드 (비우면 유지)", text: $secret)
                         .textContentType(.password)
                     Text("비밀코드는 이 기기의 iOS 키체인에 따로 보관합니다. 조회할 때 기기 인증이 필요해요. 은행 로그인 비밀번호 저장은 권장하지 않습니다.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if existing != nil { Section { Button("통장 삭제", role: .destructive) { confirmDelete = true } } }
+                if existing != nil { Section { Button(L("통장 삭제"), role: .destructive) { confirmDelete = true } } }
             }
-            .navigationTitle(existing == nil ? "통장 등록" : "통장 수정")
+            .navigationTitle(L(existing == nil ? "통장 등록" : "통장 수정"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("취소") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") { save() }
+                    Button(L("저장")) { save() }
                         .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || bank.isEmpty)
                 }
             }
             .alert("키체인 저장 실패", isPresented: $saveError) {
-                Button("확인", role: .cancel) { }
+                Button(L("확인"), role: .cancel) { }
             } message: { Text("비밀코드를 안전하게 저장하지 못했습니다. 기기 잠금 설정을 확인하고 다시 시도하세요.") }
             .confirmationDialog("이 통장을 삭제할까요?", isPresented: $confirmDelete) {
-                Button("삭제", role: .destructive) {
+                Button(L("삭제"), role: .destructive) {
                     if let existing { store.deleteAccount(existing) }
                     dismiss()
                 }
