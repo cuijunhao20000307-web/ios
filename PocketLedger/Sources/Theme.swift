@@ -12,8 +12,6 @@ struct Surface<Content: View>: View {
     let content: Content
     init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
-        let _ = languageRefresh
-        let _ = moneyRefresh
         content
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,7 +78,7 @@ struct EntryLine: View {
                 HStack(spacing: 5) {
                     Text(L(entry.category.rawValue))
                     if let source { Text("· " + source).lineLimit(1) }
-                    Text("· " + entry.date.formatted(.dateTime.month().day().locale(Locale(identifier: "ko_KR"))))
+                    Text("· " + entry.date.formatted(.dateTime.month().day().locale(AppLocalization.locale)))
                 }
                 .font(.system(size: 11))
                 .foregroundStyle(LedgerTheme.subtext)
@@ -138,6 +136,43 @@ struct WalletCardArt: View {
                 .frame(width: 180, height: 180)
                 .offset(x: 80, y: -85)
                 .clipped()
+        }
+    }
+}
+
+
+// Adapt to the actual available content width (after system navigation/safe areas),
+// not an assumed device name or a horizontal size class.
+struct DuoColumns: Layout {
+    var spacing: CGFloat = 20
+    var minWidth: CGFloat = 650
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? max(320, subviews.map { $0.sizeThatFits(.unspecified).width }.max() ?? 320)
+        let columns = width >= minWidth ? 2 : 1
+        let cellWidth = max(0, (width - CGFloat(columns - 1) * spacing) / CGFloat(columns))
+        var height: CGFloat = 0
+        for start in stride(from: 0, to: subviews.count, by: columns) {
+            let rowHeight = (start..<min(start + columns, subviews.count)).map {
+                subviews[$0].sizeThatFits(ProposedViewSize(width: cellWidth, height: nil)).height
+            }.max() ?? 0
+            if start > 0 { height += spacing }
+            height += rowHeight
+        }
+        return CGSize(width: width, height: height)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let columns = bounds.width >= minWidth ? 2 : 1
+        let w = max(0, (bounds.width - CGFloat(columns - 1) * spacing) / CGFloat(columns))
+        var y = bounds.minY
+        for start in stride(from: 0, to: subviews.count, by: columns) {
+            var rowHeight: CGFloat = 0
+            for i in start..<min(start + columns, subviews.count) {
+                let p = ProposedViewSize(width: w, height: nil)
+                subviews[i].place(at: CGPoint(x: bounds.minX + CGFloat(i - start) * (w + spacing), y: y), anchor: .topLeading, proposal: p)
+                rowHeight = max(rowHeight, subviews[i].sizeThatFits(p).height)
+            }
+            y += rowHeight + spacing
         }
     }
 }

@@ -38,6 +38,8 @@ struct SettingsView: View {
                     Text(L("설정")).font(.system(size: 30, weight: .bold))
                     Text(L("가계부를 내 방식대로")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
                 }
+                DuoColumns(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 20) {
                 Surface {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionHeading(title: "언어")
@@ -107,6 +109,9 @@ struct SettingsView: View {
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                     }
                 }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 20) {
                 Surface {
                     VStack(alignment: .leading, spacing: 15) {
                         SectionHeading(title: "보안")
@@ -166,12 +171,15 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.4.2")
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                Text("PocketLedger · v0.4.3")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
             .padding(20).padding(.top, 8)
-            .frame(maxWidth: 780).frame(maxWidth: .infinity)
+            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .onAppear { budgetText = String(store.data.monthlyBudget); loadRate() }

@@ -101,6 +101,11 @@ struct PaymentCard: Codable, Identifiable, Equatable {
     var lastFour: String
     var tone: WalletTone
     var spendingLimit: Int
+    // Optional fields preserve decoding of legacy cards.
+    var artwork: Data? = nil
+    var artworkTextDark: Bool? = nil
+    var artworkDim: Double? = nil
+    var network: String? = nil
 }
 
 struct BankAccount: Codable, Identifiable, Equatable {
@@ -247,6 +252,14 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "카드 디자인": ["Card design","卡面设计","卡面設計","カードデザイン","Diseño de tarjeta","Design de carte","Kartendesign"],
+        "사진 선택": ["Choose artwork","选择卡面图片","選擇卡面圖片","画像を選択","Elegir imagen","Choisir une image","Bild auswählen"],
+        "이미지 제거": ["Remove artwork","移除卡面图片","移除卡面圖片","画像を削除","Quitar imagen","Supprimer l’image","Bild entfernen"],
+        "어두운 글자": ["Dark lettering","深色文字","深色文字","暗い文字","Texto oscuro","Texte sombre","Dunkler Text"],
+        "이미지 음영": ["Image shading","图片遮罩","圖片遮罩","画像の陰影","Sombreado","Ombrage","Bildabdunklung"],
+        "없음": ["None","无","無","なし","Ninguno","Aucun","Keine"],
+        "카드 사진에는 실제 카드번호, CVC 등 민감 정보가 없어야 합니다. 장식 이미지로만 사용됩니다.": ["Use decorative artwork without real card numbers, CVC or other sensitive data.","只使用装饰图片，请勿导入含真实卡号、CVC 等敏感信息的照片。","只使用裝飾圖片，請勿匯入含真實卡號、CVC 等敏感資訊的照片。","実際のカード番号やCVCを含まない装飾画像を使用してください。"],
+        "이미지를 불러올 수 없습니다.": ["Unable to load image.","无法载入图片。","無法載入圖片。","画像を読み込めません。"],
         "홈": ["Home", "首页", "首頁", "ホーム", "Inicio", "Accueil", "Start"],
         "내역": ["History", "明细", "明細", "履歴", "Historial", "Historique", "Verlauf"],
         "지갑": ["Wallet", "钱包", "錢包", "ウォレット", "Cartera", "Portefeuille", "Wallet"],

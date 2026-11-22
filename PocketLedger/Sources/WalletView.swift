@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
+import PhotosUI
+import ImageIO
 
 struct WalletView: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
@@ -57,7 +59,7 @@ struct WalletView: View {
                 }
             }
             .padding(20).padding(.top, 8)
-            .frame(maxWidth: 780).frame(maxWidth: .infinity)
+            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
         }
         .background(LedgerTheme.background)
         .searchable(text: $search, prompt: L("카드 및 은행 검색"))
@@ -106,33 +108,35 @@ struct WalletView: View {
             if cards.isEmpty {
                 Surface { EmptyContent(symbol: "creditcard", title: "표시할 카드가 없어요", subtitle: "+ 버튼으로 새 카드를 추가할 수 있어요") }
             } else {
-                VStack(spacing: stacked ? -1 : 16) {
-                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                        let full = !stacked || index == cards.count - 1
-                        Button { selectedCard = card.id } label: {
-                            if full {
+                if stacked {
+                    VStack(spacing: -1) {
+                        ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                            let full = index == cards.count - 1
+                            Button { selectedCard = card.id } label: {
+                                if full {
+                                    LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
+                                        .aspectRatio(1.586, contentMode: .fit)
+                                } else {
+                                    LedgerCardStrip(card: card)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(card.name + " " + L("카드 정보"))
+                        }
+                    }
+                    .frame(maxWidth: 460)
+                    .frame(maxWidth: .infinity)
+                } else {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 290, maximum: 460), spacing: 20)], spacing: 20) {
+                        ForEach(cards) { card in
+                            Button { selectedCard = card.id } label: {
                                 LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                                     .aspectRatio(1.586, contentMode: .fit)
-                            } else {
-                                HStack {
-                                    Text(card.issuer).font(.system(size: 16, weight: .bold)).lineLimit(1)
-                                    Spacer(minLength: 10)
-                                    Text(card.name).font(.system(size: 14, weight: .medium)).lineLimit(1)
-                                }
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 20)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 54)
-                                .background(LinearGradient(colors: card.tone.gradient, startPoint: .leading, endPoint: .trailing))
-                                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 19, topTrailingRadius: 19))
-                            }
+                            }.buttonStyle(.plain)
+                            .accessibilityLabel(card.name + " " + L("카드 정보"))
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(card.name + " 카드 상세")
                     }
                 }
-                .frame(maxWidth: 460)
-                .frame(maxWidth: .infinity)
                 Text("카드를 누르면 상세 정보를 확인할 수 있어요. 전체 카드번호와 보안 정보는 기기 인증으로 보호됩니다.")
                     .font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -193,6 +197,86 @@ struct WalletView: View {
     }
 }
 
+
+private struct LedgerCardBackground: View {
+    let card: PaymentCard
+    var body: some View {
+        GeometryReader { geo in
+            ZStack {
+                LinearGradient(colors: card.tone.gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
+                if let artwork = card.artwork, let decoded = UIImage(data: artwork) {
+                    Image(uiImage: decoded).resizable().scaledToFill()
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .clipped()
+                    (card.artworkTextDark == true ? Color.white : Color.black)
+                        .opacity(min(max(card.artworkDim ?? 0.18, 0), 0.65))
+                }
+            }.clipped()
+        }
+    }
+}
+private struct LedgerCardStrip: View {
+    let card: PaymentCard
+    var body: some View {
+        HStack {
+            Text(card.issuer).font(.system(size: 16, weight: .bold)).lineLimit(1)
+            Spacer(minLength: 10)
+            Text(card.name).font(.system(size: 14, weight: .medium)).lineLimit(1)
+        }
+        .foregroundStyle(card.artwork != nil && card.artworkTextDark == true ? Color.black : Color.white)
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity)
+        .frame(height: 54)
+        .background { LedgerCardBackground(card: card) }
+        .clipShape(UnevenRoundedRectangle(topLeadingRadius: 19, topTrailingRadius: 19))
+    }
+}
+private struct LedgerNetworkBadge: View {
+    let network: String
+    var body: some View {
+        if network == "Mastercard" {
+            HStack(spacing: -8) {
+                Circle().fill(Color(red: 0.9, green: 0.08, blue: 0.17)).frame(width: 25, height: 25)
+                Circle().fill(Color(red: 1, green: 0.63, blue: 0.08)).frame(width: 25, height: 25)
+            }
+            .accessibilityLabel("Mastercard")
+        } else if network != "none" && network != "기타" && !network.isEmpty {
+            Text(network)
+                .font(.system(size: network == "UnionPay" ? 11 : 14, weight: .black, design: .rounded))
+                .italic(network == "VISA")
+                .foregroundStyle(network == "VISA" || network == "AMEX" ? Color(red: 0.07, green: 0.23, blue: 0.56) : .black)
+                .padding(.horizontal, 7).padding(.vertical, 5)
+                .background(.white, in: RoundedRectangle(cornerRadius: 5))
+        }
+    }
+}
+private enum LedgerArtwork {
+    // Downsample before decoding and render a bounded 1.586:1 decorative JPEG.
+    static func prepare(_ data: Data) -> Data? {
+        guard data.count <= 40_000_000,
+              let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let thumb = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 1600
+              ] as CFDictionary) else { return nil }
+        let image = UIImage(cgImage: thumb)
+        let size = CGSize(width: 1000, height: 630)
+        guard image.size.width > 0 && image.size.height > 0 else { return nil }
+        let scale = max(size.width / image.size.width, size.height / image.size.height)
+        let drawn = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        format.opaque = true
+        let output = UIGraphicsImageRenderer(size: size, format: format).jpegData(withCompressionQuality: 0.80) { _ in
+            UIColor.white.setFill()
+            UIRectFill(CGRect(origin: .zero, size: size))
+            image.draw(in: CGRect(x: (size.width - drawn.width) / 2, y: (size.height - drawn.height) / 2, width: drawn.width, height: drawn.height))
+        }
+        return output.count <= 1_000_000 ? output : nil
+    }
+}
+
 // The ledger keeps only public metadata and the last four digits.
 // All complete card details live in the existing protected wallet archive.
 struct LedgerStackCard: View {
@@ -247,26 +331,13 @@ struct LedgerStackCard: View {
                         }
                     }
                     Spacer(minLength: 4)
-                    if let brand = record?.fields["카드 브랜드"], !brand.isEmpty && brand != "기타" {
-                        Text(brand).font(.system(size: 14, weight: .black, design: .rounded))
-                            .padding(7).foregroundStyle(.black)
-                            .background(.white, in: RoundedRectangle(cornerRadius: 5))
-                    } else {
-                        Image(systemName: "wave.3.right").font(.title3).rotationEffect(.degrees(90))
-                    }
+                    LedgerNetworkBadge(network: card.network ?? record?.fields["카드 브랜드"] ?? "none")
                 }
             }
             .padding(pad)
-            .foregroundStyle(.white)
+            .foregroundStyle(card.artwork != nil && card.artworkTextDark == true ? Color.black : Color.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background {
-                ZStack {
-                    LinearGradient(colors: card.tone.gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
-                    Circle().stroke(.white.opacity(0.09), lineWidth: 38)
-                        .frame(width: geo.size.width * 0.65)
-                        .offset(x: geo.size.width * 0.48, y: -geo.size.width * 0.27)
-                }
-            }
+            .background { LedgerCardBackground(card: card) }
             .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(.white.opacity(0.19), lineWidth: 1))
         }
@@ -332,7 +403,8 @@ struct LedgerCardDetail: View {
         Group {
             if let card {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 23) {
+                    DuoColumns(spacing: 24, minWidth: 620) {
+                        VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 7) {
                             Text(card.issuer).font(.headline).foregroundStyle(.secondary)
                             Text(card.name).font(.largeTitle.bold())
@@ -353,6 +425,9 @@ struct LedgerCardDetail: View {
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                             }.buttonStyle(.borderedProminent).disabled(busy)
                         }.tint(accent)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 20) {
                         Text(L("카드 정보")).font(.title2.bold())
                         VStack(spacing: 0) {
                             HStack(spacing: 14) {
@@ -376,7 +451,7 @@ struct LedgerCardDetail: View {
                             Divider()
                             info("유효기간", value: authorized ? record?.fields["유효기간"] : nil)
                             Divider()
-                            info("카드 브랜드", value: authorized ? record?.fields["카드 브랜드"] : nil)
+                            info("카드 브랜드", value: card.network == "none" ? L("없음") : (card.network ?? (authorized ? record?.fields["카드 브랜드"] : nil)))
                         }
                         Text(L("이번 달 사용")).font(.title2.bold())
                         Surface {
@@ -391,8 +466,10 @@ struct LedgerCardDetail: View {
                             Text("전체 카드 정보가 아직 등록되지 않았습니다. 편집에서 카드번호, 유효기간을 입력하세요.")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(20).frame(maxWidth: 620).frame(maxWidth: .infinity)
+                    .padding(20).frame(maxWidth: 1100).frame(maxWidth: .infinity)
                 }
                 .navigationTitle(card.name)
                 .navigationBarTitleDisplayMode(.inline)
@@ -479,7 +556,15 @@ struct CardForm: View {
     @State private var confirmDelete = false
     @State private var error: String?
 
-    private let brands = ["기타", "VISA", "Mastercard", "AMEX", "JCB", "UnionPay", "BC", "Tmoney"]
+    @State private var artwork: Data?
+    @State private var artworkDark = false
+    @State private var artworkDim = 0.18
+    @State private var network = "none"
+    @State private var networkEdited = false
+    @State private var photo: PhotosPickerItem?
+    @State private var photoLoading = false
+
+    private let brands = ["none", "VISA", "Mastercard", "AMEX", "JCB", "UnionPay", "BC", "Tmoney", "Discover", "Diners Club", "Maestro"]
     private var digits: String { (protectedRecord?.fields["카드번호"] ?? "").filter(\.isNumber) }
     private var effectiveLastFour: String { digits.isEmpty ? lastFour : String(digits.suffix(4)) }
     private var valid: Bool {
@@ -511,6 +596,33 @@ struct CardForm: View {
                         Text(L("원")).foregroundStyle(.secondary)
                     }
                 }
+                Section(L("카드 디자인")) {
+                    LedgerStackCard(card: draftCard(), spent: 0)
+                        .aspectRatio(1.586, contentMode: .fit)
+                        .frame(maxWidth: 440)
+                        .frame(maxWidth: .infinity)
+                        .listRowBackground(Color.clear)
+                    PhotosPicker(selection: $photo, matching: .images) {
+                        Label(L("사진 선택"), systemImage: "photo.on.rectangle")
+                    }.disabled(photoLoading)
+                    if photoLoading { ProgressView() }
+                    if artwork != nil {
+                        Button(L("이미지 제거"), role: .destructive) { artwork = nil; photo = nil }
+                        Toggle(L("어두운 글자"), isOn: $artworkDark)
+                        HStack {
+                            Text(L("이미지 음영"))
+                            Slider(value: $artworkDim, in: 0...0.65)
+                        }
+                    }
+                    Picker(L("카드 브랜드"), selection: $network) {
+                        ForEach(brands, id: \.self) { brand in
+                            Text(brand == "none" ? L("없음") : brand).tag(brand)
+                        }
+                    }
+                    .onChange(of: network) { _, _ in networkEdited = true }
+                    Text(L("카드 사진에는 실제 카드번호, CVC 등 민감 정보가 없어야 합니다. 장식 이미지로만 사용됩니다."))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Section(L("전체 카드 정보 · 보호됨")) {
                     if protectedRecord == nil {
                         Button { Task { await openProtected() } } label: {
@@ -519,9 +631,6 @@ struct CardForm: View {
                         Text("기존 보안 정보는 잠긴 상태에서 수정하거나 덮어쓰지 않습니다.")
                             .font(.caption).foregroundStyle(.secondary)
                     } else {
-                        Picker(L("카드 브랜드"), selection: field("카드 브랜드", fallback: "기타")) {
-                            ForEach(brands, id: \.self) { Text(L($0)).tag($0) }
-                        }
                         Toggle(L("보안 정보 표시"), isOn: $visible)
                         if visible {
                             TextField(L("전체 카드번호"), text: field("카드번호")).keyboardType(.numberPad)
@@ -543,7 +652,7 @@ struct CardForm: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button(L("저장")) { save() }.disabled(!valid || busy) }
+                ToolbarItem(placement: .confirmationAction) { Button(L("저장")) { save() }.disabled(!valid || busy || photoLoading) }
             }
             .confirmationDialog("카드를 삭제할까요?", isPresented: $confirmDelete) {
                 Button(L("삭제"), role: .destructive) { Task { await delete() } }
@@ -552,7 +661,23 @@ struct CardForm: View {
                 if let existing {
                     id = existing.id; name = existing.name; issuer = existing.issuer; lastFour = existing.lastFour
                     tone = existing.tone; limit = String(existing.spendingLimit)
+                    artwork = existing.artwork; artworkDark = existing.artworkTextDark ?? false
+                    artworkDim = min(max(existing.artworkDim ?? 0.18, 0), 0.65); network = existing.network ?? "none"
                 }
+            }
+            .task(id: photo) {
+                guard let item = photo else { return }
+                photoLoading = true
+                defer { if photo == item { photoLoading = false } }
+                do {
+                    guard let data = try await item.loadTransferable(type: Data.self),
+                          !Task.isCancelled, photo == item,
+                          let converted = LedgerArtwork.prepare(data) else {
+                        if !Task.isCancelled && photo == item { error = L("이미지를 불러올 수 없습니다.") }
+                        return
+                    }
+                    artwork = converted
+                } catch { if !Task.isCancelled && photo == item { self.error = L("이미지를 불러올 수 없습니다.") } }
             }
             .onChange(of: phase) { _, p in
                 if p != .active { visible = false }
@@ -574,17 +699,23 @@ struct CardForm: View {
         busy = true
         defer { busy = false }
         guard await LocalUnlock.authorize(), phase != .background else { return }
-        do { protectedRecord = LinkedCardVault.draft(for: draftCard(), archive: try PrivateStorage.load()) }
+        do {
+            protectedRecord = LinkedCardVault.draft(for: draftCard(), archive: try PrivateStorage.load())
+            if existing?.network == nil && !networkEdited, let brand = protectedRecord?.fields["카드 브랜드"], brands.contains(brand) {
+                network = brand
+            }
+        }
         catch { self.error = error.localizedDescription }
     }
     private func draftCard() -> PaymentCard {
-        PaymentCard(id: id, name: name, issuer: issuer, lastFour: effectiveLastFour, tone: tone, spendingLimit: limit.toMoneyInt)
+        PaymentCard(id: id, name: name, issuer: issuer, lastFour: effectiveLastFour, tone: tone, spendingLimit: limit.toMoneyInt, artwork: artwork, artworkTextDark: artworkDark, artworkDim: artworkDim, network: networkEdited || existing?.network != nil || existing == nil ? network : nil)
     }
     private func save() {
         guard valid else { return }
         let card = draftCard()
         if var record = protectedRecord {
             record.title = name; record.link = id; record.fields["카드사"] = issuer
+            if let selected = card.network { record.fields["카드 브랜드"] = selected }
             do { try LinkedCardVault.save(record) }
             catch { self.error = error.localizedDescription; return }
         }

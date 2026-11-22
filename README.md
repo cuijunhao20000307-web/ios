@@ -1,4 +1,4 @@
-# PocketLedger v0.4.2
+# PocketLedger v0.4.3
 
 SwiftUI personal ledger for iOS 17+. Korean UI. Local data storage, spending and income, cards and accounts, monthly budget, six-month charts, recurring entries, light/dark mode, CSV export, Face ID/device passcode and native system tab bar (Duo adaptive placement and standard iPhone navigation).
 
@@ -22,3 +22,6 @@ Card list is a compact Apple Wallet-inspired stack with a list-view toggle and s
 Home ledger balance is opening account balances plus all recorded income minus expenses through today. Old manually entered balances are interpreted as opening balances; adjust them if they already include historical transactions. Display currency is optional manual-rate conversion of existing KRW data; amounts and input remain KRW and are not relabeled. No live exchange-rate or real bank integration.
 
 Language selector supports Korean, simplified/traditional Chinese, Japanese, English, Spanish, French, and German. Main interface labels have translations; secondary strings may fall back to English or Korean until localization is complete. User content and persistent identifiers remain unchanged. Language and currency are independent preferences.
+
+## v0.4.3 adaptive wallet
+Responsive two-column Dashboard, Settings and card detail using available safe-area content width. Wallet stack is centered; expanded list uses adaptive grid. Decorative custom artwork imports through PhotosPicker, downsampled to 1000×630 JPEG with contrast controls; no real card photos or secrets should be used as artwork. Optional network badge including none. Legacy card fields remain decodable. Private card data stays in the existing protected archive. Fixes missing localization refresh identifiers in Surface. No change to native tab bar.

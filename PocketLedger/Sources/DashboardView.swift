@@ -48,6 +48,16 @@ struct DashboardView: View {
                         .font(.system(size: 12, weight: .medium)).foregroundStyle(.orange)
                 }
 
+                HStack {
+                    Button { monthOffset -= 1 } label: { Image(systemName: "chevron.left").frame(width: 36, height: 36) }
+                    Spacer()
+                    Text(month.koreanMonthTitle).font(.system(size: 20, weight: .bold))
+                    Spacer()
+                    Button { monthOffset += 1 } label: { Image(systemName: "chevron.right").frame(width: 36, height: 36) }
+                }
+                .foregroundStyle(LedgerTheme.text)
+                DuoColumns(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 15) {
                         HStack {
                             Text(L("현재 가계부 잔액")).font(.system(size: 13, weight: .medium)).opacity(0.8)
@@ -64,21 +74,14 @@ struct DashboardView: View {
                     .padding(25)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 .background(LinearGradient(colors: [Color(red: 0.13, green: 0.16, blue: 0.28), Color(red: 0.24, green: 0.29, blue: 0.51)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
-
-                HStack {
-                    Button { monthOffset -= 1 } label: { Image(systemName: "chevron.left").frame(width: 36, height: 36) }
-                    Spacer()
-                    Text(month.koreanMonthTitle).font(.system(size: 20, weight: .bold))
-                    Spacer()
-                    Button { monthOffset += 1 } label: { Image(systemName: "chevron.right").frame(width: 36, height: 36) }
-                }
-                .foregroundStyle(LedgerTheme.text)
-
                 HStack(spacing: 12) {
                     totalTile("이번 달 지출", value: expenses, symbol: "arrow.up.right", tint: .pink)
                     totalTile("이번 달 수입", value: incomes, symbol: "arrow.down.left", tint: .green)
                 }
 
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(alignment: .leading, spacing: 14) {
                 Surface {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionHeading(title: "월 지출 예산")
@@ -105,7 +108,6 @@ struct DashboardView: View {
                         }
                     }
                 }
-
                 VStack(alignment: .leading, spacing: 11) {
                     SectionHeading(title: "카테고리별 지출")
                     Surface {
@@ -127,7 +129,9 @@ struct DashboardView: View {
                         }
                     }
                 }
-
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 VStack(alignment: .leading, spacing: 11) {
                     SectionHeading(title: "최근 거래", detail: "최대 5건")
                     Surface {
@@ -147,7 +151,7 @@ struct DashboardView: View {
             .padding(.horizontal, 20)
             .padding(.top, 26)
             .padding(.bottom, 25)
-            .frame(maxWidth: 780)
+            .frame(maxWidth: 1100)
             .frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showAdd) { TransactionForm() }
