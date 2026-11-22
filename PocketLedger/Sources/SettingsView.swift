@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UserNotifications
 import UIKit
+import ImageIO
 
 struct SettingsView: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
@@ -12,6 +13,7 @@ struct SettingsView: View {
     @AppStorage("displayCurrencyRevision") private var currencyRevision = 0
     @AppStorage("monthlyReportEnabled") private var reportEnabled = true
     @AppStorage("monthlyReportNotifications") private var reportNotifications = false
+    @State private var showCovers = false
     @State private var showReports = false
     @State private var showPaymentLinks = false
     @State private var notificationError = false
@@ -52,6 +54,9 @@ struct SettingsView: View {
                                 Text(item.formattedName).tag(item.rawValue)
                             }
                         }.pickerStyle(.menu)
+                        Button { showCovers = true } label: {
+                            Label(L("통화별 잔액 커버"), systemImage: "photo.on.rectangle")
+                        }
                         Text(L("통화 기호만 변경하며 금액은 변환하지 않습니다."))
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -186,7 +191,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("PocketLedger · v0.4.18")
+                Text("PocketLedger · v0.4.19")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -196,6 +201,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .onAppear { budgetText = String(store.data.monthlyBudget) }
         .onChange(of: currency) { _, _ in currencyRevision += 1 }
+        .sheet(isPresented: $showCovers) { CurrencyCoverSettingsView() }
         .sheet(isPresented: $showReports) { MonthlyReportView() }
         .sheet(isPresented: $showPaymentLinks) { PaymentLinksView() }
         .alert(L("알림 설정을 확인하세요"), isPresented: $notificationError) { Button(L("확인")) {} }
@@ -575,5 +581,101 @@ struct PaymentLinksView: View {
         })
         message = L("가져오기 완료") + ": \(items.count)"
         preview = []; skipped = 0
+    }
+}
+
+
+// Currency artwork is decorative, not a currency conversion or online bank feature.
+enum CurrencyCoverStore {
+    static let codes = ["KRW", "CNY", "JPY", "USD"]
+    private static func directory() throws -> URL {
+        let dir = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("CurrencyCovers", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+    static func image(_ code: String) -> UIImage? {
+        guard codes.contains(code) else { return nil }
+        if let path = try? directory().appendingPathComponent(code + ".png"),
+           let img = UIImage(contentsOfFile: path.path) { return img }
+        return UIImage(named: "balance-cover-" + code)
+    }
+    static func importFiles(_ urls: [URL]) -> (count: Int, failed: Int) {
+        var count = 0
+        var failed = 0
+        for url in urls {
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            do {
+                let name = url.deletingPathExtension().lastPathComponent.uppercased()
+                guard let code = codes.first(where: { name == $0 || name.hasPrefix($0 + "_") || name.hasPrefix($0 + "-") }),
+                      url.pathExtension.lowercased() == "png",
+                      (try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 25_000_001) <= 25_000_000
+                else { failed += 1; continue }
+                let data = try Data(contentsOf: url)
+                guard data.count <= 25_000_000,
+                      let source = CGImageSourceCreateWithData(data as CFData, nil),
+                      let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+                      (properties[kCGImagePropertyPixelWidth] as? Int) == 2240,
+                      (properties[kCGImagePropertyPixelHeight] as? Int) == 1000,
+                      CGImageSourceCreateImageAtIndex(source, 0, nil) != nil
+                else { failed += 1; continue }
+                try data.write(to: directory().appendingPathComponent(code + ".png"), options: [.atomic, .completeFileProtection])
+                count += 1
+            } catch { failed += 1 }
+        }
+        return (count, failed)
+    }
+}
+
+struct CurrencyCoverSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("currencyCoverRevision") private var revision = 0
+    @State private var picking = false
+    @State private var message: String?
+    var body: some View {
+        let _ = revision
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    Text(L("KRW · CNY · JPY · USD 커버를 한 번 가져오면 통화 선택에 맞춰 자동으로 표시됩니다."))
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    ForEach(CurrencyCoverStore.codes, id: \.self) { code in
+                        Surface {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text((DisplayCurrency(rawValue: code)?.formattedName) ?? code).font(.headline)
+                                if let image = CurrencyCoverStore.image(code) {
+                                    Image(uiImage: image).resizable().scaledToFit()
+                                        .aspectRatio(2.24, contentMode: .fit)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                } else {
+                                    Label(L("커버 미등록"), systemImage: "photo")
+                                        .foregroundStyle(.secondary).frame(maxWidth: .infinity, minHeight: 54)
+                                }
+                            }
+                        }
+                    }
+                    Button { picking = true } label: {
+                        Label(L("커버 PNG 가져오기"), systemImage: "square.and.arrow.down")
+                            .frame(maxWidth: .infinity)
+                    }.buttonStyle(.borderedProminent)
+                    Text("KRW.png · CNY.png · JPY.png · USD.png\n2240 × 1000 px")
+                        .font(.caption.monospaced()).foregroundStyle(.secondary)
+                }.padding(16).frame(maxWidth: 640).frame(maxWidth: .infinity)
+            }
+            .navigationTitle(L("통화별 잔액 커버"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("닫기")) { dismiss() } } }
+            .fileImporter(isPresented: $picking, allowedContentTypes: [.png], allowsMultipleSelection: true) { result in
+                do {
+                    let response = CurrencyCoverStore.importFiles(try result.get())
+                    revision += 1
+                    message = L("가져오기 완료") + ": \(response.count) · " + L("제외") + ": \(response.failed)"
+                } catch { message = L("커버 파일을 확인하세요") }
+            }
+            .alert(L("확인"), isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
+                Button(L("확인")) { message = nil }
+            } message: { Text(message ?? "") }
+        }
     }
 }

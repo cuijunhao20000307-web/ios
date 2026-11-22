@@ -70,3 +70,6 @@ Currency preference changes symbol only; no FX conversion or stored value migrat
 
 ## v0.4.18 bank logo expansion
 50 logo assets in repository, including all 21 Korean entries and 18 Chinese entries; 11 additional Japan/US logos sourced at build time with validated SVG and actual asset availability fallback. Shinhan replaced by vector artwork with larger intrinsic size; picker icons enlarged, IBK and KB switched to locally sourced symbols. No runtime downloads, existing accounts unaffected. Some graphics reflect earlier bank branding. Build and device tests required.
+
+## v0.4.19 currency-specific dashboard covers
+KRW/CNY/JPY/USD select the corresponding balance-cover-{CODE} asset, or an imported original 2240x1000 PNG, automatically. Settings offers multi-file import by filename prefix. Imported artwork remains on-device; no change to balance amounts. Other currencies and missing covers fall back to original gradient. Assets maintain 2.24:1 with no crop, with left-side contrast scrim and bounded width on Duo. The four conversation uploads are supplied separately as an asset pack; they are not yet bundled in the repository. Device testing required.

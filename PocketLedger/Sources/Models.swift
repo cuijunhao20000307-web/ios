@@ -262,6 +262,11 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "커버 파일을 확인하세요": ["Check cover files","请检查封面文件","請檢查封面檔案","画像ファイルを確認してください","Comprueba los archivos","Vérifiez les fichiers","Dateien prüfen"],
+        "커버 PNG 가져오기": ["Import cover PNGs","导入封面PNG","匯入封面PNG","PNGを取り込む","Importar PNG","Importer PNG","PNG importieren"],
+        "커버 미등록": ["No cover installed","未导入封面","未匯入封面","カバー未登録","Sin portada","Sans couverture","Kein Cover"],
+        "KRW · CNY · JPY · USD 커버를 한 번 가져오면 통화 선택에 맞춰 자동으로 표시됩니다.": ["Import KRW, CNY, JPY and USD covers once; they switch automatically with the currency.","一次导入韩元、人民币、日元、美元封面，选择币种后自动切换。","一次匯入韓元、人民幣、日圓、美元封面，選擇幣種後自動切換。","KRW・CNY・JPY・USDの画像を取り込むと通貨に合わせて自動切替します。","Importa las cuatro portadas una vez.","Importez les quatre couvertures une fois.","Vier Cover einmal importieren."],
+        "통화별 잔액 커버": ["Currency balance covers","币种余额封面","幣種餘額封面","通貨別残高カバー","Portadas por moneda","Couvertures par devise","Währungscover"],
         "등록된 로고 없음": ["Logo unavailable","暂无标志","暫無標誌","ロゴなし","Sin logo","Sans logo","Kein Logo"],
         "은행 로고": ["Bank logo","银行标志","銀行標誌","銀行ロゴ","Logo bancario","Logo bancaire","Banklogo"],
         "직접 입력": ["Enter manually","自定义银行","自訂銀行","手動入力","Entrada manual","Saisie manuelle","Manuell eingeben"],

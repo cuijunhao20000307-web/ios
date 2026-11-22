@@ -1,9 +1,12 @@
 import SwiftUI
+import UIKit
 
 struct DashboardView: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
     @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
+    @AppStorage("displayCurrency") private var currency = "KRW"
+    @AppStorage("currencyCoverRevision") private var coverRevision = 0
     @State private var monthOffset = 0
     @State private var showAdd = false
 
@@ -60,7 +63,52 @@ struct DashboardView: View {
         .sheet(isPresented: $showAdd) { TransactionForm() }
     }
 
-    private var balanceCard: some View {
+    @ViewBuilder private var balanceCard: some View {
+        let _ = coverRevision
+        if let image = CurrencyCoverStore.image(currency) {
+            GeometryReader { geo in
+                let width = geo.size.width
+                ZStack(alignment: .leading) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: width, height: geo.size.height)
+                        .accessibilityHidden(true)
+                    // Keep the right-side portrait and the original engraving intact.
+                    LinearGradient(colors: [.white.opacity(0.88), .white.opacity(0.62), .white.opacity(0.05), .clear],
+                                   startPoint: .leading, endPoint: .trailing)
+                        .frame(width: width * 0.62)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: max(4, min(12, width * 0.025))) {
+                        Label(L("현재 가계부 잔액"), systemImage: "wallet.pass")
+                            .font(.system(size: min(17, max(11, width * 0.038)), weight: .medium))
+                            .foregroundStyle(.black.opacity(0.78))
+                            .lineLimit(1).minimumScaleFactor(0.65)
+                        Text(store.ledgerBalance.won)
+                            .font(.system(size: min(40, max(20, width * 0.076)), weight: .semibold, design: .rounded))
+                            .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
+                            .foregroundStyle(.black.opacity(0.94))
+                        Text(L("기초 잔액 + 수입 − 지출 · 오늘까지"))
+                            .font(.system(size: min(13, max(9, width * 0.029))))
+                            .foregroundStyle(.black.opacity(0.72))
+                            .lineLimit(2).minimumScaleFactor(0.7)
+                    }
+                    .padding(.leading, min(24, width * 0.045))
+                    .frame(width: width * 0.54, alignment: .leading)
+                    .padding(.vertical, 8)
+                }
+                .frame(width: width, height: geo.size.height)
+                .clipShape(RoundedRectangle(cornerRadius: 25, style: .continuous))
+            }
+            .aspectRatio(2.24, contentMode: .fit)
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity)
+        } else {
+            defaultBalanceCard
+        }
+    }
+
+    private var defaultBalanceCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label(L("현재 가계부 잔액"), systemImage: "wallet.pass")
