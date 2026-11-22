@@ -1318,6 +1318,7 @@ struct BankSecurityCardView: View {
     @State private var unlockFailed = false
     @State private var session = UUID()
     @State private var front = ""
+    @State private var back = ""
     @FocusState private var focused: Int?
 
     var body: some View {
@@ -1353,7 +1354,7 @@ struct BankSecurityCardView: View {
                         if grid { Button(L("완료")) { closeGrid() } }
                         else if editing { Button(L("저장"), action: save).disabled(card?.valid != true) }
                         else {
-                            Button { editing = true; front = "" } label: { Image(systemName: "square.and.pencil") }
+                            Button { editing = true; front = ""; back = "" } label: { Image(systemName: "square.and.pencil") }
                                 .accessibilityLabel(L("수정"))
                         }
                     }
@@ -1627,61 +1628,77 @@ struct BankSecurityCardView: View {
             } footer: {
                 Text(L("보안카드 코드를 보려면 기기 인증이 필요합니다."))
             }
-            Section(L("앞 두 자리로 조회")) {
-                HStack(spacing: 12) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(.secondary)
-                    TextField(L("앞 두 자리 입력"), text: Binding(
-                        get: { front },
-                        set: { front = BankSecurityCard.digits($0, max: 2) }
-                    ))
-                    .keyboardType(.numberPad)
-                    .font(.title3.monospacedDigit())
-                    .multilineTextAlignment(.center)
-                    .frame(width: 112)
-                    .accessibilityLabel(L("앞 두 자리 입력"))
-                    Spacer(minLength: 0)
-                    Button(L("조회 초기화")) { front = "" }
-                        .disabled(front.isEmpty)
-                        .font(.subheadline)
+            Section(L("보안카드 조회")) {
+                // Restore the original front/back search rows; input is a
+                // two-digit code half, never the printed card row number.
+                lookupRow(L("앞 두 자리"), number: $front,
+                          matches: value.matches(firstTwo: front), first: true)
+                lookupRow(L("뒤 두 자리"), number: $back,
+                          matches: value.matches(lastTwo: back), first: false)
+                if front.count == 2 {
+                    lookupFeedback(value.matches(firstTwo: front), first: true)
                 }
-                if front.count != 2 {
-                    Text(L("앞 두 자리를 입력하면 저장된 뒤 두 자리를 찾습니다."))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                } else {
-                    let matches = value.matches(firstTwo: front)
-                    if matches.isEmpty {
-                        Label(L("일치하는 코드가 없습니다."), systemImage: "magnifyingglass")
+                if back.count == 2 {
+                    lookupFeedback(value.matches(lastTwo: back), first: false)
+                }
+                Button(L("조회 초기화")) { front = ""; back = "" }
+                    .disabled(front.isEmpty && back.isEmpty)
+            }
+            Section {
+                Button(L("보안카드 등록 · 수정")) {
+                    editing = true; front = ""; back = ""
+                }
+            }
+        }
+    }
+    private func lookupRow(_ title: String, number: Binding<String>,
+                           matches: [BankSecurityPairMatch], first: Bool) -> some View {
+        // A unique result appears inline, where the old UI showed its code.
+        // Multiple matches are displayed with ordinal numbers below the row.
+        let counterpart = matches.count == 1
+            ? (first ? matches[0].lastTwo : matches[0].firstTwo)
+            : "••"
+        return HStack {
+            Text(title)
+            Spacer()
+            TextField("01", text: Binding(
+                get: { number.wrappedValue },
+                set: { number.wrappedValue = BankSecurityCard.digits($0, max: 2) }
+            ))
+            .keyboardType(.numberPad)
+            .multilineTextAlignment(.center)
+            .font(.body.monospacedDigit())
+            .frame(width: 60)
+            .accessibilityLabel(title)
+            Text(counterpart)
+                .font(.headline.monospacedDigit())
+                .frame(width: 60)
+                .privacySensitive()
+        }
+    }
+    @ViewBuilder private func lookupFeedback(_ matches: [BankSecurityPairMatch],
+                                              first: Bool) -> some View {
+        if matches.isEmpty {
+            Label(L("일치하는 코드가 없습니다."), systemImage: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if matches.count > 1 {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(L("같은 앞 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요."))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ForEach(matches) { matched in
+                    HStack {
+                        Text(String(format: "%02d", matched.ordinal))
+                            .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
-                    } else {
-                        if matches.count > 1 {
-                            Text(L("같은 앞 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요."))
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                        ForEach(matches) { matched in
-                            HStack(spacing: 12) {
-                                Text(String(format: "%02d", matched.ordinal))
-                                    .font(.caption.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(matched.firstTwo)
-                                    .font(.body.monospacedDigit())
-                                    .foregroundStyle(.secondary)
-                                Image(systemName: "arrow.right")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                Text(matched.lastTwo)
-                                    .font(.title3.monospacedDigit().bold())
-                                    .foregroundStyle(.primary)
-                            }
+                        Spacer()
+                        Text(first ? matched.lastTwo : matched.firstTwo)
+                            .font(.headline.monospacedDigit())
                             .privacySensitive()
-                        }
                     }
                 }
             }
-            Section { Button(L("보안카드 등록 · 수정")) { editing = true; front = "" } }
         }
     }
     @MainActor private func showSavedCodes() async {
@@ -1695,6 +1712,7 @@ struct BankSecurityCardView: View {
             return
         }
         front = ""
+        back = ""
         serialVisible = false
         viewingSavedCodes = true
         grid = true
@@ -1724,7 +1742,7 @@ struct BankSecurityCardView: View {
     private func lock() {
         session = UUID(); card = nil; editing = false; grid = false; reveal = false
         viewingSavedCodes = false
-        serialVisible = false; front = ""; focused = nil
+        serialVisible = false; front = ""; back = ""; focused = nil
     }
 }
 
