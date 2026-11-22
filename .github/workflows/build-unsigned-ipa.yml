@@ -35,13 +35,13 @@ jobs:
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
           cd package
-          zip -qry PocketLedger-v0.4.42-unsigned.ipa Payload
-          unzip -t PocketLedger-v0.4.42-unsigned.ipa
+          zip -qry PocketLedger-v0.4.43-unsigned.ipa Payload
+          unzip -t PocketLedger-v0.4.43-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-v0.4.42-unsigned-ipa
-          path: package/PocketLedger-v0.4.42-unsigned.ipa
+          name: PocketLedger-v0.4.43-unsigned-ipa
+          path: package/PocketLedger-v0.4.43-unsigned.ipa
           if-no-files-found: error
       # Public Release assets have direct HTTPS download URLs, unlike the
       # GitHub Actions artifact API, whose ZIP download requires authentication.

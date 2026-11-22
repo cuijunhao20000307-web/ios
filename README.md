@@ -1,4 +1,8 @@
-# PocketLedger v0.4.42
+# PocketLedger v0.4.43
+
+## v0.4.43 Native-style background card retreat (Build 50)
+Choosing a bank card animates the unselected cards backward (slight scale reduction, rising depth offset and subtle dimming) while the chosen card lifts and the detail opens from the bottom with a linear slide-and-fade. Returning or swiping down to dismiss reverses these motions. Only the render-only card art receives the depth transform; the existing touch zones, card order, spacing, scroll view, internal/external layouts and drag-to-reorder mechanics remain unchanged. Reduce Motion disables decorative depth. Includes all prior backup, online update, security card and fixed expense features.
+
 
 ## v0.4.42 Vertical slide + fade card details, swipe-down dismissal (Build 49)
 The **original** Wallet card stack, card sizes, tap target regions, toolbar, scrolling, detail information and inner/outer layouts are unchanged. Card detail now enters from the bottom and fades in, and closes downward while fading out using linear timing. Press and drag down on the detail card art to interactively move and fade the entire detail overlay; a meaningful swipe dismisses it, and short drags return to rest. The existing back/close action still works. Swipe-to-dismiss attaches only to the card art to avoid stealing gestures from transaction lists and other scroll content. Accessibility Reduce Motion still reduces the transition. All v0.4.41 updater, security card and backup changes remain.

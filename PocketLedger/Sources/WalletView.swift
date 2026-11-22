@@ -248,7 +248,8 @@ struct WalletView: View {
                     .frame(maxWidth: 400)
             } else {
                 if stacked {
-                    InteractiveWalletDeck(cards: cards, transition: cardTransition, canReorder: search.isEmpty,
+                    InteractiveWalletDeck(cards: cards, transition: cardTransition, selectedCard: selectedCard,
+                        canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
                         select: openCard,
@@ -385,6 +386,9 @@ private struct DeckDragState: Equatable {
 private struct InteractiveWalletDeck: View {
     let cards: [PaymentCard]
     let transition: Namespace.ID
+    // Selected card is visual-only state: the original overlay touch regions
+    // and scroll geometry do not move or shrink.
+    let selectedCard: UUID?
     let canReorder: Bool
     @Binding var dragging: Bool
     let spent: (PaymentCard) -> Int
@@ -423,13 +427,24 @@ private struct InteractiveWalletDeck: View {
                         let lifted = drag?.id == card.id
                         let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0) :
                             CGFloat(slot(index, origin: origin, destination: destination)) * step
+                        // Apple Wallet-like depth: other cards physically recede
+                        // behind the selected card as the detail slides upward.
+                        // Only the card artwork is animated; hit regions remain
+                        // at their original fixed coordinates and sizes.
+                        let behind = selectedCard != nil && selectedCard != card.id
+                        let retreatScale: CGFloat = behind && !reduceMotion ? 0.93 : 1
+                        let retreatOffset: CGFloat = behind && !reduceMotion
+                            ? -CGFloat(cards.count - index) * 3.5 : 0
+                        let selectedLift: CGFloat = selectedCard == card.id && !reduceMotion ? -9 : 0
                         WalletTransitionCard(card: card, spent: spent(card), namespace: transition)
                             .frame(width: width, height: height)
-                            .scaleEffect(lifted && !reduceMotion ? 1.035 : 1)
+                            .scaleEffect(lifted && !reduceMotion ? 1.035 : retreatScale, anchor: .top)
                             .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
-                            .offset(y: y)
+                            .offset(y: y + retreatOffset + selectedLift)
+                            .opacity(behind && !reduceMotion ? 0.78 : 1)
                             .zIndex(lifted ? Double(cards.count + 1) : Double(index))
                             .animation(lifted || reduceMotion ? nil : .linear(duration: 0.22), value: destination)
+                            .animation(reduceMotion ? nil : .linear(duration: 0.35), value: selectedCard)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
