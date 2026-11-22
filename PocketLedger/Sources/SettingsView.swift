@@ -154,34 +154,6 @@ struct SettingsView: View {
                         }.pickerStyle(.segmented)
                     }
                 }
-                SettingsCompactSection {
-                    VStack(alignment: .leading, spacing: 9) {
-                        HStack(spacing: 9) {
-                            // Crisp transparent asset at its original portrait ratio.
-                            Image("DuoAutomaticLayout")
-                                .renderingMode(.template)
-                                .resizable()
-                                .interpolation(.high)
-                                .scaledToFit()
-                                .foregroundStyle(Color.secondary.opacity(0.82))
-                                .frame(width: 35, height: 44)
-                                .accessibilityHidden(true)
-                            VStack(alignment: .leading, spacing: 2) {
-                                CompactSettingsTitle(title: "메뉴 위치")
-                                Text(L("시스템 자동 배치"))
-                                    .font(.subheadline).foregroundStyle(.secondary)
-                            }
-                        }
-                        DisclosureGroup(L("배치 설명")) {
-                            Text(L("iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다."))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.top, 3)
-                        }
-                        .font(.caption)
-                    }
-                }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     VStack(alignment: .leading, spacing: 10) {
@@ -292,7 +264,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.27")
+                Text("Digital Wallet · v0.4.28")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

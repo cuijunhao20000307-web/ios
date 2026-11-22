@@ -100,3 +100,6 @@ AppShell now presents device owner authentication automatically once per app act
 
 ## Digital Wallet v0.4.27: polished Duo layout symbol
 Replaces the old 27×27 programmatically drawn near-D icon with a transparent PNG reconstructed from the user's second image reference, including a distinct dot and bottom pill. The source image is a 256×334 portrait asset, tinted as a monochrome template and displayed at 35×44 points with no background rectangle. Old SwiftUI Path removed; existing data, iCloud backup and Face ID remain unchanged.
+
+## Digital Wallet v0.4.28 — automatic layout without menu setting
+Removed the entire Menu position / system automatic layout section and unused Duo icon asset. The existing native SwiftUI TabView automatically uses normal iPhone bottom tabs, and system-managed navigation where supported on Duo. Existing responsive DuoColumns selects columns based on available viewport, not device identity. No additional switch, model detection, data migration or user setup. Retains the same Bundle ID, app data and backup compatibility.
