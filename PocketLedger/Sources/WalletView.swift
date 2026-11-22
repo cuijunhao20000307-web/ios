@@ -15,7 +15,9 @@ struct WalletView: View {
     @State private var showAccount = false
     @State private var selectedCard: UUID?
     @State private var search = ""
-    @State private var stacked = true
+    @AppStorage("walletStacked") private var stacked = true
+    @State private var searchVisible = false
+    @FocusState private var searchFocused: Bool
     @State private var editAccount: BankAccount?
     @State private var secretShown = false
     @State private var revealedSecret: String?
@@ -25,58 +27,69 @@ struct WalletView: View {
         let _ = languageRefresh
         let _ = moneyRefresh
         NavigationStack {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(L("지갑")).font(.largeTitle.bold())
-                    }
-                    Spacer()
-                    Button { section == 0 ? (showCard = true) : (showAccount = true) } label: {
-                        Image(systemName: "plus").font(.system(size: 19, weight: .bold))
-                            .foregroundStyle(.white).frame(width: 46, height: 46)
-                            .background(LedgerTheme.accent, in: Circle())
-                    }
-                    .accessibilityLabel(L(section == 0 ? "카드 추가" : "통장 추가"))
-                }
-                Picker(L("지갑"), selection: $section) {
-                    Text(L("카드 지갑")).tag(0)
-                    Text(L("통장 지갑")).tag(1)
-                }.pickerStyle(.segmented)
-                if section == 0 { cardsContent } else { accountsContent }
-                Surface {
-                    Button { showPrivateWallet = true } label: {
-                        HStack {
-                            Image(systemName: "lock.shield.fill").font(.title2)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(L("개인정보 보관함")).font(.headline)
-                                Text(L("카드 · 계좌 · 신분증 · 비밀번호 · 구독")).font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.caption)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(L("지갑")).font(.largeTitle.bold())
+                        .accessibilityAddTraits(.isHeader)
+                    if searchVisible {
+                        HStack(spacing: 10) {
+                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                            TextField(L("카드 및 은행 검색"), text: $search)
+                                .focused($searchFocused)
+                            Button {
+                                search = ""; searchVisible = false; searchFocused = false
+                            } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                            .accessibilityLabel(L("닫기"))
                         }
-                    }.buttonStyle(.plain)
+                        .padding(12)
+                        .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+                        .frame(maxWidth: 460)
+                        .frame(maxWidth: .infinity)
+                    }
+                    Picker(L("지갑"), selection: $section) {
+                        Text(L("카드 지갑")).tag(0)
+                        Text(L("통장 지갑")).tag(1)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 390)
+                    .frame(maxWidth: .infinity)
+                    if section == 0 { cardsContent } else { accountsContent }
+                    Button { showPrivateWallet = true } label: {
+                        Label(L("개인정보 보관함"), systemImage: "lock.shield")
+                            .font(.subheadline.weight(.medium))
+                            .padding(.vertical, 7)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.horizontal, 20).padding(.vertical, 16)
+                .frame(maxWidth: 920).frame(maxWidth: .infinity)
+            }
+            .background(LedgerTheme.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { if section == 0 { showCard = true } else { showAccount = true } } label: {
+                        Image(systemName: "plus").fontWeight(.semibold)
+                    }.accessibilityLabel(L(section == 0 ? "카드 추가" : "통장 추가"))
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) { searchVisible.toggle(); if !searchVisible { search = "" } }
+                            searchFocused = searchVisible
+                        } label: { Label(L("카드 및 은행 검색"), systemImage: "magnifyingglass") }
+                        if section == 0 {
+                            Button { withAnimation(.easeInOut(duration: 0.25)) { stacked.toggle() } } label: {
+                                Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "square.grid.2x2" : "rectangle.stack")
+                            }
+                        }
+                        Button { showPrivateWallet = true } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
+                    } label: { Image(systemName: "ellipsis") }
                 }
             }
-            .padding(20).padding(.top, 8)
-            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
-        }
-        .background(LedgerTheme.background)
-        .searchable(text: $search, prompt: L("카드 및 은행 검색"))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button { withAnimation(.easeInOut(duration: 0.25)) { stacked.toggle() } } label: {
-                        Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "list.bullet" : "rectangle.stack")
-                    }
-                    Button { showPrivateWallet = true } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
-                } label: { Image(systemName: "ellipsis.circle") }
-            }
-        }
-        .navigationDestination(item: $selectedCard) { id in
-            LedgerCardDetail(cardID: id)
-        }
+            .navigationDestination(item: $selectedCard) { id in LedgerCardDetail(cardID: id) }
         }
         .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
         .sheet(isPresented: $showCard) { CardForm() }
@@ -103,31 +116,26 @@ struct WalletView: View {
 
     private var cardsContent: some View {
         let cards = filteredCards
-        return VStack(alignment: .leading, spacing: 16) {
-            SectionHeading(title: "결제 카드", detail: "\(cards.count)장")
+        return VStack(spacing: 12) {
             if cards.isEmpty {
                 Surface { EmptyContent(symbol: "creditcard", title: "표시할 카드가 없어요", subtitle: "+ 버튼으로 새 카드를 추가할 수 있어요") }
+                    .frame(maxWidth: 400)
             } else {
                 if stacked {
-                    VStack(spacing: -1) {
-                        ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                            let full = index == cards.count - 1
+                    WalletDeckLayout {
+                        ForEach(cards) { card in
                             Button { selectedCard = card.id } label: {
-                                if full {
-                                    LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
-                                        .aspectRatio(1.586, contentMode: .fit)
-                                } else {
-                                    LedgerCardStrip(card: card)
-                                }
+                                LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
+                                    .aspectRatio(1.586, contentMode: .fit)
+                                    .contentShape(RoundedRectangle(cornerRadius: 19))
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(card.name + " " + L("카드 정보"))
                         }
                     }
-                    .frame(maxWidth: 460)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: 365)
                 } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 290, maximum: 460), spacing: 20)], spacing: 20) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 365), spacing: 16)], spacing: 16) {
                         ForEach(cards) { card in
                             Button { selectedCard = card.id } label: {
                                 LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
@@ -136,12 +144,14 @@ struct WalletView: View {
                             .accessibilityLabel(card.name + " " + L("카드 정보"))
                         }
                     }
+                    .frame(maxWidth: 750)
                 }
-                Text("카드를 누르면 상세 정보를 확인할 수 있어요. 전체 카드번호와 보안 정보는 기기 인증으로 보호됩니다.")
+                Text(String(cards.count) + " " + L("카드"))
                     .font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
+        .padding(.top, 5)
+        .frame(maxWidth: .infinity)
     }
 
     private var accountsContent: some View {
@@ -212,6 +222,22 @@ private struct LedgerCardBackground: View {
                         .opacity(min(max(card.artworkDim ?? 0.18, 0), 0.65))
                 }
             }.clipped()
+        }
+    }
+}
+private struct WalletDeckLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = min(proposal.width ?? 365, 365)
+        guard !subviews.isEmpty else { return CGSize(width: width, height: 0) }
+        let step = max(43, min(58, width * 0.155))
+        return CGSize(width: width, height: width / 1.586 + CGFloat(subviews.count - 1) * step)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let width = min(bounds.width, 365)
+        let step = max(43, min(58, width * 0.155))
+        for i in subviews.indices {
+            subviews[i].place(at: CGPoint(x: bounds.midX - width / 2, y: bounds.minY + CGFloat(i) * step),
+                              anchor: .topLeading, proposal: ProposedViewSize(width: width, height: width / 1.586))
         }
     }
 }
@@ -304,12 +330,16 @@ struct LedgerStackCard: View {
             let pad = max(12, geo.size.width * 0.055)
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .top) {
-                    Text(card.issuer).font(.system(size: 16, weight: .bold)).lineLimit(1)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(card.issuer).font(.system(size: 13, weight: .medium)).opacity(0.8).lineLimit(1)
+                        Text(card.name).font(.system(size: 17, weight: .semibold)).lineLimit(1)
+                    }
                     Spacer(minLength: 8)
-                    Text(card.name).font(.system(size: 14, weight: .medium)).lineLimit(1).opacity(0.85)
+                    Image(systemName: "wave.3.right").font(.system(size: 18, weight: .light))
+                        .rotationEffect(.degrees(90)).accessibilityHidden(true)
                 }
                 Spacer(minLength: 6)
-                Text(number).font(.system(size: max(14, geo.size.width * 0.049), weight: .semibold, design: .monospaced))
+                Text(number).font(.system(size: max(14, min(22, geo.size.width * 0.049)), weight: .semibold, design: .monospaced))
                     .lineLimit(1).minimumScaleFactor(0.65)
                     .privacySensitive()
                 Spacer(minLength: 6)
@@ -340,6 +370,7 @@ struct LedgerStackCard: View {
             .background { LedgerCardBackground(card: card) }
             .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(.white.opacity(0.19), lineWidth: 1))
+            .shadow(color: .black.opacity(0.13), radius: 6, x: 0, y: 2)
         }
     }
 }
@@ -469,7 +500,7 @@ struct LedgerCardDetail: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .padding(20).frame(maxWidth: 1100).frame(maxWidth: .infinity)
+                    .padding(20).frame(maxWidth: 920).frame(maxWidth: .infinity)
                 }
                 .navigationTitle(card.name)
                 .navigationBarTitleDisplayMode(.inline)

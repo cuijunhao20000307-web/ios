@@ -174,12 +174,12 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("PocketLedger · v0.4.3")
+                Text("PocketLedger · v0.4.4")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
             .padding(20).padding(.top, 8)
-            .frame(maxWidth: 1100).frame(maxWidth: .infinity)
+            .frame(maxWidth: 920).frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .onAppear { budgetText = String(store.data.monthlyBudget); loadRate() }

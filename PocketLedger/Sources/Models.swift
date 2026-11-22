@@ -252,6 +252,10 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "거래가 없어요": ["No transactions","暂无交易","暫無交易","取引がありません","Sin movimientos","Aucune opération","Keine Buchungen"],
+        "아직 지출이 없어요": ["No expenses yet","暂无支出","暫無支出","支出はまだありません","Sin gastos","Aucune dépense","Noch keine Ausgaben"],
+        "샘플 데이터 · 설정에서 초기화 가능": ["Sample data · Reset in Settings","示例数据 · 可在设置中重置","範例資料 · 可在設定中重設","サンプルデータ・設定でリセット","Datos de ejemplo","Données d’exemple","Beispieldaten"],
+        "남은 예산": ["Remaining budget","剩余预算","剩餘預算","残りの予算","Presupuesto restante","Budget restant","Restbudget"],
         "카드 디자인": ["Card design","卡面设计","卡面設計","カードデザイン","Diseño de tarjeta","Design de carte","Kartendesign"],
         "사진 선택": ["Choose artwork","选择卡面图片","選擇卡面圖片","画像を選択","Elegir imagen","Choisir une image","Bild auswählen"],
         "이미지 제거": ["Remove artwork","移除卡面图片","移除卡面圖片","画像を削除","Quitar imagen","Supprimer l’image","Bild entfernen"],

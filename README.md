@@ -25,3 +25,6 @@ Language selector supports Korean, simplified/traditional Chinese, Japanese, Eng
 
 ## v0.4.3 adaptive wallet
 Responsive two-column Dashboard, Settings and card detail using available safe-area content width. Wallet stack is centered; expanded list uses adaptive grid. Decorative custom artwork imports through PhotosPicker, downsampled to 1000×630 JPEG with contrast controls; no real card photos or secrets should be used as artwork. Optional network badge including none. Legacy card fields remain decodable. Private card data stays in the existing protected archive. Fixes missing localization refresh identifiers in Surface. No change to native tab bar.
+
+## v0.4.4 interface refinement
+Unified grouped dashboard with full-width balance, monthly income and expenses, budget and proportional category sections, native add action. Wallet search is on demand; native toolbar carries add and menu, centered genuine overlapping cards with correct ratio and consistent width, optional grid. Original native Duo navigation and data model retained.

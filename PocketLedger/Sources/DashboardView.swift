@@ -4,7 +4,6 @@ struct DashboardView: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
     @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
-    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var monthOffset = 0
     @State private var showAdd = false
 
@@ -12,8 +11,7 @@ struct DashboardView: View {
     private var expenses: Int { store.amount(of: .expense, in: month) }
     private var incomes: Int { store.amount(of: .income, in: month) }
     private var entries: [MoneyEntry] { store.entries(in: month) }
-    private var balance: Int { store.ledgerBalance }
-
+    private var ratio: Double { max(0, Double(expenses) / Double(max(store.data.monthlyBudget, 1))) }
     private var categoryTotals: [(MoneyCategory, Int)] {
         MoneyCategory.allCases.compactMap { category -> (MoneyCategory, Int)? in
             let amount = entries.filter { $0.kind == .expense && $0.category == category }.reduce(0) { $0 + $1.amount }
@@ -24,150 +22,168 @@ struct DashboardView: View {
     var body: some View {
         let _ = languageRefresh
         let _ = moneyRefresh
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(L("나의 가계부"))
-                            .font(.system(size: 30, weight: .bold, design: .rounded))
-                        Text(L("오늘도 현명하게 관리해요"))
-                            .font(.system(size: 14)).foregroundStyle(LedgerTheme.subtext)
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(L("나의 가계부")).font(.largeTitle.bold())
+                        .padding(.bottom, 2)
+                        .accessibilityAddTraits(.isHeader)
+                    if store.data.isSample {
+                        Label(L("샘플 데이터 · 설정에서 초기화 가능"), systemImage: "info.circle")
+                            .font(.caption).foregroundStyle(.orange)
                     }
-                    Spacer()
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 19, weight: .bold))
-                            .frame(width: 46, height: 46)
-                            .foregroundStyle(.white)
-                            .background(LedgerTheme.accent, in: Circle())
+                    balanceCard
+                    monthSelector
+                    HStack(spacing: 12) {
+                        totalTile("이번 달 지출", value: expenses, symbol: "arrow.up.right", tint: .pink)
+                        totalTile("이번 달 수입", value: incomes, symbol: "arrow.down.left", tint: .green)
                     }
-                    .accessibilityLabel(L("거래 추가"))
+                    DuoColumns(spacing: 16, minWidth: 590) {
+                        budgetCard
+                        categoriesCard
+                    }
+                    recentCard
                 }
-                if store.data.isSample {
-                    Label("샘플 데이터 · 설정에서 초기화 가능", systemImage: "info.circle")
-                        .font(.system(size: 12, weight: .medium)).foregroundStyle(.orange)
-                }
-
-                HStack {
-                    Button { monthOffset -= 1 } label: { Image(systemName: "chevron.left").frame(width: 36, height: 36) }
-                    Spacer()
-                    Text(month.koreanMonthTitle).font(.system(size: 20, weight: .bold))
-                    Spacer()
-                    Button { monthOffset += 1 } label: { Image(systemName: "chevron.right").frame(width: 36, height: 36) }
-                }
-                .foregroundStyle(LedgerTheme.text)
-                DuoColumns(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 15) {
-                        HStack {
-                            Text(L("현재 가계부 잔액")).font(.system(size: 13, weight: .medium)).opacity(0.8)
-                            Spacer()
-                            Image(systemName: "wallet.pass.fill").font(.system(size: 20))
-                        }
-                        Text(balance.won)
-                            .font(.system(size: 34, weight: .bold, design: .rounded))
-                            .minimumScaleFactor(0.65).lineLimit(1)
-                        Text(L("기초 잔액 + 수입 − 지출 · 오늘까지"))
-                            .font(.system(size: 12)).opacity(0.75)
-                    }
-                    .foregroundStyle(.white)
-                    .padding(25)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                .background(LinearGradient(colors: [Color(red: 0.13, green: 0.16, blue: 0.28), Color(red: 0.24, green: 0.29, blue: 0.51)], startPoint: .topLeading, endPoint: .bottomTrailing), in: RoundedRectangle(cornerRadius: 24))
-                HStack(spacing: 12) {
-                    totalTile("이번 달 지출", value: expenses, symbol: "arrow.up.right", tint: .pink)
-                    totalTile("이번 달 수입", value: incomes, symbol: "arrow.down.left", tint: .green)
-                }
-
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 14) {
-                Surface {
-                    VStack(alignment: .leading, spacing: 14) {
-                        SectionHeading(title: "월 지출 예산")
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(expenses.won).font(.system(size: 22, weight: .bold, design: .rounded))
-                            Text("/ " + store.data.monthlyBudget.won)
-                                .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
-                                .minimumScaleFactor(0.75).lineLimit(1)
-                        }
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(LedgerTheme.background)
-                                Capsule().fill(expenses > store.data.monthlyBudget ? Color.pink : LedgerTheme.accent)
-                                    .frame(width: geometry.size.width * min(CGFloat(expenses) / CGFloat(max(store.data.monthlyBudget, 1)), 1))
-                            }
-                        }
-                        .frame(height: 11)
-                        HStack {
-                            Text(expenses > store.data.monthlyBudget ? "예산을 초과했어요" : "예산까지 " + max(store.data.monthlyBudget - expenses, 0).won + " 남았어요")
-                                .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
-                            Spacer()
-                            Text("\(Int(100 * Double(expenses) / Double(max(store.data.monthlyBudget, 1))))%")
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                    }
-                }
-                VStack(alignment: .leading, spacing: 11) {
-                    SectionHeading(title: "카테고리별 지출")
-                    Surface {
-                        if categoryTotals.isEmpty {
-                            EmptyContent(symbol: "chart.pie.fill", title: "아직 지출이 없어요", subtitle: "+ 버튼에서 첫 거래를 등록해 보세요")
-                        } else {
-                            VStack(spacing: 12) {
-                                ForEach(categoryTotals, id: \.0) { category, amount in
-                                    HStack(spacing: 12) {
-                                        Image(systemName: category.icon).foregroundStyle(category.color)
-                                            .frame(width: 30)
-                                        Text(L(category.rawValue)).font(.system(size: 14, weight: .medium))
-                                        Spacer()
-                                        Text(amount.won).font(.system(size: 14, weight: .semibold))
-                                    }
-                                    if category != categoryTotals.last?.0 { Divider().opacity(0.5) }
-                                }
-                            }
-                        }
-                    }
-                }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                VStack(alignment: .leading, spacing: 11) {
-                    SectionHeading(title: "최근 거래", detail: "최대 5건")
-                    Surface {
-                        if entries.isEmpty {
-                            EmptyContent(symbol: "receipt", title: "거래가 없어요", subtitle: "수입과 지출을 간편하게 기록하세요")
-                        } else {
-                            VStack(spacing: 3) {
-                                ForEach(Array(entries.prefix(5))) { entry in
-                                    EntryLine(entry: entry, source: store.sourceName(for: entry.sourceId))
-                                    if entry.id != entries.prefix(5).last?.id { Divider().opacity(0.45) }
-                                }
-                            }
-                        }
-                    }
+                .padding(.horizontal, 20).padding(.vertical, 16)
+                .frame(maxWidth: 920)
+                .frame(maxWidth: .infinity)
+            }
+            .background(LedgerTheme.background)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showAdd = true } label: { Image(systemName: "plus").fontWeight(.semibold) }
+                        .accessibilityLabel(L("거래 추가"))
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 26)
-            .padding(.bottom, 25)
-            .frame(maxWidth: 1100)
-            .frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showAdd) { TransactionForm() }
     }
 
+    private var balanceCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label(L("현재 가계부 잔액"), systemImage: "wallet.pass")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Image(systemName: "lock.shield").font(.subheadline)
+            }.foregroundStyle(.white.opacity(0.78))
+            Text(store.ledgerBalance.won)
+                .font(.system(size: 36, weight: .semibold, design: .rounded))
+                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.5)
+                .foregroundStyle(.white)
+            Text(L("기초 잔액 + 수입 − 지출 · 오늘까지"))
+                .font(.caption).foregroundStyle(.white.opacity(0.76))
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            RoundedRectangle(cornerRadius: 25, style: .continuous)
+                .fill(LinearGradient(colors: [Color(red: 0.10, green: 0.14, blue: 0.24), Color(red: 0.22, green: 0.28, blue: 0.44)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+    }
+
+    private var monthSelector: some View {
+        HStack {
+            Button { monthOffset -= 1 } label: {
+                Image(systemName: "chevron.left").frame(width: 44, height: 44)
+            }
+            Spacer(minLength: 8)
+            Text(month.koreanMonthTitle).font(.headline).lineLimit(1)
+            Spacer(minLength: 8)
+            Button { monthOffset += 1 } label: {
+                Image(systemName: "chevron.right").frame(width: 44, height: 44)
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+    }
+
     private func totalTile(_ title: String, value: Int, symbol: String, tint: Color) -> some View {
         Surface {
-            VStack(alignment: .leading, spacing: 14) {
-                Image(systemName: symbol)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(tint)
-                    .padding(9)
-                    .background(tint.opacity(0.11), in: Circle())
-                Text(L(title)).font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
-                Text(value.won).font(.system(size: 19, weight: .bold, design: .rounded))
-                    .minimumScaleFactor(0.65).lineLimit(1)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 7) {
+                    Image(systemName: symbol).font(.caption.weight(.bold))
+                        .foregroundStyle(tint)
+                        .frame(width: 30, height: 30)
+                        .background(tint.opacity(0.12), in: Circle())
+                    Text(L(title)).font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                Text(value.won).font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .monospacedDigit().lineLimit(1).minimumScaleFactor(0.45)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var budgetCard: some View {
+        Surface {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeading(title: "월 지출 예산")
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
+                    Text(expenses.won).font(.title3.weight(.semibold)).monospacedDigit()
+                    Text("/ " + store.data.monthlyBudget.won).font(.caption).foregroundStyle(.secondary)
+                }
+                .lineLimit(1).minimumScaleFactor(0.55)
+                ProgressView(value: min(1, ratio))
+                    .tint(ratio > 1 ? .pink : LedgerTheme.accent)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(ratio > 1 ? L("예산을 초과했어요") : L("남은 예산") + " " + max(store.data.monthlyBudget - expenses, 0).won)
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer(minLength: 6)
+                    Text(ratio, format: .percent.precision(.fractionLength(0)))
+                        .font(.caption.weight(.semibold)).monospacedDigit()
+                }
+            }
+            .frame(minHeight: 132, alignment: .topLeading)
+        }
+    }
+
+    private var categoriesCard: some View {
+        Surface {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeading(title: "카테고리별 지출")
+                if categoryTotals.isEmpty {
+                    Label(L("아직 지출이 없어요"), systemImage: "chart.pie")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                        .padding(.vertical, 10)
+                } else {
+                    GeometryReader { proxy in
+                        HStack(spacing: 0) {
+                            ForEach(categoryTotals, id: \.0) { item in
+                                Rectangle().fill(item.0.color)
+                                    .frame(width: proxy.size.width * CGFloat(item.1) / CGFloat(max(expenses, 1)))
+                            }
+                        }.clipShape(Capsule())
+                    }.frame(height: 7)
+                    ForEach(categoryTotals, id: \.0) { category, amount in
+                        HStack(spacing: 8) {
+                            Circle().fill(category.color).frame(width: 9, height: 9)
+                            Text(L(category.rawValue)).font(.subheadline)
+                            Spacer(minLength: 6)
+                            Text(amount.won).font(.subheadline.weight(.medium)).monospacedDigit()
+                        }
+                    }
+                }
+            }
+            .frame(minHeight: 132, alignment: .topLeading)
+        }
+    }
+
+    private var recentCard: some View {
+        Surface {
+            VStack(alignment: .leading, spacing: 9) {
+                SectionHeading(title: "최근 거래", detail: "최대 5건")
+                if entries.isEmpty {
+                    Label(L("거래가 없어요"), systemImage: "receipt")
+                        .font(.subheadline).foregroundStyle(.secondary).padding(.vertical, 10)
+                } else {
+                    ForEach(Array(entries.prefix(5))) { entry in
+                        EntryLine(entry: entry, source: store.sourceName(for: entry.sourceId))
+                        if entry.id != entries.prefix(5).last?.id { Divider().opacity(0.6) }
+                    }
+                }
             }
         }
     }
