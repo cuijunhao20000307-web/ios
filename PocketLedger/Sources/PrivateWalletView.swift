@@ -252,6 +252,7 @@ struct PrivateWalletView: View {
     @State private var search = ""
     @State private var error: String?
     @State private var authenticating = false
+    @State private var unlockSession = UUID()
     @State private var exportFile: PrivateBackupDocument?
     @State private var showExport = false
     @State private var showImport = false
@@ -274,6 +275,9 @@ struct PrivateWalletView: View {
     private var vaultContent: some View {
             Group {
                 if let archive {
+                    if embedded {
+                        identityList(archive)
+                    } else {
                     List {
                         Section {
                             Picker(L("분류"), selection: $section) {
@@ -289,10 +293,11 @@ struct PrivateWalletView: View {
                         else { settings }
                     }
                     .searchable(text: $search, prompt: L("이름 검색"))
+                    }
                 } else {
                     VStack(spacing: 18) {
                         Image(systemName: "lock.shield.fill").font(.system(size: 52)).foregroundStyle(LedgerTheme.accent)
-                        Text(L("개인정보 보관함")).font(.title.bold())
+                        Text(L(embedded ? "신분증 · 여권" : "개인정보 보관함")).font(.title.bold())
                         Text("Face ID / Touch ID 또는 기기 암호로 보호됩니다.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         Button(L("보관함 열기")) { Task { await unlock() } }.buttonStyle(.borderedProminent).disabled(authenticating)
                     }.padding(24)
@@ -317,8 +322,12 @@ struct PrivateWalletView: View {
             .onDisappear { if embedded { lock() } }
             .onChange(of: phase) { _, value in if value == .background { lock() } }
             .sheet(item: $record) { item in
-                PrivateRecordEditor(record: item) { value in
-                    guard var a = archive else { return false }
+                PrivateRecordEditor(record: item, fixedKind: embedded) { value in
+                    guard !embedded || value.kind == .identity || value.kind == .passport else { return false }
+                    guard archive != nil else { return false }
+                    let latest: PrivateArchive
+                    do { latest = try PrivateStorage.load() } catch { self.error = error.localizedDescription; return false }
+                    var a = latest
                     if let i = a.records.firstIndex(where: {$0.id == value.id}) { a.records[i] = value }
                     else { a.records.append(value) }
                     return commit(a)
@@ -383,18 +392,77 @@ struct PrivateWalletView: View {
                 }
             }
     }
+    private func identityList(_ a: PrivateArchive) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                ForEach([PrivateKind.identity, .passport]) { kind in
+                    let rows = a.records.filter { $0.kind == kind && $0.deletedAt == nil }
+                    Surface {
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 12) {
+                                Image(systemName: kind.icon)
+                                    .font(.title2.weight(.medium))
+                                    .foregroundStyle(LedgerTheme.accent)
+                                    .frame(width: 44, height: 44)
+                                    .background(LedgerTheme.accent.opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
+                                Text(L(kind == .identity ? "신분증" : "여권")).font(.headline)
+                                Spacer()
+                                Button {
+                                    var newRecord = PrivateRecord()
+                                    newRecord.kind = kind
+                                    record = newRecord
+                                } label: {
+                                    Image(systemName: "plus.circle.fill").font(.title2)
+                                }
+                                .buttonStyle(.plain).foregroundStyle(LedgerTheme.accent)
+                                .accessibilityLabel(L(kind == .identity ? "신분증 추가" : "여권 추가"))
+                            }
+                            ForEach(rows) { row in
+                                Divider()
+                                Button { record = row } label: {
+                                    HStack {
+                                        Text(row.title).font(.body).foregroundStyle(.primary)
+                                        Spacer()
+                                        Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                                    }.frame(minHeight: 36).contentShape(Rectangle())
+                                }.buttonStyle(.plain).privacySensitive()
+                                .contextMenu {
+                                    Button(role: .destructive) {
+                                        removeIdentity(row.id)
+                                    } label: { Label(L("휴지통"), systemImage: "trash") }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 20).padding(.vertical, 8)
+            .frame(maxWidth: 520).frame(maxWidth: .infinity)
+        }
+    }
+    private func removeIdentity(_ id: UUID) {
+        guard archive != nil else { return }
+        do {
+            var latest = try PrivateStorage.load()
+            guard let i = latest.records.firstIndex(where: { $0.id == id && ($0.kind == .identity || $0.kind == .passport) }) else { return }
+            latest.records[i].deletedAt = .now
+            _ = commit(latest)
+        } catch { self.error = error.localizedDescription }
+    }
     @MainActor private func unlock() async {
         guard !authenticating else { return }
         authenticating = true
+        let token = unlockSession
         defer { authenticating = false }
-        guard await LocalUnlock.authorize(), phase != .background else { return }
+        guard await LocalUnlock.authorize(), token == unlockSession, phase != .background else { return }
         do {
             let a = try PrivateStorage.load()
             archive = a
-            await PrivateReminders.refresh(a.subscriptions)
+            if !embedded { await PrivateReminders.refresh(a.subscriptions) }
         } catch { self.error = error.localizedDescription }
     }
     private func lock() {
+        unlockSession = UUID()
         archive = nil; record = nil; subscription = nil; search = ""
         resetBackup(); exportFile = nil; showExport = false; showImport = false
     }
@@ -525,6 +593,7 @@ struct PrivateRecordEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
     @State var record: PrivateRecord
+    var fixedKind = false
     let save: (PrivateRecord) -> Bool
     @State private var visible = false
     @State private var failed = false
@@ -534,9 +603,11 @@ struct PrivateRecordEditor: View {
         NavigationStack {
             Form {
                 Section(L("기본 정보")) {
-                    Picker(L("종류"), selection: $record.kind) { ForEach(PrivateKind.allCases) { Text(L($0.rawValue)).tag($0) } }
+                    if !fixedKind {
+                        Picker(L("종류"), selection: $record.kind) { ForEach(PrivateKind.allCases) { Text(L($0.rawValue)).tag($0) } }
+                    }
                     TextField(L("이름"), text: $record.title)
-                    Toggle(L("즐겨찾기"), isOn: $record.favorite)
+                    if !fixedKind { Toggle(L("즐겨찾기"), isOn: $record.favorite) }
                     if record.kind == .card || record.kind == .account {
                         Picker(L("가계부 연결"), selection: $record.link) {
                             Text(L("연결 안 함")).tag(Optional<UUID>.none)
@@ -566,7 +637,7 @@ struct PrivateRecordEditor: View {
                     Text("복사한 정보는 이 기기에서 60초 후 만료되도록 설정됩니다.").font(.caption).foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle(L("정보 편집"))
+            .navigationTitle(L(fixedKind ? (record.kind == .identity ? "신분증" : "여권") : "정보 편집"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) { Button(L("저장")) {

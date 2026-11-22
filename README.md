@@ -46,3 +46,6 @@ Account-specific optional security cards: 25–50 entries, five-column numbered 
 
 ## v0.4.10 bank website details
 Protected per-account website URL, ID, password with reveal control, and memo in the bank editor. Separate device-only Keychain service; never included in ledger JSON, backups or CSV. Security-card grid defaults to visible during authenticated editing, preserves leading zeroes and advances to the next code after four digits. All screenshot contents remain excluded. Device testing required.
+
+## v0.4.11 simplified personal information
+Embedded wallet personal information shows only ID and passport sections with separate add actions and fixed document types. No subscription, trash, settings or search sub-tabs in the embedded view. Existing private data and full vault functions remain available via other existing entry points; no migration deletes records. Face ID/device authentication retained; late unlock invalidated when leaving. Device verification required.

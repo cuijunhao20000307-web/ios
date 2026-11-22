@@ -253,6 +253,10 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "여권 추가": ["Add passport","添加护照","新增護照","パスポートを追加","Añadir pasaporte","Ajouter un passeport","Reisepass hinzufügen"],
+        "신분증 추가": ["Add ID card","添加身份证","新增身分證","身分証を追加","Añadir documento","Ajouter une carte d’identité","Ausweis hinzufügen"],
+        "신분증 · 여권": ["ID card · Passport","身份证 · 护照","身分證 · 護照","身分証・パスポート","Identidad · Pasaporte","Identité · Passeport","Ausweis · Reisepass"],
+        "신분증": ["ID card","身份证","身分證","身分証","Documento de identidad","Carte d’identité","Personalausweis"],
         "기기 인증 후 웹사이트 정보 수정": ["Authenticate to edit website details","验证设备后编辑网站资料","驗證裝置後編輯網站資料","端末認証後にウェブ情報を編集","Autenticar para editar","Authentifier pour modifier","Zum Bearbeiten authentifizieren"],
         "메모": ["Memo","备注","備註","メモ","Nota","Note","Notiz"],
         "웹사이트 비밀번호": ["Website password","网站密码","網站密碼","ウェブサイトのパスワード","Contraseña web","Mot de passe web","Web-Passwort"],
