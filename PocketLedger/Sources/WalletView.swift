@@ -31,28 +31,91 @@ struct WalletView: View {
         let _ = languageRefresh
         let _ = moneyRefresh
         NavigationStack {
-            ZStack(alignment: .top) {
-                // Keep the original deck and its scroll position mounted. A single
-                // animation transaction presents the detail, with no blank intermediate view.
-                walletRoot
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                    .allowsHitTesting(selectedCard == nil)
-                    .accessibilityHidden(selectedCard != nil)
-                    .zIndex(0)
-                if let id = selectedCard {
-                    LedgerCardDetail(cardID: id, onClose: closeCard)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .background(LedgerTheme.background)
-                        .transition(reduceMotion ? .identity : .offset(x: 0, y: 18).combined(with: .opacity))
-                        .zIndex(1)
+            GeometryReader { viewport in
+                ZStack(alignment: .top) {
+                    walletRoot
+                        .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
+                        .allowsHitTesting(selectedCard == nil)
+                        .accessibilityHidden(selectedCard != nil)
+                        .zIndex(0)
+                    if let id = selectedCard {
+                        LedgerCardDetail(cardID: id, editingCard: editPaymentCard?.id == id, onClose: closeCard)
+                            .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
+                            .background(LedgerTheme.background)
+                            .clipped()
+                            // Opaque page movement: do not crossfade two card images or text.
+                            .transition(reduceMotion ? .identity : .move(edge: .trailing))
+                            .zIndex(1)
+                    }
                 }
+                .frame(width: viewport.size.width, height: viewport.size.height)
+                .clipped()
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(LedgerTheme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if section != 2 {
+                    ToolbarItemGroup(placement: .primaryAction) {
+                        Button {
+                            if selectedCard != nil { closeCard() }
+                            else if section == 0 { showCard = true }
+                            else { showAccount = true }
+                        } label: {
+                            Image(systemName: selectedCard == nil ? "plus" : "chevron.left")
+                                .fontWeight(.semibold)
+                                .contentTransition(.identity)
+                                .transaction { $0.animation = nil }
+                        }
+                        .accessibilityLabel(L(selectedCard != nil ? "닫기" : (section == 0 ? "카드 추가" : "통장 추가")))
+                        if let id = selectedCard {
+                            Button {
+                                editPaymentCard = store.data.cards.first(where: { $0.id == id })
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                            }.accessibilityLabel(L("카드 수정"))
+                        } else {
+                        Menu {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        searchVisible.toggle()
+                                        if !searchVisible { search = "" }
+                                    }
+                                    searchFocused = searchVisible
+                                } label: { Label(L("카드 및 은행 검색"), systemImage: "magnifyingglass") }
+                                if section == 0 {
+                                    if !store.data.cards.isEmpty {
+                                        Menu {
+                                            ForEach(store.data.cards) { card in
+                                                Button { openCard(card.id) } label: {
+                                                    Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
+                                                }
+                                            }
+                                        } label: { Label(L("카드 정보"), systemImage: "creditcard") }
+                                        Menu {
+                                            ForEach(store.data.cards) { card in
+                                                Button { editPaymentCard = card } label: {
+                                                    Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
+                                                }
+                                            }
+                                        } label: { Label(L("카드 수정"), systemImage: "square.and.pencil") }
+                                    }
+                                    Button { withAnimation(.easeInOut(duration: 0.25)) { stacked.toggle() } } label: {
+                                        Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "square.grid.2x2" : "rectangle.stack")
+                                    }
+                                }
+                                Button { searchFocused = false; section = 2 } label: {
+                                    Label(L("개인정보 보관함"), systemImage: "lock.shield")
+                                }
+                        } label: { Image(systemName: "ellipsis") }
+                        }
+                    }
+                }
+            }
         }
         .sheet(isPresented: $showCard) { CardForm() }
-        .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
+        .sheet(item: $editPaymentCard, onDismiss: {
+            if let id = selectedCard, !store.data.cards.contains(where: { $0.id == id }) { closeCard() }
+        }) { CardForm(existing: $0) }
         .sheet(isPresented: $showAccount) { BankAccountForm() }
         .sheet(item: $editAccount) { BankAccountForm(existing: $0) }
         .sheet(item: $securityAccount) { BankSecurityCardView(account: $0) }
@@ -72,13 +135,13 @@ struct WalletView: View {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
         searchFocused = false
         deckDragging = false
-        withAnimation(reduceMotion ? nil : .timingCurve(0.22, 0.8, 0.25, 1, duration: 0.46)) {
+        withAnimation(reduceMotion ? nil : .timingCurve(0.32, 0.72, 0, 1, duration: 0.40)) {
             selectedCard = id
         }
     }
 
     private func closeCard() {
-        withAnimation(reduceMotion ? nil : .timingCurve(0.33, 0, 0.25, 1, duration: 0.38)) {
+        withAnimation(reduceMotion ? nil : .timingCurve(0.32, 0.72, 0, 1, duration: 0.36)) {
             selectedCard = nil
         }
     }
@@ -140,63 +203,6 @@ struct WalletView: View {
             searchFocused = false; deckDragging = false
             if next == 2 { search = ""; searchVisible = false }
         }
-            .toolbar {
-                if section != 2 && selectedCard == nil {
-                ToolbarItem(placement: .primaryAction) {
-                    Button { if section == 0 { showCard = true } else { showAccount = true } } label: {
-                        Image(systemName: "plus").fontWeight(.semibold)
-                    }.accessibilityLabel(L(section == 0 ? "카드 추가" : "통장 추가"))
-                }
-                if section == 0 && !store.data.cards.isEmpty {
-                    ToolbarItem(placement: .primaryAction) {
-                        if store.data.cards.count == 1, let card = store.data.cards.first {
-                            Button { editPaymentCard = card } label: {
-                                Image(systemName: "square.and.pencil")
-                            }.accessibilityLabel(L("카드 수정"))
-                        } else {
-                            Menu {
-                                ForEach(store.data.cards) { card in
-                                    Button { editPaymentCard = card } label: {
-                                        Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
-                                    }
-                                }
-                            } label: { Image(systemName: "square.and.pencil") }
-                            .accessibilityLabel(L("카드 수정"))
-                        }
-                    }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button {
-                            withAnimation(.easeInOut(duration: 0.2)) { searchVisible.toggle(); if !searchVisible { search = "" } }
-                            searchFocused = searchVisible
-                        } label: { Label(L("카드 및 은행 검색"), systemImage: "magnifyingglass") }
-                        if section == 0 {
-                            if !store.data.cards.isEmpty {
-                                Menu {
-                                    ForEach(store.data.cards) { card in
-                                        Button { openCard(card.id) } label: {
-                                            Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
-                                        }
-                                    }
-                                } label: { Label(L("카드 정보"), systemImage: "creditcard") }
-                                Menu {
-                                    ForEach(store.data.cards) { card in
-                                        Button { editPaymentCard = card } label: {
-                                            Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
-                                        }
-                                    }
-                                } label: { Label(L("카드 수정"), systemImage: "square.and.pencil") }
-                            }
-                            Button { withAnimation(.easeInOut(duration: 0.25)) { stacked.toggle() } } label: {
-                                Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "square.grid.2x2" : "rectangle.stack")
-                            }
-                        }
-                        Button { searchFocused = false; section = 2 } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
-                    } label: { Image(systemName: "ellipsis") }
-                }
-                }
-            }
     }
 
     private var filteredCards: [PaymentCard] {
@@ -322,7 +328,7 @@ private struct LedgerCardBackground: View {
             ZStack {
                 LinearGradient(colors: card.tone.gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
                 if let artwork = card.artwork, let decoded = UIImage(data: artwork) {
-                    Image(uiImage: decoded).resizable().scaledToFill()
+                    Image(uiImage: decoded).resizable().scaledToFit()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
                     (card.artworkTextDark == true ? Color.white : Color.black)
@@ -694,11 +700,11 @@ struct LedgerCardDetail: View {
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.scenePhase) private var phase
     let cardID: UUID
+    let editingCard: Bool
     let onClose: () -> Void
     @State private var record: PrivateRecord?
     @State private var authorized = false
     @State private var revealCVC = false
-    @State private var edit = false
     @State private var busy = false
     @State private var error: String?
     @State private var copied = false
@@ -785,27 +791,12 @@ struct LedgerCardDetail: View {
                     .padding(20).frame(maxWidth: 920).frame(maxWidth: .infinity)
                 }
                 .background(LedgerTheme.background)
-                .navigationTitle("")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .navigation) {
-                        Button { clear(); onClose() } label: {
-                            Image(systemName: "chevron.left").fontWeight(.semibold)
-                        }.accessibilityLabel(L("닫기"))
-                    }
-                    ToolbarItem(placement: .primaryAction) {
-                        Button { clear(); edit = true } label: { Image(systemName: "square.and.pencil") }
-                            .accessibilityLabel(L("카드 수정"))
-                    }
-                }
-                .sheet(isPresented: $edit, onDismiss: { if self.card == nil { onClose() } }) {
-                    CardForm(existing: card)
-                }
             } else {
                 ContentUnavailableView("삭제된 카드", systemImage: "creditcard")
-                    .toolbar { ToolbarItem(placement: .navigation) { Button(L("닫기"), action: onClose) } }
+                    .overlay(alignment: .bottom) { Button(L("닫기"), action: onClose).padding() }
             }
         }
+        .onChange(of: editingCard) { _, value in if value { clear() } }
         .onChange(of: phase) { _, p in if p == .background { clear() } }
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
         .onDisappear { clear() }

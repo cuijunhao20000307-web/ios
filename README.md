@@ -58,3 +58,6 @@ All wallet sections share a fixed top-aligned header and full-height content are
 
 ## v0.4.14 neutral card detail and continuous transition
 Card number view/copy controls use adaptive neutral gray capsules with dark/light system text; CVC badge is neutral as well. The wallet stays mounted behind the detail view, preserving deck ordering and scroll position. A single 460ms eased transition presents detail, 380ms closing transition reveals the same deck; removes delayed onAppear animation and blank frame. Original Duo system navigation, independent hit regions, and reduce-motion support remain. Authentication results invalidated when detail closes. Device verification required.
+
+## v0.4.15 opaque card navigation
+Keep one persistent native toolbar owner and the existing deck. Clip the page transition to actual safe content viewport and use an opaque eased slide rather than overlapping transparent cards and labels. Direct edit action in detail, menu fallback in wallet. Artwork fits instead of cropping; imported images with existing margins retain those margins. Existing gray actions, authentication and data retained. Device verification required.
