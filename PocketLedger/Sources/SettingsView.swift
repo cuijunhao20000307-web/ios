@@ -108,7 +108,7 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.4.0")
+                Text("PocketLedger · v0.4.1")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

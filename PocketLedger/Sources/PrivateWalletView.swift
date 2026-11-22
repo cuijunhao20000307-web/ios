@@ -14,7 +14,7 @@ enum PrivateKind: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var fields: [String] {
         switch self {
-        case .card: return ["카드사", "카드번호", "유효기간", "카드 소유자", "CVC"]
+        case .card: return ["카드사", "카드번호", "유효기간", "카드 소유자", "CVC", "카드 브랜드"]
         case .account: return ["은행명", "계좌번호", "예금주", "보안 메모"]
         case .security: return ["발급 기관", "일련번호", "보안카드 번호"]
         case .login: return ["웹사이트", "사용자 ID", "비밀번호"]
