@@ -4,6 +4,7 @@ struct HistoryView: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
     @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var monthOffset = 0
     @State private var filter: String = "전체"
@@ -29,10 +30,14 @@ struct HistoryView: View {
                         Text(L("지출과 수입을 한눈에")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
                     }
                     Spacer()
-                    Button { showAdd = true } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 19, weight: .bold)).foregroundStyle(.white)
-                            .frame(width: 46, height: 46).background(LedgerTheme.accent, in: Circle())
+                    if sizeClass == .compact {
+                        Button { showAdd = true } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 19, weight: .bold)).foregroundStyle(.white)
+                                .frame(width: 46, height: 46)
+                                .background(LedgerTheme.accent, in: Circle())
+                        }
+                        .accessibilityLabel(L("거래 추가"))
                     }
                 }
                 HStack {

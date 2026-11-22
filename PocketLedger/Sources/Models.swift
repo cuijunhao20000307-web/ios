@@ -8,6 +8,7 @@ enum WalletTab: String, CaseIterable, Identifiable {
     case analytics = "분석"
     case recurring = "자동"
     case settings = "설정"
+    case newTransaction = "거래 추가"
     var id: String { rawValue }
     var symbol: String {
         switch self {
@@ -17,6 +18,7 @@ enum WalletTab: String, CaseIterable, Identifiable {
         case .analytics: "chart.bar.fill"
         case .recurring: "calendar.badge.clock"
         case .settings: "gearshape.fill"
+        case .newTransaction: "plus.circle.fill"
         }
     }
 }

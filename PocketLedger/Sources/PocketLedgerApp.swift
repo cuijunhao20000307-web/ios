@@ -31,6 +31,10 @@ struct AppShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab: WalletTab = .home
     @State private var unlocked = false
+    @State private var unlockInProgress = false
+    @State private var attemptedUnlockForActivation = false
+    @State private var unlockGeneration = UUID()
+    @State private var showNewTransaction = false
     @AppStorage("monthlyReportEnabled") private var reportEnabled = true
     @AppStorage("monthlyReportNotifications") private var reportNotifications = false
     @AppStorage("lastViewedMonthlyReport") private var lastReport = ""
@@ -44,15 +48,33 @@ struct AppShell: View {
             LedgerTheme.background.ignoresSafeArea()
             if store.data.appLockEnabled && !unlocked {
                 LockedView {
-                    Task { unlocked = await LocalUnlock.authorize() }
+                    // Explicit retry is available only if the automatic prompt is
+                    // cancelled or unavailable. The first prompt needs no tap.
+                    attemptedUnlockForActivation = false
+                    requestUnlockIfNeeded()
                 }
             } else {
                 nativeNavigation
             }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active && store.data.appLockEnabled { unlocked = false }
-            if phase == .active { store.processRecurring(); if !store.data.appLockEnabled { unlocked = true } }
+            if phase == .background {
+                // Invalidate any outstanding LAContext result. In particular,
+                // Face ID can transiently move the scene to .inactive; do not
+                // treat that as a new launch or prompt twice.
+                unlockGeneration = UUID()
+                unlockInProgress = false
+                attemptedUnlockForActivation = false
+                if store.data.appLockEnabled { unlocked = false }
+            }
+            if phase == .active {
+                store.processRecurring()
+                if store.data.appLockEnabled {
+                    requestUnlockIfNeeded()
+                } else {
+                    unlocked = true
+                }
+            }
         }
         .onReceive(monthClock) { _ in checkPending() }
         .onReceive(NotificationCenter.default.publisher(for: PaymentInbox.changed)) { _ in checkPending() }
@@ -65,11 +87,25 @@ struct AppShell: View {
             MonthlyReportView(month: value.date)
         }
         .onChange(of: store.data.appLockEnabled) { _, enabled in
+            unlockGeneration = UUID()
+            unlockInProgress = false
+            attemptedUnlockForActivation = false
             unlocked = !enabled
-            if enabled { Task { unlocked = await LocalUnlock.authorize() } }
+            if enabled { requestUnlockIfNeeded() }
+        }
+        .onChange(of: tab) { _, selection in
+            if selection == .newTransaction {
+                tab = .history
+                showNewTransaction = true
+            }
+        }
+        .sheet(isPresented: $showNewTransaction) {
+            TransactionForm()
         }
         .task {
-            if store.data.appLockEnabled { unlocked = await LocalUnlock.authorize() }
+            // The first WindowGroup task may run before the scene is active.
+            // The scenePhase handler triggers the same request once it is active.
+            if store.data.appLockEnabled { requestUnlockIfNeeded() }
             else { unlocked = true }
             _ = await MonthlyReportNotice.configure(reportNotifications)
             checkPending()
@@ -92,19 +128,32 @@ struct AppShell: View {
     @ViewBuilder private var nativeNavigation: some View {
         if #available(iOS 18.0, *) {
             TabView(selection: $tab) {
-                ForEach(WalletTab.allCases) { item in
+                ForEach(WalletTab.allCases.filter { $0 != .newTransaction }) { item in
                     Tab(L(item.rawValue), systemImage: item.symbol, value: item) {
                         page(for: item)
+                    }
+                }
+                if tab == .history || tab == .newTransaction {
+                    // A native action entry in the system tab rail. On Duo it
+                    // appears at the right; on standard iPhones the normal
+                    // compact header button remains a convenient fallback.
+                    Tab(L("거래 추가"), systemImage: "plus.circle.fill", value: WalletTab.newTransaction) {
+                        Color.clear
                     }
                 }
             }
             .tabViewStyle(.tabBarOnly)
         } else {
             TabView(selection: $tab) {
-                ForEach(WalletTab.allCases) { item in
+                ForEach(WalletTab.allCases.filter { $0 != .newTransaction }) { item in
                     page(for: item)
                         .tabItem { Label(L(item.rawValue), systemImage: item.symbol) }
                         .tag(item)
+                }
+                if tab == .history || tab == .newTransaction {
+                    Color.clear
+                        .tabItem { Label(L("거래 추가"), systemImage: "plus.circle.fill") }
+                        .tag(WalletTab.newTransaction)
                 }
             }
         }
@@ -118,6 +167,35 @@ struct AppShell: View {
         case .analytics: AnalyticsView()
         case .recurring: RecurringView()
         case .settings: SettingsView()
+        case .newTransaction: EmptyView()
+        }
+    }
+
+    private func requestUnlockIfNeeded() {
+        guard scenePhase == .active, store.data.appLockEnabled,
+              !unlocked, !unlockInProgress, !attemptedUnlockForActivation else { return }
+        unlockInProgress = true
+        attemptedUnlockForActivation = true
+        let generation = UUID()
+        unlockGeneration = generation
+        Task { @MainActor in
+            // Allow the lock overlay and UIWindow to become visible before
+            // presenting the native biometric/passcode prompt.
+            await Task.yield()
+            guard unlockGeneration == generation else { return }
+            guard scenePhase == .active, store.data.appLockEnabled else {
+                unlockInProgress = false
+                attemptedUnlockForActivation = false
+                return
+            }
+            let accepted = await LocalUnlock.authorize()
+            guard unlockGeneration == generation else { return }
+            unlockInProgress = false
+            if accepted && scenePhase != .background && store.data.appLockEnabled {
+                unlocked = true
+            }
+            // On cancel/failure leave the existing retry button. Do not
+            // automatically re-present when LA briefly changes scenePhase.
         }
     }
 }
