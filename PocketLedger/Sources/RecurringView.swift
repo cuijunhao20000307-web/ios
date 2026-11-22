@@ -81,7 +81,7 @@ struct RecurringForm: View {
         NavigationStack {
             Form {
                 TextField(L("항목 이름"), text: $title)
-                TextField(L("금액 (원)"), text: $amount).keyboardType(.numberPad)
+                TextField(L("금액") + " (" + DisplayCurrency.selected.symbol + ")", text: $amount).keyboardType(.numberPad)
                 Picker(L("구분"), selection: $kind) { ForEach(MoneyKind.allCases) { Text(L($0.rawValue)).tag($0) } }
                     .onChange(of: kind) { _, v in category = v == .income ? .salary : .bills }
                 Picker(L("분류"), selection: $category) { ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) } }

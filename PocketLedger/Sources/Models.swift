@@ -180,31 +180,39 @@ struct LedgerData: Codable {
 enum DisplayCurrency: String, CaseIterable, Identifiable {
     case KRW, CNY, JPY, USD, EUR, GBP, HKD, TWD, SGD, CAD, AUD, CHF, THB, INR, VND
     var id: String { rawValue }
-    var fractionDigits: Int { [.KRW, .JPY, .VND].contains(self) ? 0 : 2 }
     static var selected: DisplayCurrency {
         DisplayCurrency(rawValue: UserDefaults.standard.string(forKey: "displayCurrency") ?? "KRW") ?? .KRW
     }
-    var rate: Double? {
-        if self == .KRW { return 1 }
-        let value = UserDefaults.standard.double(forKey: "displayRate." + rawValue)
-        return value.isFinite && value > 0 ? value : nil
+    var symbol: String {
+        switch self {
+        case .KRW: "₩"
+        case .CNY, .JPY: "¥"
+        case .USD: "$"
+        case .EUR: "€"
+        case .GBP: "£"
+        case .HKD: "HK$"
+        case .TWD: "NT$"
+        case .SGD: "S$"
+        case .CAD: "CA$"
+        case .AUD: "A$"
+        case .CHF: "CHF "
+        case .THB: "฿"
+        case .INR: "₹"
+        case .VND: "₫"
+        }
     }
     var formattedName: String {
-        Locale.current.localizedString(forCurrencyCode: rawValue).map { rawValue + " · " + $0 } ?? rawValue
+        rawValue + " · " + symbol + " · " + (AppLocalization.locale.localizedString(forCurrencyCode: rawValue) ?? rawValue)
     }
     static func format(_ amount: Int) -> String {
-        let choice = selected
-        let active: DisplayCurrency = choice.rate == nil ? .KRW : choice
+        // Display preference only: the ledger's integer values are untouched.
         let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: UserDefaults.standard.string(forKey: "appLanguage").flatMap { $0 == "system" ? nil : $0 } ?? Locale.current.identifier)
-        formatter.numberStyle = .currency
-        formatter.currencyCode = active.rawValue
-        formatter.minimumFractionDigits = active.fractionDigits
-        formatter.maximumFractionDigits = active.fractionDigits
-        let rate = active.rate ?? 1
-        let value = Double(amount) / rate
-        let rendered = formatter.string(from: NSNumber(value: value)) ?? String(amount) + " KRW"
-        return active == .KRW ? rendered : "≈ " + rendered
+        formatter.locale = AppLocalization.locale
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        formatter.minimumFractionDigits = 0
+        let digits = formatter.string(from: NSNumber(value: amount.magnitude)) ?? String(amount.magnitude)
+        return (amount < 0 ? "−" : "") + selected.symbol + digits
     }
 }
 
@@ -253,6 +261,33 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "기초 잔액": ["Opening balance","期初余额","期初餘額","期首残高"],
+        "알림 설정을 확인하세요": ["Check notification settings","请检查通知权限","請檢查通知權限","通知設定を確認してください"],
+        "가져오기 완료": ["Import complete","导入完成","匯入完成","取込完了"],
+        "CSV 파일을 확인하세요": ["Check the CSV format","请检查CSV文件格式","請檢查CSV檔案格式","CSV形式を確認してください"],
+        "확인 후 가져오기": ["Confirm import","确认导入","確認匯入","確認して取り込む"],
+        "제외": ["Skipped","已跳过","已略過","除外"],
+        "중복": ["Duplicates","重复","重複","重複"],
+        "새 거래": ["New transactions","新交易","新交易","新規取引"],
+        "가져오기 미리보기": ["Import preview","导入预览","匯入預覽","取込プレビュー"],
+        "UTF-8 CSV 형식으로 가져오세요. 취소·미완료·소수 금액은 제외하며 실제 결제 통화는 변환하지 않습니다.": ["Use UTF-8 CSV. Cancelled, incomplete and fractional amounts are skipped; no FX conversion.","请使用UTF-8 CSV。跳过取消、未完成及非整数金额，不做汇率换算。","使用UTF-8 CSV，略過取消、未完成及非整數金額，不換算。","UTF-8 CSVを使用。取消・未完了・小数金額は除外し、換算しません。"],
+        "CSV 가져오기": ["Import CSV","导入CSV","匯入CSV","CSVを取り込む","Importar CSV","Importer CSV","CSV importieren"],
+        "결제 내역 가져오기": ["Import payments","导入支付账单","匯入支付帳單","決済履歴を取り込む","Importar pagos","Importer paiements","Zahlungen importieren"],
+        "카드 결제 전체 내역을 직접 조회하지 않습니다. 입력값은 변환하지 않습니다.": ["No direct card history access or exchange conversion.","不直接读取全部卡片记录，不换算输入金额。","不直接讀取全部卡片紀錄，不換算金額。","カード履歴の直接取得・換算は行いません。"],
+        "단축어 앱의 거래 자동화에서 PocketLedger 결제 기록 동작을 추가하세요. 금액과 가맹점, 가능하면 거래 날짜 및 고유 ID를 전달합니다.": ["In Shortcuts, add Record Wallet Payment to a Transaction automation. Pass amount, merchant, date and unique ID when available.","在快捷指令的交易自动化中添加 Record Wallet Payment，传入金额、商户及可用的交易日期和唯一ID。","在捷徑交易自動化加入 Record Wallet Payment，傳入金額、商戶及可用的日期與ID。","取引オートメーションに Record Wallet Payment を追加し、金額・店名・日時・IDを渡します。"],
+        "자동 은행 조회 없이 단축어 및 CSV 가져오기를 사용합니다.": ["Use Shortcuts and CSV imports, not live bank access.","使用快捷指令和CSV导入，不实时读取银行。","使用捷徑及CSV匯入，不即時讀取銀行。","ショートカットとCSV取込を使用します。","Atajos e importación CSV.","Raccourcis et import CSV.","Kurzbefehle und CSV-Import."],
+        "결제 연동": ["Payment integration","支付联动","支付連動","決済連携","Conectar pagos","Intégration paiements","Zahlungsintegration"],
+        "건": ["transactions","笔","筆","件","operaciones","opérations","Buchungen"],
+        "결산 이미지 만들기": ["Create summary image","生成总结图片","產生總結圖片","レポート画像を作成","Crear imagen","Créer une image","Bild erstellen"],
+        "결산 이미지 공유": ["Share summary image","分享总结图片","分享總結圖片","レポート画像を共有","Compartir imagen","Partager l’image","Bild teilen"],
+        "현재 설정된 예산 기준": ["Based on current budget setting","按当前预算设置计算","按目前預算計算","現在の予算設定に基づく","Según presupuesto actual","Selon le budget actuel","Aktuelles Budget"],
+        "월간 순수입": ["Net income","本月结余","本月結餘","月間収支","Saldo mensual","Solde mensuel","Monatssaldo"],
+        "지난달 결산이 준비되었습니다.": ["Your previous month's summary is ready to view.","上月消费总结可以查看了。","上月消費總結可以查看了。","先月のレポートを確認できます。","Tu resumen está listo.","Votre bilan est disponible.","Ihre Monatsübersicht ist verfügbar."],
+        "월간 결산 보기": ["View monthly summaries","查看月度总结","查看月度總結","月次レポートを見る","Ver resúmenes","Voir les bilans","Monatsübersichten"],
+        "매월 1일 자정 알림": ["Midnight reminder on the first","每月1日零点通知","每月1日零點通知","毎月1日午前0時に通知","Aviso el día 1","Rappel le 1er à minuit","Erinnerung am Monatsersten"],
+        "월간 결산 자동 표시": ["Show monthly summary","自动显示月度总结","自動顯示月度總結","月次レポートを自動表示","Mostrar resumen mensual","Afficher le bilan mensuel","Monatsübersicht anzeigen"],
+        "월간 결산": ["Monthly summary","月度总结","月度總結","月次レポート","Resumen mensual","Bilan mensuel","Monatsübersicht"],
+        "통화 기호만 변경하며 금액은 변환하지 않습니다.": ["Only the currency symbol changes; no conversion.","仅切换货币符号，不进行金额换算。","僅切換貨幣符號，不換算金額。","通貨記号のみ変更します。換算はしません。","Solo cambia el símbolo.","Seul le symbole change.","Nur das Symbol ändert sich."],
         "이름을 먼저 입력하세요.": ["Enter a name first.","请先填写名称。","請先填寫名稱。","先に名前を入力してください。"],
         "사진 삭제": ["Delete photo","删除照片","刪除照片","写真を削除","Eliminar foto","Supprimer la photo","Foto löschen"],
         "뒷면 사진": ["Back photo","背面照片","背面照片","裏面の写真","Foto posterior","Photo verso","Rückseite"],

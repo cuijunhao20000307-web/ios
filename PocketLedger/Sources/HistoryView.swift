@@ -116,7 +116,7 @@ struct TransactionForm: View {
                         Text(L("금액"))
                         Spacer()
                         TextField("0", text: $amount).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                        Text(L("원")).foregroundStyle(.secondary)
+                        Text(DisplayCurrency.selected.symbol).foregroundStyle(.secondary)
                     }
                     Picker(L("카테고리"), selection: $category) {
                         ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) }

@@ -685,7 +685,7 @@ struct PrivateSubscriptionEditor: View {
         NavigationStack {
             Form {
                 TextField(L("구독 서비스 이름"), text: $item.title)
-                TextField(L("결제 금액 (원)"), text: $amount).keyboardType(.numberPad)
+                TextField(L("결제 금액") + " (" + DisplayCurrency.selected.symbol + ")", text: $amount).keyboardType(.numberPad)
                 Picker(L("결제 주기"), selection: $item.cycle) { ForEach(BillingCycle.allCases) { Text(L($0.rawValue)).tag($0) } }
                 DatePicker(L("첫 결제일"), selection: $item.firstDate, displayedComponents: .date)
                 Picker(L("결제 수단"), selection: $item.source) {

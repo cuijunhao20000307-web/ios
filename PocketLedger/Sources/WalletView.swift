@@ -920,7 +920,7 @@ struct CardForm: View {
                         Text(L("월 사용 한도"))
                         Spacer()
                         TextField(L("선택"), text: $limit).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                        Text(L("원")).foregroundStyle(.secondary)
+                        Text(DisplayCurrency.selected.symbol).foregroundStyle(.secondary)
                     }
                 }
                 Section(L("카드 디자인")) {
@@ -1104,10 +1104,10 @@ struct BankAccountForm: View {
                     TextField(L("은행명"), text: $bank)
                     TextField(L("계좌번호 · 선택"), text: $accountNumber).keyboardType(.numbersAndPunctuation)
                     HStack {
-                        Text(L("기초 잔액 (KRW)"))
+                        Text(L("기초 잔액") + " (" + DisplayCurrency.selected.symbol + ")")
                         Spacer()
                         TextField("0", text: $balance).keyboardType(.numberPad).multilineTextAlignment(.trailing)
-                        Text(L("원")).foregroundStyle(.secondary)
+                        Text(DisplayCurrency.selected.symbol).foregroundStyle(.secondary)
                     }
                     Picker(L("색상"), selection: $tone) {
                         ForEach(WalletTone.allCases) { Text(L($0.rawValue)).tag($0) }

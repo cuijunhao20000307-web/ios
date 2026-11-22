@@ -1,4 +1,7 @@
 import SwiftUI
+import AppIntents
+import Foundation
+import Combine
 
 @main
 struct PocketLedgerApp: App {
@@ -27,6 +30,11 @@ struct AppShell: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var tab: WalletTab = .home
     @State private var unlocked = false
+    @AppStorage("monthlyReportEnabled") private var reportEnabled = true
+    @AppStorage("monthlyReportNotifications") private var reportNotifications = false
+    @AppStorage("lastViewedMonthlyReport") private var lastReport = ""
+    @State private var report: ReportMonth?
+    private let monthClock = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         let _ = languageRefresh
@@ -45,6 +53,16 @@ struct AppShell: View {
             if phase != .active && store.data.appLockEnabled { unlocked = false }
             if phase == .active { store.processRecurring(); if !store.data.appLockEnabled { unlocked = true } }
         }
+        .onReceive(monthClock) { _ in checkPending() }
+        .onReceive(NotificationCenter.default.publisher(for: PaymentInbox.changed)) { _ in checkPending() }
+        .onChange(of: unlocked) { _, value in if value { checkPending() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { checkPending() }
+            if phase == .background { report = nil }
+        }
+        .sheet(item: $report) { value in
+            MonthlyReportView(month: value.date)
+        }
         .onChange(of: store.data.appLockEnabled) { _, enabled in
             unlocked = !enabled
             if enabled { Task { unlocked = await LocalUnlock.authorize() } }
@@ -52,7 +70,20 @@ struct AppShell: View {
         .task {
             if store.data.appLockEnabled { unlocked = await LocalUnlock.authorize() }
             else { unlocked = true }
+            _ = await MonthlyReportNotice.configure(reportNotifications)
+            checkPending()
         }
+    }
+
+    private func checkPending() {
+        guard scenePhase == .active, !store.data.appLockEnabled || unlocked else { return }
+        PaymentInbox.drain(into: store)
+        guard reportEnabled, report == nil else { return }
+        let month = ReportMonth.previous
+        let key = ReportMonth.key(month)
+        guard lastReport != key, !store.entries(in: month).isEmpty else { return }
+        lastReport = key
+        report = ReportMonth(date: month)
     }
 
     // Native bars use the system's shared bar region on iPhone Duo when
@@ -112,5 +143,69 @@ struct LockedView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+
+// Shortcuts passes user-authorized values, not access to wallet history.
+// Queue each record atomically; the live unlocked ledger consumes it to avoid
+// competing writers overwriting the existing ledger file.
+struct PendingApplePayment: Codable {
+    let id: UUID
+    let title: String
+    let amount: Int
+    let date: Date
+}
+enum PaymentInbox {
+    static let changed = Notification.Name("PocketLedger.PaymentInboxChanged")
+    static func folder() throws -> URL {
+        let dir = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("PaymentInbox", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        var protectedDir = dir
+        var values = URLResourceValues(); values.isExcludedFromBackup = true
+        try protectedDir.setResourceValues(values)
+        return dir
+    }
+    static func enqueue(_ item: PendingApplePayment) throws {
+        let path = try folder().appendingPathComponent(item.id.uuidString + ".json")
+        try JSONEncoder().encode(item).write(to: path, options: [.atomic, .completeFileProtection])
+        NotificationCenter.default.post(name: changed, object: nil)
+    }
+    @MainActor static func drain(into store: LedgerStore) {
+        guard let dir = try? folder(), let paths = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
+        for path in paths where path.pathExtension == "json" {
+            guard let raw = try? Data(contentsOf: path), let item = try? JSONDecoder().decode(PendingApplePayment.self, from: raw),
+                  item.amount > 0, item.amount <= 1_000_000_000_000 else { continue }
+            if !store.data.entries.contains(where: { $0.id == item.id }) {
+                let source = UserDefaults.standard.string(forKey: "applePaymentSource").flatMap { UUID(uuidString: $0) }
+                let valid = store.data.cards.contains { $0.id == source } || store.data.accounts.contains { $0.id == source }
+                store.data.entries.append(MoneyEntry(id: item.id, title: "[Apple Wallet] " + item.title, amount: item.amount,
+                    kind: .expense, category: .other, date: item.date, sourceId: valid ? source : nil))
+            }
+            // Only consume after the persisted ledger has the record.
+            let ledger = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("ledger-data.json")
+            if let data = try? Data(contentsOf: ledger), let saved = try? JSONDecoder().decode(LedgerData.self, from: data),
+               saved.entries.contains(where: { $0.id == item.id }) { try? FileManager.default.removeItem(at: path) }
+        }
+    }
+}
+struct RecordWalletPaymentIntent: AppIntent {
+    static var title: LocalizedStringResource = "Record Wallet Payment"
+    static var description = IntentDescription("Record a payment supplied by your personal Shortcuts automation. Amount is a whole number; no FX conversion.")
+    static var openAppWhenRun: Bool = true
+    @Parameter(title: "Amount") var amount: Int
+    @Parameter(title: "Merchant") var merchant: String
+    @Parameter(title: "Transaction Date") var transactionDate: Date?
+    @Parameter(title: "Transaction ID") var transactionID: String?
+    func perform() async throws -> some IntentResult {
+        guard amount > 0, amount <= 1_000_000_000_000, !merchant.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, merchant.count <= 300 else {
+            throw NSError(domain: "PocketLedger", code: 1, userInfo: [NSLocalizedDescriptionKey: "Enter a positive whole amount and merchant."])
+        }
+        let date = transactionDate ?? .now
+        let external = transactionID?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let id = external.isEmpty ? UUID() : UUID.deterministic("Apple Wallet|" + external)
+        try PaymentInbox.enqueue(PendingApplePayment(id: id, title: merchant, amount: amount, date: date))
+        return .result()
     }
 }

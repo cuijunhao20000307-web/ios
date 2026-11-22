@@ -69,7 +69,7 @@ final class LedgerStore: ObservableObject {
 
     func entries(in month: Date) -> [MoneyEntry] {
         guard let range = month.monthInterval() else { return [] }
-        return data.entries.filter { range.contains($0.date) }.sorted { $0.date > $1.date }
+        return data.entries.filter { $0.date >= range.start && $0.date < range.end }.sorted { $0.date > $1.date }
     }
 
     func amount(of kind: MoneyKind, in month: Date) -> Int {
@@ -115,7 +115,7 @@ final class LedgerStore: ObservableObject {
         }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
-        var rows = ["날짜,구분,분류,내용,금액(원),결제수단"]
+        var rows = ["날짜,구분,분류,내용,금액,결제수단"]
         for entry in data.entries.sorted(by: { $0.date < $1.date }) {
             rows.append([
                 formatter.string(from: entry.date), entry.kind.rawValue,
