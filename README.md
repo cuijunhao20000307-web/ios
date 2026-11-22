@@ -85,3 +85,6 @@ Password-protected AES-256-GCM archive (PBKDF2-HMAC-SHA256, 600k iterations) thr
 
 ## Digital Wallet v0.4.22 — Duo settings icon and destructive confirmation
 The system automatic menu placement row uses a custom grey vector D/Duo icon matching the supplied reference. Sample-data replacement and destructive ledger reset no longer use the popover-style `confirmationDialog` that clips on expanded Duo. Both display a centered, viewport-bounded custom modal with a dimmed backdrop, explicit Cancel and red destructive confirmation, and localized explanatory text. The private vault remains independent. No data schema or bundle identifier changes. Verify on folded and unfolded device sizes.
+
+## Digital Wallet v0.4.23 compact settings on Duo
+Settings cards now use 11pt vertical and 14pt horizontal padding, 10pt intra-column spacing, and 12pt between Duo columns; key selectors and monthly budget are aligned into single rows. The long automatic-layout help and app-information text are still accessible via collapsed disclosure controls. All settings controls, security, iCloud backup, private vault and payment integration are retained. Wallet data and Bundle ID are unchanged. Needs on-device unfolded/folded verification.

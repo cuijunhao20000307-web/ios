@@ -29,54 +29,71 @@ struct SettingsView: View {
         let _ = languageRefresh
         let _ = moneyRefresh
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 20) {
-                VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 13) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(L("설정")).font(.system(size: 30, weight: .bold))
                     Text(L("가계부를 내 방식대로")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
                 }
-                DuoColumns(spacing: 20) {
-                    VStack(alignment: .leading, spacing: 20) {
-                Surface {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SectionHeading(title: "언어")
-                        Picker(L("언어"), selection: $appLanguage) {
-                            ForEach(AppLocalization.options, id: \.0) { option in
-                                Text(option.0 == "system" ? L(option.1) : option.1).tag(option.0)
-                            }
-                        }.pickerStyle(.menu)
-                    }
-                }
-                Surface {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SectionHeading(title: "표시 통화")
-                        Picker(L("통화"), selection: $currency) {
-                            ForEach(DisplayCurrency.allCases) { item in
-                                Text(item.formattedName).tag(item.rawValue)
-                            }
-                        }.pickerStyle(.menu)
-                        Button { showCovers = true } label: {
-                            Label(L("통화별 잔액 커버"), systemImage: "photo.on.rectangle")
+                DuoColumns(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack(spacing: 10) {
+                            CompactSettingsTitle(title: "언어")
+                            Spacer(minLength: 3)
+                            Picker(L("언어"), selection: $appLanguage) {
+                                ForEach(AppLocalization.options, id: \.0) { option in
+                                    Text(option.0 == "system" ? L(option.1) : option.1).tag(option.0)
+                                }
+                            }.pickerStyle(.menu)
                         }
-                        Text(L("통화 기호만 변경하며 금액은 변환하지 않습니다."))
-                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                Surface {
-                    VStack(alignment: .leading, spacing: 16) {
-                        SectionHeading(title: "월 예산")
-                        HStack {
-                            TextField(L("예산"), text: $budgetText).keyboardType(.numberPad)
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack(spacing: 8) {
+                            CompactSettingsTitle(title: "표시 통화")
+                            Spacer(minLength: 2)
+                            Picker(L("통화"), selection: $currency) {
+                                ForEach(DisplayCurrency.allCases) { item in
+                                    Text(item.formattedName).tag(item.rawValue)
+                                }
+                            }.pickerStyle(.menu)
+                        }
+                        HStack(spacing: 10) {
+                            Button { showCovers = true } label: {
+                                Label(L("통화별 잔액 커버"), systemImage: "photo.on.rectangle")
+                                    .font(.subheadline)
+                            }
+                            Spacer(minLength: 0)
+                            Text(L("통화 기호만 변경하며 금액은 변환하지 않습니다."))
+                                .font(.system(size: 10)).foregroundStyle(.secondary)
+                                .lineLimit(2).multilineTextAlignment(.trailing)
+                        }
+                    }
+                }
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack(spacing: 8) {
+                            CompactSettingsTitle(title: "월 예산")
+                            Spacer(minLength: 6)
+                            TextField(L("예산"), text: $budgetText)
+                                .keyboardType(.numberPad)
                                 .font(.system(.body, design: .rounded))
-                                .minimumScaleFactor(0.75)
-                            Text(DisplayCurrency.selected.symbol).foregroundStyle(LedgerTheme.subtext).fixedSize()
+                                .multilineTextAlignment(.trailing)
+                                .frame(minWidth: 70, maxWidth: 145)
+                            Text(DisplayCurrency.selected.symbol)
+                                .foregroundStyle(LedgerTheme.subtext).fixedSize()
                             Button(L("저장")) { store.data.monthlyBudget = max(1, budgetText.toMoneyInt) }
-                                .fontWeight(.semibold).fixedSize().disabled(budgetText.toMoneyInt < 1)
+                                .font(.subheadline.weight(.semibold))
+                                .fixedSize()
+                                .disabled(budgetText.toMoneyInt < 1)
                         }
                     }
                 }
-                Surface {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SectionHeading(title: "화면 테마")
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        CompactSettingsTitle(title: "화면 테마")
                         Picker(L("테마"), selection: $store.data.appearance) {
                             ForEach(AppearanceMode.allCases) { mode in
                                 Text(L(mode == .system ? "시스템 설정" : mode.rawValue)).tag(mode)
@@ -84,28 +101,35 @@ struct SettingsView: View {
                         }.pickerStyle(.segmented)
                     }
                 }
-                Surface {
-                    VStack(alignment: .leading, spacing: 18) {
-                        SectionHeading(title: "메뉴 위치")
-                        HStack(spacing: 12) {
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack(spacing: 9) {
                             DuoAutomaticLayoutIcon()
                                 .fill(Color.secondary.opacity(0.78), style: FillStyle(eoFill: true))
-                                .frame(width: 28, height: 28)
+                                .frame(width: 27, height: 27)
                                 .accessibilityHidden(true)
-                            Text(L("시스템 자동 배치"))
-                                .font(.body)
+                            VStack(alignment: .leading, spacing: 2) {
+                                CompactSettingsTitle(title: "메뉴 위치")
+                                Text(L("시스템 자동 배치"))
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                            }
                         }
-                        .accessibilityElement(children: .combine)
-                        Text("iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다.")
-                            .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
+                        DisclosureGroup(L("배치 설명")) {
+                            Text(L("iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다."))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .padding(.top, 3)
+                        }
+                        .font(.caption)
                     }
                 }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    VStack(alignment: .leading, spacing: 20) {
-                Surface {
-                    VStack(alignment: .leading, spacing: 14) {
-                        SectionHeading(title: "월간 결산")
+                    VStack(alignment: .leading, spacing: 10) {
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 10) {
+                        CompactSettingsTitle(title: "월간 결산")
                         Toggle(L("월간 결산 자동 표시"), isOn: $reportEnabled)
                         Toggle(L("매월 1일 자정 알림"), isOn: $reportNotifications)
                             .onChange(of: reportNotifications) { _, enabled in
@@ -121,9 +145,9 @@ struct SettingsView: View {
                         }
                     }
                 }
-                Surface {
-                    VStack(alignment: .leading, spacing: 12) {
-                        SectionHeading(title: "결제 연동")
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        CompactSettingsTitle(title: "결제 연동")
                         Button { showPaymentLinks = true } label: {
                             HStack {
                                 Label("Apple Wallet · Naver Pay · Kakao Pay · WeChat Pay", systemImage: "wallet.pass")
@@ -136,9 +160,9 @@ struct SettingsView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                Surface {
-                    VStack(alignment: .leading, spacing: 15) {
-                        SectionHeading(title: "보안")
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 10) {
+                        CompactSettingsTitle(title: "보안")
                         Toggle(isOn: Binding(get: { store.data.appLockEnabled }, set: { wantsLock in
                             if wantsLock && !LocalUnlock.isAvailable() { deviceAuthUnavailable = true }
                             else { store.data.appLockEnabled = wantsLock }
@@ -150,9 +174,9 @@ struct SettingsView: View {
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                     }
                 }
-                Surface {
-                    VStack(alignment: .leading, spacing: 14) {
-                        SectionHeading(title: "데이터")
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 10) {
+                        CompactSettingsTitle(title: "데이터")
                         Button { showICloudBackup = true } label: {
                             Label(L("iCloud 백업 · 복원"), systemImage: "icloud.and.arrow.up")
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,26 +213,33 @@ struct SettingsView: View {
                         }
                     }
                 }
-                Surface {
+                SettingsCompactSection {
                     VStack(alignment: .leading, spacing: 10) {
-                        SectionHeading(title: "안내")
-                        Label(L("기기 내부 저장 · 별도 서버 없음"), systemImage: "iphone")
-                        Label(L("은행 · 카드 실시간 연동 없음"), systemImage: "wifi.slash")
-                        Label(L("통장 비밀코드는 백업·동기화하지 않음"), systemImage: "lock.shield")
-                        Text("이 앱은 개인 기록용 가계부 프로토타입입니다. 실제 결제 또는 은행 로그인 기능을 제공하지 않습니다.")
-                            .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext).padding(.top, 5)
+                        DisclosureGroup {
+                            VStack(alignment: .leading, spacing: 9) {
+                                Label(L("기기 내부 저장 · 별도 서버 없음"), systemImage: "iphone")
+                                Label(L("은행 · 카드 실시간 연동 없음"), systemImage: "wifi.slash")
+                                Label(L("통장 비밀코드는 백업·동기화하지 않음"), systemImage: "lock.shield")
+                                Text(L("이 앱은 개인 기록용 가계부 프로토타입입니다. 실제 결제 또는 은행 로그인 기능을 제공하지 않습니다."))
+                                    .font(.caption).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.top, 4)
+                        } label: {
+                            CompactSettingsTitle(title: "안내")
+                        }
                     }
                     .font(.system(size: 13))
                 }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.22")
+                Text("Digital Wallet · v0.4.23")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
-            .padding(20).padding(.top, 8)
-            .frame(maxWidth: 920).frame(maxWidth: .infinity)
+            .padding(.horizontal, 16).padding(.vertical, 12)
+            .frame(maxWidth: 960).frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .sheet(isPresented: $showICloudBackup) { DigitalCloudBackupView() }
@@ -247,6 +278,30 @@ struct SettingsView: View {
     }
 }
 
+
+// Compact, card-based settings keep expanded Duo and normal iPhone layouts
+// aligned without wasting a full card's vertical padding for each row.
+private struct SettingsCompactSection<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        content
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(LedgerTheme.panel,
+                        in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+    }
+}
+private struct CompactSettingsTitle: View {
+    let title: String
+    var body: some View {
+        Text(L(title))
+            .font(.system(size: 17, weight: .semibold))
+            .foregroundStyle(.primary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+    }
+}
 
 // The repeating alert contains no financial data. iOS delivers it while the
 // application is closed; the actual image is rendered locally when opened.
