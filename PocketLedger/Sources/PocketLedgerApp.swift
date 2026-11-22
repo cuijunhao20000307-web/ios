@@ -22,10 +22,14 @@ struct AppShell: View {
 
     var body: some View {
         GeometryReader { proxy in
-            // Use the actual available window, not device model or aspect ratio.
-            // An explicit right dock is still constrained to a usable wide window.
-            let supportsRightDock = proxy.size.width >= 580 && proxy.size.height >= 440
-            let rightRail = supportsRightDock && store.data.dockPlacement != .bottom
+            // Manual right mode also works in an OS-constrained portrait viewport.
+            // The OS-owned status/media strip outside this scene is not drawable.
+            let wide = proxy.size.width >= 580
+            let hasVerticalRoom = proxy.size.height >= 330
+            let rightRail = hasVerticalRoom && (
+                store.data.dockPlacement == .right ||
+                (store.data.dockPlacement == .automatic && wide)
+            )
             ZStack {
                 LedgerTheme.background.ignoresSafeArea()
                 if store.data.appLockEnabled && !unlocked {
@@ -37,8 +41,8 @@ struct AppShell: View {
                         page
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .layoutPriority(1)
-                        LedgerDock(selection: $tab, vertical: true)
-                            .padding(.trailing, 10)
+                        LedgerDock(selection: $tab, vertical: true, compact: !wide)
+                            .padding(.trailing, wide ? 8 : 3)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -80,23 +84,44 @@ struct AppShell: View {
 struct LedgerDock: View {
     @Binding var selection: WalletTab
     let vertical: Bool
+    var compact = false
 
     var body: some View {
-        Group {
-            if vertical {
-                VStack(spacing: 4) { tabs }
-                    .padding(.vertical, 10)
-                    .padding(.horizontal, 5)
-                    .frame(width: 64)
-            } else {
+        if vertical {
+            glassSurface(
+                VStack(spacing: compact ? 2 : 5) { tabs }
+                    .padding(.vertical, 5)
+                    .padding(.horizontal, 2)
+                    .frame(width: compact ? 48 : 64)
+            )
+        } else {
+            glassSurface(
                 HStack(spacing: 0) { tabs }
                     .padding(.vertical, 7)
                     .padding(.horizontal, 4)
-            }
+            )
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 27).stroke(Color.primary.opacity(0.08), lineWidth: 1))
-        .shadow(color: .black.opacity(0.07), radius: 14, y: 5)
+    }
+
+    @ViewBuilder private func glassSurface<Content: View>(_ content: Content) -> some View {
+        #if compiler(>=6.2)
+        if #available(iOS 26.0, *) {
+            content.glassEffect(.regular, in: .rect(cornerRadius: 25))
+        } else {
+            fallbackGlass(content)
+        }
+        #else
+        fallbackGlass(content)
+        #endif
+    }
+
+    private func fallbackGlass<Content: View>(_ content: Content) -> some View {
+        content
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 25, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 25).strokeBorder(
+                LinearGradient(colors: [.white.opacity(0.65), .white.opacity(0.08), .white.opacity(0.3)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+            .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
     }
 
     @ViewBuilder private var tabs: some View {
@@ -104,17 +129,17 @@ struct LedgerDock: View {
             Button { selection = item } label: {
                 VStack(spacing: 3) {
                     Image(systemName: item.symbol)
-                        .font(.system(size: vertical ? 19 : 19, weight: selection == item ? .semibold : .regular))
+                        .font(.system(size: compact ? 18 : 21, weight: selection == item ? .semibold : .regular))
                         .frame(height: 23)
                     Text(item.rawValue)
-                        .font(.system(size: 10, weight: selection == item ? .bold : .medium))
+                        .font(.system(size: compact ? 9 : 10, weight: selection == item ? .bold : .medium))
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
                 .foregroundStyle(selection == item ? LedgerTheme.accent : LedgerTheme.subtext)
                 .frame(maxWidth: vertical ? nil : .infinity)
-                .frame(width: vertical ? 54 : nil, height: vertical ? 47 : 44)
-                .background(selection == item ? LedgerTheme.accent.opacity(0.10) : Color.clear,
+                .frame(width: vertical ? (compact ? 44 : 58) : nil, height: 44)
+                .background(selection == item ? LedgerTheme.accent.opacity(0.14) : Color.clear,
                             in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             }
             .buttonStyle(.plain)

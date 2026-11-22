@@ -46,7 +46,7 @@ struct SettingsView: View {
                             ForEach(DockPlacement.allCases) { Text($0.rawValue).tag($0) }
                         }
                         .pickerStyle(.menu)
-                        Text("넓은 화면에서는 오른쪽 도크, 좁은 화면에서는 하단 도크를 사용합니다. 오른쪽을 선택해도 공간이 부족하면 자동으로 하단으로 전환됩니다.")
+                        Text("자동은 앱 창 너비에 따라 전환됩니다. Duo에서 자동 인식이 안 되면 오른쪽 (Duo)를 선택하세요. 좁은 창에서도 오른쪽에 작은 투명 도크가 표시됩니다.")
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                     }
                 }
@@ -104,7 +104,7 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.3.1")
+                Text("PocketLedger · v0.3.2")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
