@@ -12,6 +12,7 @@ extension UUID {
 
 struct RecurringView: View {
     @EnvironmentObject private var store: LedgerStore
+    @State private var showSubscriptions = false
     @State private var showForm = false
     var body: some View {
         ScrollView {
@@ -20,6 +21,15 @@ struct RecurringView: View {
                     Text("자동 기록").font(.system(size: 30, weight: .bold))
                     Spacer()
                     Button { showForm = true } label: { Label("추가", systemImage: "plus.circle.fill") }
+                }
+                Surface {
+                    Button { showSubscriptions = true } label: {
+                        HStack {
+                            Label("나의 구독 관리", systemImage: "calendar.badge.clock")
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                    }
                 }
                 Text("월급, 월세, 구독료를 매월 지정일에 기록합니다. 앱을 열 때 기한이 지난 내역을 반영합니다.")
                     .font(.subheadline).foregroundStyle(.secondary)
@@ -42,6 +52,7 @@ struct RecurringView: View {
                 }
             }.padding(20).frame(maxWidth: 780).frame(maxWidth: .infinity)
         }
+        .sheet(isPresented: $showSubscriptions) { PrivateWalletView(initialSection: 1) }
         .sheet(isPresented: $showForm) { RecurringForm() }
     }
 }

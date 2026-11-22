@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var store: LedgerStore
+    @State private var showPrivateSettings = false
     @State private var budgetText = ""
     @State private var confirmReset = false
     @State private var confirmSample = false
@@ -65,6 +66,11 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionHeading(title: "데이터")
+                        Button { showPrivateSettings = true } label: {
+                            Label("보관함 백업 · 글꼴 · 휴지통", systemImage: "lock.doc")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        Divider()
                         Button {
                             do { exportURL = try store.exportTransactionsCSV() }
                             catch { exportError = true }
@@ -86,7 +92,7 @@ struct SettingsView: View {
                         }
                         Divider()
                         Button(role: .destructive) { confirmReset = true } label: {
-                            Label("모든 가계부 데이터 삭제", systemImage: "trash")
+                            Label("가계부 기록 삭제 (보관함 제외)", systemImage: "trash")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
@@ -102,13 +108,14 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.3.3")
+                Text("PocketLedger · v0.4.0")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
             .padding(20).padding(.top, 8)
             .frame(maxWidth: 780).frame(maxWidth: .infinity)
         }
+        .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .onAppear { budgetText = String(store.data.monthlyBudget) }
         .alert("파일을 만들 수 없습니다", isPresented: $exportError) {
             Button("확인", role: .cancel) { }
@@ -123,6 +130,6 @@ struct SettingsView: View {
         } message: { Text("기존 거래와 카드, 통장 기록이 삭제됩니다.") }
         .confirmationDialog("모든 데이터를 삭제할까요?", isPresented: $confirmReset, titleVisibility: .visible) {
             Button("모두 삭제", role: .destructive) { store.clear(); budgetText = String(store.data.monthlyBudget) }
-        } message: { Text("모든 거래, 카드, 통장, 저장된 비밀코드가 삭제됩니다. 복구할 수 없습니다.") }
+        } message: { Text("기존 가계부 거래, 카드, 통장, 통장 비밀코드가 삭제됩니다. 별도 개인정보 보관함은 유지됩니다. 복구할 수 없습니다.") }
     }
 }

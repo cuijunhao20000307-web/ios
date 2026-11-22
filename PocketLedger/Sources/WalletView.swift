@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WalletView: View {
     @EnvironmentObject private var store: LedgerStore
+    @State private var showPrivateWallet = false
     @State private var section = 0
     @State private var showCard = false
     @State private var showAccount = false
@@ -27,6 +28,19 @@ struct WalletView: View {
                     }
                     .accessibilityLabel(section == 0 ? "카드 추가" : "통장 추가")
                 }
+                Surface {
+                    Button { showPrivateWallet = true } label: {
+                        HStack {
+                            Image(systemName: "lock.shield.fill").font(.title2)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("개인정보 보관함").font(.headline)
+                                Text("카드 · 계좌 · 신분증 · 비밀번호 · 구독").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                    }.buttonStyle(.plain)
+                }
                 Picker("지갑", selection: $section) {
                     Text("카드 지갑").tag(0)
                     Text("통장 지갑").tag(1)
@@ -38,6 +52,7 @@ struct WalletView: View {
             .padding(20).padding(.top, 8)
             .frame(maxWidth: 780).frame(maxWidth: .infinity)
         }
+        .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
         .sheet(isPresented: $showCard) { CardForm() }
         .sheet(isPresented: $showAccount) { BankAccountForm() }
         .sheet(item: $editCard) { CardForm(existing: $0) }
