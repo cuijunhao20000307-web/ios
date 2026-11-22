@@ -1,4 +1,8 @@
-# PocketLedger v0.4.35
+# PocketLedger v0.4.36
+
+## v0.4.36 Backup restore password entry (Build 43)
+The iCloud Drive backup screen now separates creation and recovery passwords. Creation still requires a new password and confirmation in its own section. When restoring, choose a backup file and enter its existing password **once** directly under the Restore section to inspect it. Decryption no longer reads the create-backup inputs. The password is cleared after successful verification; the user must separately confirm destructive restoration and pass device authentication. Backup format and encryption are unchanged.
+
 
 ## v0.4.35 Duo card-stack animation (Build 42)
 The card wallet now uses reference-specific internal and external screen layouts: a center stack collapses into a left-side selected card with a right-side transaction list on the inner screen, while the outer screen expands the selected card to the top and displays transactions below it. Motion remains a continuous transform of the same card rather than switching to a full-screen trailing slide. Custom card artwork, two-digit security-card lookup, long-press drag-to-reorder, transaction editing and the original card-detail screen remain supported. App behavior and physical dimensions require real Duo verification; iOS Reduce Motion is respected.

@@ -195,6 +195,8 @@ struct DigitalCloudBackupView: View {
     @Environment(\.scenePhase) private var phase
     @State private var password = ""
     @State private var confirmation = ""
+    // Restore always has its own password, never shared with creation.
+    @State private var restorePassword = ""
     @State private var output: DigitalCloudBackupDocument?
     @State private var export = false
     @State private var importFile = false
@@ -224,15 +226,25 @@ struct DigitalCloudBackupView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Section {
-                    Button { importFile = true } label: {
+                    Button {
+                        incoming = nil
+                        preview = nil
+                        restorePassword = ""
+                        importFile = true
+                    } label: {
                         Label(L("iCloud Drive에서 복원 파일 선택"), systemImage: "icloud.and.arrow.down")
                     }
                     .disabled(busy)
-                    if hasPending {
+                    if hasPending && preview == nil {
+                        // Type the existing backup password once, here in Restore.
+                        // The two creation fields above are not used for restores.
+                        SecureField(L("백업 비밀번호"), text: $restorePassword)
+                            .textContentType(.password)
+                            .privacySensitive()
                         Button { inspectBackup() } label: {
                             Label(L("비밀번호로 백업 확인"), systemImage: "checkmark.shield")
                         }
-                        .disabled(busy || password.isEmpty)
+                        .disabled(busy || restorePassword.isEmpty)
                     }
                     if let preview {
                         Text(preview.date.formatted(date: .abbreviated, time: .shortened))
@@ -295,7 +307,7 @@ struct DigitalCloudBackupView: View {
         return [ledger, cards, banks, privateRecords, photos].joined(separator: " · ")
     }
     private func wipe() {
-        password = ""; confirmation = ""; incoming = nil; preview = nil; output = nil
+        password = ""; confirmation = ""; restorePassword = ""; incoming = nil; preview = nil; output = nil
     }
     private func createBackup() {
         busy = true
@@ -310,13 +322,24 @@ struct DigitalCloudBackupView: View {
         }
     }
     private func inspectBackup() {
-        guard let incoming else { return }
+        guard !busy, let incoming, !restorePassword.isEmpty else { return }
+        let enteredPassword = restorePassword
         busy = true
         Task { @MainActor in
             defer { busy = false }
-            guard await LocalUnlock.authorize() else { notice = DigitalCloudBackupError.security.localizedDescription; return }
-            do { preview = try DigitalCloudBackupCodec.open(incoming, password: password) }
-            catch { preview = nil; notice = error.localizedDescription }
+            guard await LocalUnlock.authorize() else {
+                notice = DigitalCloudBackupError.security.localizedDescription
+                return
+            }
+            do {
+                preview = try DigitalCloudBackupCodec.open(incoming, password: enteredPassword)
+                // The decrypted preview is kept only until confirmation;
+                // discard the entered password after successful verification.
+                restorePassword = ""
+            } catch {
+                preview = nil
+                notice = error.localizedDescription
+            }
         }
     }
     private func doRestore() {
