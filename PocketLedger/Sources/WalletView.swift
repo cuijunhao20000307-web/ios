@@ -31,6 +31,47 @@ struct WalletView: View {
         let _ = languageRefresh
         let _ = moneyRefresh
         NavigationStack {
+            ZStack {
+                if let id = selectedCard {
+                    LedgerCardDetail(cardID: id, onClose: closeCard)
+                        .transition(reduceMotion ? .identity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .trailing).combined(with: .opacity)))
+                        .zIndex(1)
+                } else {
+                    walletRoot
+                        .transition(.opacity)
+                }
+            }
+            .background(LedgerTheme.background)
+        }
+        .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
+        .sheet(isPresented: $showCard) { CardForm() }
+        .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
+        .sheet(isPresented: $showAccount) { BankAccountForm() }
+        .sheet(item: $editAccount) { BankAccountForm(existing: $0) }
+        .alert("보호된 코드", isPresented: $secretShown) {
+            Button(L("닫기")) { revealedSecret = nil }
+        } message: {
+            Text(revealedSecret ?? "저장된 코드가 없습니다.")
+        }
+        .alert(L("인증 실패"), isPresented: $unlockFailed) {
+            Button(L("확인"), role: .cancel) { }
+        } message: {
+            Text("Face ID 또는 기기 암호 인증을 완료해야 확인할 수 있습니다.")
+        }
+    }
+
+    private func openCard(_ id: UUID) {
+        guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
+        searchFocused = false
+        deckDragging = false
+        withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) { selectedCard = id }
+    }
+
+    private func closeCard() {
+        withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) { selectedCard = nil }
+    }
+
+    private var walletRoot: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(L("지갑")).font(.largeTitle.bold())
@@ -107,6 +148,13 @@ struct WalletView: View {
                             if !store.data.cards.isEmpty {
                                 Menu {
                                     ForEach(store.data.cards) { card in
+                                        Button { openCard(card.id) } label: {
+                                            Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
+                                        }
+                                    }
+                                } label: { Label(L("카드 정보"), systemImage: "creditcard") }
+                                Menu {
+                                    ForEach(store.data.cards) { card in
                                         Button { editPaymentCard = card } label: {
                                             Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
                                         }
@@ -121,29 +169,6 @@ struct WalletView: View {
                     } label: { Image(systemName: "ellipsis") }
                 }
             }
-            .navigationDestination(item: $selectedCard) { id in
-                if #available(iOS 18.0, *), !reduceMotion {
-                    LedgerCardDetail(cardID: id).navigationTransition(.zoom(sourceID: id, in: cardTransition))
-                } else {
-                    LedgerCardDetail(cardID: id)
-                }
-            }
-        }
-        .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
-        .sheet(isPresented: $showCard) { CardForm() }
-        .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
-        .sheet(isPresented: $showAccount) { BankAccountForm() }
-        .sheet(item: $editAccount) { BankAccountForm(existing: $0) }
-        .alert("보호된 코드", isPresented: $secretShown) {
-            Button(L("닫기")) { revealedSecret = nil }
-        } message: {
-            Text(revealedSecret ?? "저장된 코드가 없습니다.")
-        }
-        .alert(L("인증 실패"), isPresented: $unlockFailed) {
-            Button(L("확인"), role: .cancel) { }
-        } message: {
-            Text("Face ID 또는 기기 암호 인증을 완료해야 확인할 수 있습니다.")
-        }
     }
 
     private var filteredCards: [PaymentCard] {
@@ -164,7 +189,7 @@ struct WalletView: View {
                     InteractiveWalletDeck(cards: cards, transition: cardTransition, canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
-                        select: { id in if selectedCard == nil { selectedCard = id } },
+                        select: openCard,
                         reorder: { id, target in
                             guard search.isEmpty,
                                   let index = store.data.cards.firstIndex(where: { $0.id == id }),
@@ -181,7 +206,7 @@ struct WalletView: View {
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 365), spacing: 16)], spacing: 16) {
                         ForEach(cards) { card in
-                            Button { selectedCard = card.id } label: {
+                            Button { openCard(card.id) } label: {
                                 WalletTransitionCard(card: card, spent: store.spent(on: card, in: .now), namespace: cardTransition)
                             }
                             .buttonStyle(.plain)
@@ -277,9 +302,7 @@ private struct WalletTransitionCard: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         let art = LedgerStackCard(card: card, spent: spent).aspectRatio(1.586, contentMode: .fit)
-        if #available(iOS 18.0, *), !reduceMotion {
-            art.matchedTransitionSource(id: card.id, in: namespace)
-        } else { art }
+        art
     }
 }
 
@@ -301,6 +324,7 @@ private struct InteractiveWalletDeck: View {
     let reorder: (UUID, Int) -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var drag: DeckDragState?
+    @State private var suppressTapUntil = Date.distantPast
     @Namespace private var dragSpace
 
     private func stepFor(_ width: CGFloat) -> CGFloat { max(43, min(58, width * 0.155)) }
@@ -353,15 +377,18 @@ private struct InteractiveWalletDeck: View {
                 .coordinateSpace(name: dragSpace)
             }
         }
-        .onChange(of: drag?.id) { _, id in dragging = id != nil }
+        .onChange(of: drag?.id) { old, id in
+            dragging = id != nil
+            if old != nil && id == nil { suppressTapUntil = .now.addingTimeInterval(0.25) }
+        }
         .onDisappear { dragging = false }
     }
 
     @ViewBuilder private func touchRegion(_ card: PaymentCard, index: Int, width: CGFloat, height: CGFloat, step: CGFloat) -> some View {
         let button = Button {
-            if drag == nil && !dragging { select(card.id) }
+            if drag == nil && Date.now >= suppressTapUntil { select(card.id) }
         } label: {
-            Rectangle().fill(Color.clear)
+            Rectangle().fill(Color.black.opacity(0.001))
                 .frame(width: width, height: height)
                 .contentShape(Rectangle())
         }
@@ -395,6 +422,7 @@ private struct InteractiveWalletDeck: View {
                 if case .second(true, let movement) = value, let movement {
                     reorder(id, target(id, movement.translation.height, step))
                 }
+                suppressTapUntil = .now.addingTimeInterval(0.25)
                 dragging = false
             }
     }
@@ -613,8 +641,8 @@ struct LedgerCardDetail: View {
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.scenePhase) private var phase
-    @Environment(\.dismiss) private var dismiss
     let cardID: UUID
+    let onClose: () -> Void
     @State private var record: PrivateRecord?
     @State private var authorized = false
     @State private var revealCVC = false
@@ -704,16 +732,22 @@ struct LedgerCardDetail: View {
                 .navigationTitle(card.name)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
+                    ToolbarItem(placement: .navigation) {
+                        Button { clear(); onClose() } label: {
+                            Image(systemName: "chevron.left").fontWeight(.semibold)
+                        }.accessibilityLabel(L("닫기"))
+                    }
                     ToolbarItem(placement: .primaryAction) {
                         Button { clear(); edit = true } label: { Image(systemName: "square.and.pencil") }
                             .accessibilityLabel(L("카드 수정"))
                     }
                 }
-                .sheet(isPresented: $edit, onDismiss: { if self.card == nil { dismiss() } }) {
+                .sheet(isPresented: $edit, onDismiss: { if self.card == nil { onClose() } }) {
                     CardForm(existing: card)
                 }
             } else {
                 ContentUnavailableView("삭제된 카드", systemImage: "creditcard")
+                    .toolbar { ToolbarItem(placement: .navigation) { Button(L("닫기"), action: onClose) } }
             }
         }
         .onChange(of: phase) { _, p in if p == .background { clear() } }

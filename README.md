@@ -34,3 +34,6 @@ Custom artwork displays with only the last four digits and optional network badg
 
 ## v0.4.6 card editor accessibility
 Wallet root exposes a native edit toolbar item and an overflow edit fallback. With multiple cards the user selects the card by nickname and last four digits; the existing editor opens directly. Deck hit regions use Buttons independently of simultaneous long-press reordering. Detail edit and native Duo navigation retained. Device verification required.
+
+## v0.4.7 card detail presentation
+Explicit selected-card state renders the detail pane inside the existing native NavigationStack, rather than relying on a matched zoom navigation destination. Linear 0.24-second slide transition with reduced-motion fallback. Native back and edit toolbar actions, direct detail selection in overflow menu, nontransparent hit regions and post-drag tap suppression. Keep reorder and authenticated card details. Device verification required.
