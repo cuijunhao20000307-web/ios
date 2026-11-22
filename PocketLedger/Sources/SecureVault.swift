@@ -106,6 +106,21 @@ struct BankSecurityCard: Codable {
             )
         }
     }
+    // Reverse a two-digit security-card query without treating it as an index.
+    // Keep leading zeroes and return all matches when codes share a suffix.
+    func matches(lastTwo raw: String) -> [BankSecurityPairMatch] {
+        let lastTwo = Self.digits(raw, max: 2)
+        guard lastTwo.count == 2 else { return [] }
+        return codes.enumerated().compactMap { index, code in
+            guard code.count == 4, code == Self.digits(code, max: 4),
+                  code.hasSuffix(lastTwo) else { return nil }
+            return BankSecurityPairMatch(
+                ordinal: index + 1,
+                firstTwo: String(code.prefix(2)),
+                lastTwo: String(code.suffix(2))
+            )
+        }
+    }
     mutating func resize(_ n: Int) {
         guard Self.counts.contains(n) else { return }
         if n < codes.count { codes = Array(codes.prefix(n)) }
