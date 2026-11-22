@@ -32,15 +32,19 @@ struct WalletView: View {
         let _ = moneyRefresh
         NavigationStack {
             ZStack(alignment: .top) {
+                // Keep the original deck and its scroll position mounted. A single
+                // animation transaction presents the detail, with no blank intermediate view.
+                walletRoot
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .allowsHitTesting(selectedCard == nil)
+                    .accessibilityHidden(selectedCard != nil)
+                    .zIndex(0)
                 if let id = selectedCard {
                     LedgerCardDetail(cardID: id, onClose: closeCard)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .background(LedgerTheme.background)
-                        .transition(.identity)
-                } else {
-                    walletRoot
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .transition(.identity)
+                        .transition(reduceMotion ? .identity : .offset(x: 0, y: 18).combined(with: .opacity))
+                        .zIndex(1)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -68,11 +72,15 @@ struct WalletView: View {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
         searchFocused = false
         deckDragging = false
-        selectedCard = id
+        withAnimation(reduceMotion ? nil : .timingCurve(0.22, 0.8, 0.25, 1, duration: 0.46)) {
+            selectedCard = id
+        }
     }
 
     private func closeCard() {
-        selectedCard = nil
+        withAnimation(reduceMotion ? nil : .timingCurve(0.33, 0, 0.25, 1, duration: 0.38)) {
+            selectedCard = nil
+        }
     }
 
     private var walletSections: some View {
@@ -133,7 +141,7 @@ struct WalletView: View {
             if next == 2 { search = ""; searchVisible = false }
         }
             .toolbar {
-                if section != 2 {
+                if section != 2 && selectedCard == nil {
                 ToolbarItem(placement: .primaryAction) {
                     Button { if section == 0 { showCard = true } else { showAccount = true } } label: {
                         Image(systemName: "plus").fontWeight(.semibold)
@@ -665,6 +673,20 @@ private enum LinkedCardVault {
     }
 }
 
+// Neutral adaptive gray action surfaces; keep native tab and toolbar tint unchanged.
+private struct NeutralCardActionStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(Color.primary)
+            .frame(minHeight: 44)
+            .padding(.horizontal, 8)
+            .background(Color(uiColor: configuration.isPressed ? .tertiarySystemFill : .secondarySystemFill), in: Capsule())
+            .opacity(enabled ? 1 : 0.45)
+    }
+}
+
 struct LedgerCardDetail: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
     @Environment(\.displayCurrencyRevision) private var moneyRefresh
@@ -680,11 +702,9 @@ struct LedgerCardDetail: View {
     @State private var busy = false
     @State private var error: String?
     @State private var copied = false
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var entered = false
-    @State private var closing = false
+    @State private var authSession = UUID()
     private var card: PaymentCard? { store.data.cards.first { $0.id == cardID } }
-    private var accent: Color { Color.teal }
+    private var accent: Color { Color.primary }
 
     var body: some View {
         let _ = languageRefresh
@@ -706,14 +726,14 @@ struct LedgerCardDetail: View {
                             } label: {
                                 Label(L(authorized ? "정보 잠그기" : "카드번호 보기"), systemImage: authorized ? "lock" : "lock.open")
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
-                            }.buttonStyle(.bordered).disabled(busy)
+                            }.buttonStyle(NeutralCardActionStyle()).disabled(busy)
                             Button {
                                 Task { await unlock(copy: true) }
                             } label: {
                                 Label(L(copied ? "복사 완료" : "카드번호 복사"), systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
-                            }.buttonStyle(.borderedProminent).disabled(busy)
-                        }.tint(accent)
+                            }.buttonStyle(NeutralCardActionStyle()).disabled(busy)
+                        }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         VStack(alignment: .leading, spacing: 20) {
@@ -763,18 +783,15 @@ struct LedgerCardDetail: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(20).frame(maxWidth: 920).frame(maxWidth: .infinity)
-                    .opacity(reduceMotion || entered ? 1 : 0)
-                    .offset(y: reduceMotion || entered ? 0 : 14)
-                    .scaleEffect(reduceMotion || entered ? 1 : 0.985, anchor: .top)
                 }
                 .background(LedgerTheme.background)
                 .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
-                        Button { closeAnimated() } label: {
+                        Button { clear(); onClose() } label: {
                             Image(systemName: "chevron.left").fontWeight(.semibold)
-                        }.accessibilityLabel(L("닫기")).disabled(closing)
+                        }.accessibilityLabel(L("닫기"))
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button { clear(); edit = true } label: { Image(systemName: "square.and.pencil") }
@@ -789,24 +806,10 @@ struct LedgerCardDetail: View {
                     .toolbar { ToolbarItem(placement: .navigation) { Button(L("닫기"), action: onClose) } }
             }
         }
-        .onAppear {
-            closing = false
-            if reduceMotion { entered = true }
-            else { withAnimation(.easeOut(duration: 0.42)) { entered = true } }
-        }
         .onChange(of: phase) { _, p in if p == .background { clear() } }
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
         .onDisappear { clear() }
         .alert(L("확인"), isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button(L("확인")) {error = nil} } message: { Text(error ?? "") }
-    }
-    private func closeAnimated() {
-        guard !closing else { return }
-        closing = true
-        clear()
-        if reduceMotion { onClose(); return }
-        withAnimation(.easeInOut(duration: 0.27), completionCriteria: .logicallyComplete) {
-            entered = false
-        } completion: { onClose() }
     }
     private func formattedCardNumber(_ value: String?) -> String? {
         let digits = Array((value ?? "").filter(\.isNumber))
@@ -823,7 +826,7 @@ struct LedgerCardDetail: View {
     }
     private func badge(_ icon: String) -> some View {
         Image(systemName: icon).foregroundStyle(accent).frame(width: 46, height: 46)
-            .background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 13))
+            .background(Color(uiColor: .secondarySystemFill), in: RoundedRectangle(cornerRadius: 13))
     }
     private func info(_ name: String, value: String?) -> some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -832,13 +835,14 @@ struct LedgerCardDetail: View {
                 .font(.headline).privacySensitive()
         }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
     }
-    private func clear() { record = nil; authorized = false; revealCVC = false; copied = false }
+    private func clear() { authSession = UUID(); record = nil; authorized = false; revealCVC = false; copied = false }
     @MainActor private func unlock(copy: Bool) async {
         if authorized && !copy { clear(); return }
         guard !busy else { return }
         busy = true
+        let token = authSession
         defer { busy = false }
-        guard await LocalUnlock.authorize(), phase != .background else { return }
+        guard await LocalUnlock.authorize(), token == authSession, !Task.isCancelled, phase != .background else { return }
         do {
             let archive = try PrivateStorage.load()
             record = LinkedCardVault.record(in: archive, id: cardID)
@@ -856,8 +860,9 @@ struct LedgerCardDetail: View {
         if revealCVC { revealCVC = false; return }
         guard !busy else { return }
         busy = true
+        let token = authSession
         defer { busy = false }
-        guard await LocalUnlock.authorize(), phase != .background else { return }
+        guard await LocalUnlock.authorize(), token == authSession, !Task.isCancelled, phase != .background else { return }
         do {
             record = LinkedCardVault.record(in: try PrivateStorage.load(), id: cardID)
             authorized = true

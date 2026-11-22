@@ -55,3 +55,6 @@ Grid sizes from real available content width; no fixed-width horizontal overflow
 
 ## v0.4.13 stable wallet header and card detail motion
 All wallet sections share a fixed top-aligned header and full-height content area. The embedded identity lock fills its available space without vertically recentering the wallet header. Card detail mounts without crossfading the previous wallet page; only its own content eases in and out, with the native toolbar preserved and reduced-motion fallback. Removes duplicate navigation title and softens deck reorder easing. Device verification required.
+
+## v0.4.14 neutral card detail and continuous transition
+Card number view/copy controls use adaptive neutral gray capsules with dark/light system text; CVC badge is neutral as well. The wallet stays mounted behind the detail view, preserving deck ordering and scroll position. A single 460ms eased transition presents detail, 380ms closing transition reveals the same deck; removes delayed onAppear animation and blank frame. Original Duo system navigation, independent hit regions, and reduce-motion support remain. Authentication results invalidated when detail closes. Device verification required.
