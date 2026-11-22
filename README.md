@@ -1,4 +1,8 @@
-# PocketLedger v0.4.41
+# PocketLedger v0.4.42
+
+## v0.4.42 Vertical slide + fade card details, swipe-down dismissal (Build 49)
+The **original** Wallet card stack, card sizes, tap target regions, toolbar, scrolling, detail information and inner/outer layouts are unchanged. Card detail now enters from the bottom and fades in, and closes downward while fading out using linear timing. Press and drag down on the detail card art to interactively move and fade the entire detail overlay; a meaningful swipe dismisses it, and short drags return to rest. The existing back/close action still works. Swipe-to-dismiss attaches only to the card art to avoid stealing gestures from transaction lists and other scroll content. Accessibility Reduce Motion still reduces the transition. All v0.4.41 updater, security card and backup changes remain.
+
 
 ## v0.4.41 Download updates from inside app (Build 48)
 Settings > Online Updates now discovers official GitHub Releases with HTTPS IPA assets and offers an in-app Download IPA action, validates the downloaded ZIP header/size, and opens the iOS share sheet so it can be saved or sent to a user-selected signing/install tool. The GitHub Actions workflow publishes unsigned IPAs as versioned release assets after successful builds; this makes direct downloads possible without a personal GitHub API token. Unsigned IPA apps cannot silently sign or install themselves; re-sign/reinstall with the same bundle ID and compatible signing identity to preserve data, and back up first. The historical card layout and linear animation remain unchanged.

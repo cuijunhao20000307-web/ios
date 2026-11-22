@@ -14,6 +14,8 @@ struct WalletView: View {
     @State private var editPaymentCard: PaymentCard?
     @State private var showAccount = false
     @State private var selectedCard: UUID?
+    // Interactive pull-down dismissal affects the detail overlay only.
+    @State private var detailPullDown: CGFloat = 0
     @Namespace private var cardTransition
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var deckDragging = false
@@ -39,13 +41,35 @@ struct WalletView: View {
                         .accessibilityHidden(selectedCard != nil)
                         .zIndex(0)
                     if let id = selectedCard {
-                        LedgerCardDetail(cardID: id, editingCard: editPaymentCard?.id == id, onClose: closeCard)
-                            .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
-                            .background(LedgerTheme.background)
-                            .clipped()
-                            // Opaque page movement: do not crossfade two card images or text.
-                            .transition(reduceMotion ? .identity : .move(edge: .trailing))
-                            .zIndex(1)
+                        LedgerCardDetail(
+                            cardID: id,
+                            editingCard: editPaymentCard?.id == id,
+                            onClose: closeCard,
+                            onCardPullDown: { distance in
+                                detailPullDown = max(0, distance)
+                            },
+                            onCardPullEnd: { distance, predicted in
+                                // A deliberate downward drag closes the detail.
+                                // Short drags smoothly return the card to rest.
+                                if distance > 115 || (distance > 55 && predicted > 185) {
+                                    closeCard()
+                                } else {
+                                    withAnimation(reduceMotion ? nil : .linear(duration: 0.22)) {
+                                        detailPullDown = 0
+                                    }
+                                }
+                            }
+                        )
+                        .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
+                        .background(LedgerTheme.background)
+                        .clipped()
+                        .offset(y: detailPullDown)
+                        .opacity(reduceMotion ? 1 :
+                            max(0.12, 1 - detailPullDown / max(1, viewport.size.height * 0.68)))
+                        // Native-feeling vertical slide plus fade; layout stays unchanged.
+                        .transition(reduceMotion ? .opacity :
+                            .move(edge: .bottom).combined(with: .opacity))
+                        .zIndex(1)
                     }
                 }
                 .frame(width: viewport.size.width, height: viewport.size.height)
@@ -135,12 +159,16 @@ struct WalletView: View {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
         searchFocused = false
         deckDragging = false
+        detailPullDown = 0
         withAnimation(reduceMotion ? nil : .linear(duration: 0.35)) {
             selectedCard = id
         }
     }
 
     private func closeCard() {
+        guard selectedCard != nil else { return }
+        // Keep the current interactive offset during the removal animation.
+        // It resets before the next card is opened, avoiding a release-time jump.
         withAnimation(reduceMotion ? nil : .linear(duration: 0.32)) {
             selectedCard = nil
         }
@@ -698,6 +726,8 @@ struct LedgerCardDetail: View {
     let cardID: UUID
     let editingCard: Bool
     let onClose: () -> Void
+    let onCardPullDown: (CGFloat) -> Void
+    let onCardPullEnd: (CGFloat, CGFloat) -> Void
     @State private var record: PrivateRecord?
     @State private var authorized = false
     @State private var revealCVC = false
@@ -726,6 +756,24 @@ struct LedgerCardDetail: View {
                         }
                         LedgerStackCard(card: card, spent: store.spent(on: card, in: .now), record: authorized ? record : nil, showNumber: authorized)
                             .aspectRatio(1.586, contentMode: .fit)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(
+                                DragGesture(minimumDistance: 12)
+                                    .onChanged { value in
+                                        let dy = value.translation.height
+                                        if dy > 0 && dy > abs(value.translation.width) * 1.1 {
+                                            onCardPullDown(dy)
+                                        }
+                                    }
+                                    .onEnded { value in
+                                        let dy = value.translation.height
+                                        if dy > 0 && dy > abs(value.translation.width) * 1.1 {
+                                            onCardPullEnd(dy, value.predictedEndTranslation.height)
+                                        } else {
+                                            onCardPullEnd(0, 0)
+                                        }
+                                    }
+                            )
                         HStack {
                             Button {
                                 Task { await unlock(copy: false) }
