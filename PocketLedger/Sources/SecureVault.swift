@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import CryptoKit
 import LocalAuthentication
 
 /// Only account secrets are stored in the device-only iOS Keychain.
@@ -165,5 +166,58 @@ enum BankWebsiteStorage {
     static func remove(_ id: UUID) throws {
         let status = SecItemDelete(query(id) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else { throw PrivateVaultError.keychain(status) }
+    }
+}
+
+
+// Encrypted attachment files kept outside exported archives and excluded from backups.
+enum ProtectedPhotoStorage {
+    private static func key() throws -> SymmetricKey {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "app.pocketledger.photo-key.v1",
+            kSecAttrAccount as String: "local"
+        ]
+        var read = query
+        read[kSecReturnData as String] = true
+        read[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(read as CFDictionary, &result)
+        if status == errSecSuccess, let data = result as? Data, data.count == 32 { return SymmetricKey(data: data) }
+        guard status == errSecItemNotFound else { throw PrivateVaultError.keychain(status) }
+        let key = SymmetricKey(size: .bits256)
+        var item = query
+        item[kSecValueData as String] = key.withUnsafeBytes { Data($0) }
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
+        let added = SecItemAdd(item as CFDictionary, nil)
+        guard added == errSecSuccess else { throw PrivateVaultError.keychain(added) }
+        return key
+    }
+    private static func url(owner: String, id: UUID, back: Bool) throws -> URL {
+        guard ["card", "bank", "identity"].contains(owner) else { throw PrivateVaultError.invalidBackup }
+        let directory = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("ProtectedPhotos", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var dir = directory
+        var values = URLResourceValues(); values.isExcludedFromBackup = true
+        try dir.setResourceValues(values)
+        return directory.appendingPathComponent(owner + "-" + id.uuidString + (back ? "-back" : "-front"))
+    }
+    static func load(owner: String, id: UUID, back: Bool) throws -> Data? {
+        let path = try url(owner: owner, id: id, back: back)
+        guard FileManager.default.fileExists(atPath: path.path) else { return nil }
+        let box = try AES.GCM.SealedBox(combined: Data(contentsOf: path))
+        return try AES.GCM.open(box, using: key(), authenticating: Data(path.lastPathComponent.utf8))
+    }
+    static func save(_ data: Data, owner: String, id: UUID, back: Bool) throws {
+        guard data.count <= 4_000_000 else { throw PrivateVaultError.invalidBackup }
+        let path = try url(owner: owner, id: id, back: back)
+        let box = try AES.GCM.seal(data, using: key(), authenticating: Data(path.lastPathComponent.utf8))
+        guard let combined = box.combined else { throw PrivateVaultError.invalidBackup }
+        try combined.write(to: path, options: [.atomic, .completeFileProtection])
+    }
+    static func remove(owner: String, id: UUID, back: Bool) throws {
+        let path = try url(owner: owner, id: id, back: back)
+        if FileManager.default.fileExists(atPath: path.path) { try FileManager.default.removeItem(at: path) }
     }
 }

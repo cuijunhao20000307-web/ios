@@ -34,7 +34,7 @@ struct WalletView: View {
             ZStack {
                 if let id = selectedCard {
                     LedgerCardDetail(cardID: id, onClose: closeCard)
-                        .transition(reduceMotion ? .identity : .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .trailing).combined(with: .opacity)))
+                        .transition(reduceMotion ? .identity : .scale(scale: 0.96, anchor: .center).combined(with: .opacity))
                         .zIndex(1)
                 } else {
                     walletRoot
@@ -64,11 +64,11 @@ struct WalletView: View {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
         searchFocused = false
         deckDragging = false
-        withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) { selectedCard = id }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) { selectedCard = id }
     }
 
     private func closeCard() {
-        withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) { selectedCard = nil }
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) { selectedCard = nil }
     }
 
     private var walletSections: some View {
@@ -273,6 +273,8 @@ struct WalletView: View {
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(LedgerTheme.accent)
                             }
+                            Divider()
+                            ProtectedPhotoLink(owner: "bank", id: account.id)
                             Divider()
                             Button { securityAccount = account } label: {
                                 HStack {
@@ -732,6 +734,8 @@ struct LedgerCardDetail: View {
                             Divider()
                             info("카드 브랜드", value: card.network == "none" ? L("없음") : (card.network ?? (authorized ? record?.fields["카드 브랜드"] : nil)))
                         }
+                        Text(L("사진")).font(.title2.bold())
+                        Surface { ProtectedPhotoLink(owner: "card", id: card.id) }
                         Text(L("이번 달 사용")).font(.title2.bold())
                         Surface {
                             VStack(alignment: .leading, spacing: 9) {
@@ -946,6 +950,9 @@ struct CardForm: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                if let existing {
+                    Section(L("사진")) { ProtectedPhotoLink(owner: "card", id: existing.id) }
+                }
                 if existing != nil { Section { Button(L("이 카드 삭제"), role: .destructive) { confirmDelete = true } } }
             }
             .navigationTitle(L(existing == nil ? "카드 등록" : "카드 수정"))
@@ -1133,6 +1140,9 @@ struct BankAccountForm: View {
                         Text(L("통장 저장 후 등록하세요.")).font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                if let existing {
+                    Section(L("사진")) { ProtectedPhotoLink(owner: "bank", id: existing.id) }
+                }
                 if existing != nil { Section { Button(L("통장 삭제"), role: .destructive) { confirmDelete = true } } }
             }
             .navigationTitle(L(existing == nil ? "통장 등록" : "통장 수정"))
@@ -1317,15 +1327,22 @@ struct BankSecurityCardView: View {
         }
     }
     private func codeGrid(_ value: BankSecurityCard) -> some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                Toggle(L("내용 표시"), isOn: $reveal).padding(.horizontal)
-                ViewThatFits(in: .horizontal) {
-                    columns(value)
-                    ScrollView(.horizontal) { columns(value) }
+        GeometryReader { geo in
+            let width = max(0, geo.size.width - 24)
+            ScrollViewReader { scroll in
+                ScrollView {
+                    VStack(spacing: 14) {
+                        Toggle(L("내용 표시"), isOn: $reveal)
+                        Text("\(value.codes.filter { $0.count == 4 }.count) / \(value.codes.count)")
+                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                        columns(value, width: width)
+                    }.frame(width: width).padding(12)
                 }
-                .frame(maxWidth: .infinity)
-            }.padding(12)
+                .onChange(of: focused) { _, index in
+                    if let index { withAnimation(.easeInOut(duration: 0.18)) { scroll.scrollTo(index, anchor: .center) } }
+                }
+            }
         }
         .privacySensitive()
         .scrollDismissesKeyboard(.interactively)
@@ -1338,27 +1355,34 @@ struct BankSecurityCardView: View {
             }
         }
     }
-    private func columns(_ value: BankSecurityCard) -> some View {
-        let rows = value.codes.count / 5
-        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(88), spacing: 9), count: 5), spacing: 16) {
-            ForEach(0..<value.codes.count, id: \.self) { cell in
-                let index = value.vertical ? (cell % 5) * rows + cell / 5 : cell
-                HStack(spacing: 4) {
-                    Text(String(format: "%02d", index + 1)).font(.caption.monospacedDigit()).frame(width: 22)
-                    Group {
-                        if reveal { TextField("----", text: codeBinding(index)) }
-                        else { SecureField("----", text: codeBinding(index)) }
-                    }
-                    .keyboardType(.numberPad)
-                    .multilineTextAlignment(.center)
-                    .font(.system(size: 16, weight: .medium, design: .monospaced))
-                    .focused($focused, equals: index)
-                    .frame(width: 62, height: 48)
-                    .background(Color(uiColor: .secondarySystemFill), in: RoundedRectangle(cornerRadius: 12))
-                    .accessibilityLabel(L("코드 입력") + " " + String(index + 1))
-                }
+    private func columns(_ value: BankSecurityCard, width: CGFloat) -> some View {
+        let count = width >= 255 ? 5 : 3
+        let rows = (value.codes.count + count - 1) / count
+        let gap: CGFloat = 6
+        let cellWidth = max(0, (width - CGFloat(count - 1) * gap) / CGFloat(count))
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: count), spacing: 12) {
+            ForEach(0..<(rows * count), id: \.self) { cell in
+                let index = value.vertical ? (cell % count) * rows + cell / count : cell
+                if index < value.codes.count {
+                    VStack(spacing: 4) {
+                        Text(String(format: "%02d", index + 1))
+                            .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                        Group {
+                            if reveal { TextField("----", text: codeBinding(index)) }
+                            else { SecureField("----", text: codeBinding(index)) }
+                        }
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: min(19, max(12, cellWidth * 0.24)), weight: .medium, design: .monospaced))
+                        .focused($focused, equals: index)
+                        .frame(width: cellWidth, height: 44)
+                        .background(Color(uiColor: .secondarySystemFill), in: RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(focused == index ? Color.teal : Color.clear, lineWidth: 1.5))
+                        .accessibilityLabel(L("코드 입력") + " " + String(index + 1))
+                    }.id(index)
+                } else { Color.clear.frame(height: 64) }
             }
-        }.frame(width: 476).fixedSize(horizontal: true, vertical: false)
+        }
     }
     private func codeBinding(_ index: Int) -> Binding<String> {
         Binding(get: { guard let card, card.codes.indices.contains(index) else { return "" }; return card.codes[index] }, set: {
@@ -1430,5 +1454,161 @@ struct BankSecurityCardView: View {
     private func lock() {
         session = UUID(); card = nil; editing = false; grid = false; reveal = false
         serialVisible = false; front = ""; back = ""; focused = nil
+    }
+}
+
+
+struct ProtectedPhotoLink: View {
+    let owner: String
+    let id: UUID
+    @State private var presented = false
+    var body: some View {
+        Button { presented = true } label: {
+            HStack {
+                Label(L("앞면 · 뒷면 사진"), systemImage: "photo.on.rectangle")
+                Spacer()
+                Image(systemName: "lock.shield").foregroundStyle(.secondary)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+            }.contentShape(Rectangle())
+        }.buttonStyle(.plain)
+        .sheet(isPresented: $presented) { ProtectedPhotoView(owner: owner, id: id) }
+    }
+}
+
+struct ProtectedPhotoView: View {
+    let owner: String
+    let id: UUID
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
+    @State private var authorized = false
+    @State private var busy = false
+    @State private var failed = false
+    @State private var session = UUID()
+    @State private var front: Data?
+    @State private var back: Data?
+    @State private var frontPicker: PhotosPickerItem?
+    @State private var backPicker: PhotosPickerItem?
+    @State private var preview: UIImage?
+    @State private var full = false
+    @State private var deleting: Bool?
+    var body: some View {
+        NavigationStack {
+            Group {
+                if authorized {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            photoPanel(false)
+                            photoPanel(true)
+                            Text(L("이 기기에만 저장 · 백업 및 동기화 제외"))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }.padding(20).frame(maxWidth: 560).frame(maxWidth: .infinity)
+                    }
+                } else {
+                    VStack(spacing: 18) {
+                        Image(systemName: "lock.shield.fill").font(.largeTitle)
+                        Button(L("보관함 열기")) { Task { await unlock() } }.buttonStyle(.borderedProminent).disabled(busy)
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle(L("사진"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(L("닫기")) { clear(); dismiss() } } }
+            .task { await unlock() }
+            .task(id: frontPicker) { if let item = frontPicker { await importPhoto(item, backSide: false) } }
+            .task(id: backPicker) { if let item = backPicker { await importPhoto(item, backSide: true) } }
+            .onChange(of: phase) { _, p in if p == .background { clear() } }
+            .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
+            .fullScreenCover(isPresented: $full, onDismiss: { preview = nil }) {
+                ZStack(alignment: .topTrailing) {
+                    Color.black.ignoresSafeArea()
+                    if authorized, phase == .active, let preview {
+                        GeometryReader { g in
+                            Image(uiImage: preview).resizable().scaledToFit()
+                                .frame(width: g.size.width, height: g.size.height)
+                        }
+                    }
+                    Button { full = false } label: {
+                        Image(systemName: "xmark.circle.fill").font(.title).foregroundStyle(.white)
+                            .padding(20)
+                    }.accessibilityLabel(L("닫기"))
+                }.privacySensitive()
+            }
+            .confirmationDialog(L("사진 삭제"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+                Button(L("삭제"), role: .destructive) {
+                    guard authorized, let side = deleting else { return }
+                    do {
+                        try ProtectedPhotoStorage.remove(owner: owner, id: id, back: side)
+                        if side { back = nil } else { front = nil }
+                    } catch { failed = true }
+                    deleting = nil
+                }
+            }
+            .alert(L("보안 저장 실패"), isPresented: $failed) { Button(L("확인")) {} }
+        }
+    }
+    private func photoPanel(_ backSide: Bool) -> some View {
+        let data = backSide ? back : front
+        return Surface {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L(backSide ? "뒷면 사진" : "앞면 사진")).font(.headline)
+                if let data, let image = UIImage(data: data) {
+                    Button { preview = image; full = true } label: {
+                        Image(uiImage: image).resizable().scaledToFit()
+                            .frame(maxHeight: 220).frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }.buttonStyle(.plain).privacySensitive()
+                } else {
+                    Image(systemName: "photo").font(.largeTitle).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 110)
+                }
+                HStack {
+                    PhotosPicker(selection: backSide ? $backPicker : $frontPicker, matching: .images) {
+                        Label(L("사진 선택"), systemImage: "plus.circle")
+                    }.disabled(busy)
+                    Spacer()
+                    if data != nil {
+                        Button(role: .destructive) { deleting = backSide } label: { Image(systemName: "trash") }
+                            .disabled(busy)
+                    }
+                }
+            }
+        }
+    }
+    @MainActor private func unlock() async {
+        guard !busy, !authorized else { return }
+        busy = true
+        let current = session
+        defer { busy = false }
+        guard await LocalUnlock.authorize(), current == session, phase != .background, !Task.isCancelled else { return }
+        do {
+            front = try ProtectedPhotoStorage.load(owner: owner, id: id, back: false)
+            back = try ProtectedPhotoStorage.load(owner: owner, id: id, back: true)
+            authorized = true
+        } catch { clear(); failed = true }
+    }
+    @MainActor private func importPhoto(_ item: PhotosPickerItem, backSide: Bool) async {
+        guard authorized, !busy else { return }
+        busy = true
+        let current = session
+        defer { busy = false; if backSide { backPicker = nil } else { frontPicker = nil } }
+        do {
+            guard let raw = try await item.loadTransferable(type: Data.self),
+                  current == session, authorized, phase != .background, !Task.isCancelled,
+                  raw.count <= 40_000_000,
+                  let source = CGImageSourceCreateWithData(raw as CFData, nil),
+                  let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                    kCGImageSourceCreateThumbnailFromImageAlways: true,
+                    kCGImageSourceCreateThumbnailWithTransform: true,
+                    kCGImageSourceThumbnailMaxPixelSize: 2000
+                  ] as CFDictionary),
+                  let bytes = UIImage(cgImage: image).jpegData(compressionQuality: 0.86)
+            else { if current == session { failed = true }; return }
+            try ProtectedPhotoStorage.save(bytes, owner: owner, id: id, back: backSide)
+            if backSide { back = bytes } else { front = bytes }
+        } catch { if current == session { failed = true } }
+    }
+    private func clear() {
+        session = UUID(); authorized = false; front = nil; back = nil
+        preview = nil; full = false; frontPicker = nil; backPicker = nil
     }
 }

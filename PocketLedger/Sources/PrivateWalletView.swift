@@ -619,6 +619,15 @@ struct PrivateRecordEditor: View {
                         }
                     }
                 }
+                if record.kind == .identity || record.kind == .passport {
+                    Section(L("사진")) {
+                        if !record.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            ProtectedPhotoLink(owner: "identity", id: record.id)
+                        } else {
+                            Text(L("이름을 먼저 입력하세요.")).font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
                 Section(L("보호된 정보")) {
                     Toggle(L("내용 표시"), isOn: $visible)
                     ForEach(record.kind.fields, id: \.self) { field in

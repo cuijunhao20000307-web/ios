@@ -253,6 +253,12 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "이름을 먼저 입력하세요.": ["Enter a name first.","请先填写名称。","請先填寫名稱。","先に名前を入力してください。"],
+        "사진 삭제": ["Delete photo","删除照片","刪除照片","写真を削除","Eliminar foto","Supprimer la photo","Foto löschen"],
+        "뒷면 사진": ["Back photo","背面照片","背面照片","裏面の写真","Foto posterior","Photo verso","Rückseite"],
+        "앞면 사진": ["Front photo","正面照片","正面照片","表面の写真","Foto frontal","Photo recto","Vorderseite"],
+        "앞면 · 뒷면 사진": ["Front and back photos","正面与背面照片","正面與背面照片","表面・裏面の写真","Fotos de ambas caras","Photos recto verso","Vorder- und Rückseite"],
+        "사진": ["Photos","照片","照片","写真","Fotos","Photos","Fotos"],
         "여권 추가": ["Add passport","添加护照","新增護照","パスポートを追加","Añadir pasaporte","Ajouter un passeport","Reisepass hinzufügen"],
         "신분증 추가": ["Add ID card","添加身份证","新增身分證","身分証を追加","Añadir documento","Ajouter une carte d’identité","Ausweis hinzufügen"],
         "신분증 · 여권": ["ID card · Passport","身份证 · 护照","身分證 · 護照","身分証・パスポート","Identidad · Pasaporte","Identité · Passeport","Ausweis · Reisepass"],

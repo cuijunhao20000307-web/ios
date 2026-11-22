@@ -49,3 +49,6 @@ Protected per-account website URL, ID, password with reveal control, and memo in
 
 ## v0.4.11 simplified personal information
 Embedded wallet personal information shows only ID and passport sections with separate add actions and fixed document types. No subscription, trash, settings or search sub-tabs in the embedded view. Existing private data and full vault functions remain available via other existing entry points; no migration deletes records. Face ID/device authentication retained; late unlock invalidated when leaving. Device verification required.
+
+## v0.4.12 safe-area security grid, document photos, smoother card navigation
+Grid sizes from real available content width; no fixed-width horizontal overflow. Five columns when width permits, three on very narrow screens. Authenticated front/back photos for payment cards, bank accounts, ID and passport: AES-GCM file encryption, device-only passcode-protected key, excluded from backups, full-screen view, replace/delete. Photo edits save independently. Card detail uses eased scale/fade while retaining explicit selection and native toolbar. Device verification required.
