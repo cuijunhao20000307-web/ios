@@ -264,7 +264,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.31")
+                Text("Digital Wallet · v0.4.32")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

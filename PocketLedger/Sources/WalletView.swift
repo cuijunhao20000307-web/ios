@@ -1432,10 +1432,11 @@ struct BankSecurityCardView: View {
     private func savedCodeGrid(_ value: BankSecurityCard) -> some View {
         GeometryReader { geo in
             let width = max(0, geo.size.width - 24)
-            let columnCount = width >= 340 ? 5 : (width >= 260 ? 4 : 3)
+            let columnCount = 5
             let rowCount = (value.codes.count + columnCount - 1) / columnCount
             let gap: CGFloat = 7
-            let cellWidth = max(0, (width - CGFloat(columnCount - 1) * gap) / CGFloat(columnCount))
+            let gridWidth = max(380, min(width, 620))
+            let cellWidth = (gridWidth - CGFloat(columnCount - 1) * gap) / CGFloat(columnCount)
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(spacing: 9) {
@@ -1452,17 +1453,19 @@ struct BankSecurityCardView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
-                    LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: columnCount), spacing: 11) {
+                    ScrollView(.horizontal, showsIndicators: width < gridWidth) {
+                        LazyVGrid(columns: Array(repeating: GridItem(.fixed(cellWidth), spacing: gap), count: columnCount), spacing: 11) {
                         ForEach(0..<(rowCount * columnCount), id: \.self) { cell in
-                            let index = value.vertical
-                                ? (cell % columnCount) * rowCount + cell / columnCount
-                                : cell
+                            // Fixed paper-card position, independent of entry direction.
+                            let index = (cell % columnCount) * rowCount + cell / columnCount
                             if index < value.codes.count {
                                 VStack(spacing: 7) {
                                     Text(String(format: "%02d", index + 1))
                                         .font(.caption.monospacedDigit())
                                         .foregroundStyle(.secondary)
-                                    Text(value.codes[index].count == 4 ? value.codes[index] : "—")
+                                    Text(value.codes[index].count == 4
+                                         ? String(value.codes[index].prefix(2)) + " " + String(value.codes[index].suffix(2))
+                                         : "—")
                                         .font(.system(size: min(19, max(12, cellWidth * 0.25)),
                                                       weight: .semibold, design: .monospaced))
                                         .lineLimit(1).minimumScaleFactor(0.8)
@@ -1475,7 +1478,10 @@ struct BankSecurityCardView: View {
                                 Color.clear.frame(height: 76)
                             }
                         }
+                        }
+                        .frame(width: gridWidth)
                     }
+                    .frame(width: width)
                     Button {
                         closeGrid()
                     } label: {
@@ -1502,7 +1508,11 @@ struct BankSecurityCardView: View {
                         Text("\(value.codes.filter { $0.count == 4 }.count) / \(value.codes.count)")
                             .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .trailing)
-                        columns(value, width: width)
+                        ScrollView(.horizontal, showsIndicators: width < 380) {
+                            // Keep 5 printed columns on every iPhone screen size.
+                            columns(value, width: max(380, min(width, 620)))
+                        }
+                        .frame(width: width)
                     }.frame(width: width).padding(12)
                 }
                 .onChange(of: focused) { _, index in
@@ -1522,7 +1532,7 @@ struct BankSecurityCardView: View {
         }
     }
     private func columns(_ value: BankSecurityCard, width: CGFloat) -> some View {
-        let count = width >= 255 ? 5 : 3
+        let count = 5
         let rows = (value.codes.count + count - 1) / count
         let gap: CGFloat = 6
         let cellWidth = max(0, (width - CGFloat(count - 1) * gap) / CGFloat(count))
