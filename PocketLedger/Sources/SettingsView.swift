@@ -2,6 +2,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var store: LedgerStore
+    @AppStorage("displayCurrency") private var currency = "KRW"
+    @AppStorage("displayCurrencyRevision") private var currencyRevision = 0
+    @State private var exchangeRateText = ""
     @State private var showPrivateSettings = false
     @State private var budgetText = ""
     @State private var confirmReset = false
@@ -10,12 +13,52 @@ struct SettingsView: View {
     @State private var exportURL: URL?
     @State private var exportError = false
 
+    private var parseRate: Double? {
+        let formatter = NumberFormatter()
+        formatter.locale = .current
+        let result = formatter.number(from: exchangeRateText)?.doubleValue ?? Double(exchangeRateText)
+        guard let result, result.isFinite, result > 0, result <= 1_000_000_000, result >= 0.000000001 else { return nil }
+        return result
+    }
+    private func loadRate() {
+        let formatter = NumberFormatter()
+        formatter.maximumFractionDigits = 9
+        exchangeRateText = DisplayCurrency.selected.rate.flatMap { formatter.string(from: NSNumber(value: $0)) } ?? ""
+    }
+
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("설정").font(.system(size: 30, weight: .bold))
                     Text("가계부를 내 방식대로").font(.subheadline).foregroundStyle(LedgerTheme.subtext)
+                }
+                Surface {
+                    VStack(alignment: .leading, spacing: 12) {
+                        SectionHeading(title: "표시 통화")
+                        Picker("통화", selection: $currency) {
+                            ForEach(DisplayCurrency.allCases) { item in
+                                Text(item.formattedName).tag(item.rawValue)
+                            }
+                        }.pickerStyle(.menu)
+                        if currency != "KRW" {
+                            Text("1 " + currency + " = KRW").font(.caption)
+                            HStack {
+                                TextField("직접 입력 환율", text: $exchangeRateText).keyboardType(.decimalPad)
+                                Button("저장") {
+                                    if let value = parseRate, value > 0 {
+                                        UserDefaults.standard.set(value, forKey: "displayRate." + currency)
+                                        currencyRevision += 1
+                                    }
+                                }.disabled(parseRate == nil)
+                            }
+                            if DisplayCurrency.selected.rate == nil {
+                                Text("환율을 저장하기 전에는 원화로 표시합니다.").font(.caption).foregroundStyle(.orange)
+                            }
+                        }
+                        Text("기존 데이터와 입력 금액은 KRW로 유지합니다. 다른 통화는 직접 설정한 환율로 환산한 참고 금액입니다. 실시간 환율은 제공하지 않습니다.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 Surface {
                     VStack(alignment: .leading, spacing: 16) {
@@ -108,7 +151,7 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.4.1")
+                Text("PocketLedger · v0.4.2")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -116,7 +159,8 @@ struct SettingsView: View {
             .frame(maxWidth: 780).frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
-        .onAppear { budgetText = String(store.data.monthlyBudget) }
+        .onAppear { budgetText = String(store.data.monthlyBudget); loadRate() }
+        .onChange(of: currency) { _, _ in loadRate(); currencyRevision += 1 }
         .alert("파일을 만들 수 없습니다", isPresented: $exportError) {
             Button("확인", role: .cancel) { }
         } message: { Text("저장 공간을 확인한 후 다시 시도하세요.") }

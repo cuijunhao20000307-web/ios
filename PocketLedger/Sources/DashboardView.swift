@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var monthOffset = 0
     @State private var showAdd = false
 
@@ -9,7 +10,7 @@ struct DashboardView: View {
     private var expenses: Int { store.amount(of: .expense, in: month) }
     private var incomes: Int { store.amount(of: .income, in: month) }
     private var entries: [MoneyEntry] { store.entries(in: month) }
-    private var balance: Int { store.data.accounts.reduce(0) { $0 + $1.balance } }
+    private var balance: Int { store.ledgerBalance }
 
     private var categoryTotals: [(MoneyCategory, Int)] {
         MoneyCategory.allCases.compactMap { category -> (MoneyCategory, Int)? in
@@ -45,14 +46,14 @@ struct DashboardView: View {
 
                 VStack(alignment: .leading, spacing: 15) {
                         HStack {
-                            Text("등록된 통장 잔액 합계").font(.system(size: 13, weight: .medium)).opacity(0.8)
+                            Text("현재 가계부 잔액").font(.system(size: 13, weight: .medium)).opacity(0.8)
                             Spacer()
                             Image(systemName: "wallet.pass.fill").font(.system(size: 20))
                         }
                         Text(balance.won)
                             .font(.system(size: 34, weight: .bold, design: .rounded))
                             .minimumScaleFactor(0.65).lineLimit(1)
-                        Text(store.data.accounts.isEmpty ? "지갑에서 통장을 등록해 보세요" : "등록된 통장 \(store.data.accounts.count)개 기준 · 수동 관리 잔액")
+                        Text("기초 잔액 + 수입 − 지출 · 오늘까지")
                             .font(.system(size: 12)).opacity(0.75)
                     }
                     .foregroundStyle(.white)

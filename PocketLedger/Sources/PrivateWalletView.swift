@@ -230,6 +230,7 @@ enum PrivateReminders {
 
 struct PrivateWalletView: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
     @AppStorage("privateWalletFont") private var font = "기본"
@@ -441,7 +442,7 @@ struct PrivateWalletView: View {
         let active = a.subscriptions.filter {$0.deletedAt == nil && $0.enabled}
         let monthly = active.reduce(0.0) {$0 + Double($1.amount) * $1.cycle.monthlyFactor}
         Section("월 예상 구독료") {
-            Text(monthly, format: .currency(code: "KRW").precision(.fractionLength(0))).font(.title.bold())
+            Text(DisplayCurrency.format(Int(monthly.rounded()))).font(.title.bold())
             Text("직접 입력한 원화 기준 예상액 · 자동 결제 및 거래 기록과 별도").font(.caption).foregroundStyle(.secondary)
             Button { subscription = PrivateSubscription() } label: { Label("구독 추가", systemImage: "plus.circle.fill") }
         }
@@ -503,6 +504,7 @@ struct PrivateWalletView: View {
 
 struct PrivateRecordEditor: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
     @State var record: PrivateRecord
@@ -564,6 +566,7 @@ struct PrivateRecordEditor: View {
 
 struct PrivateSubscriptionEditor: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
     @State var item: PrivateSubscription

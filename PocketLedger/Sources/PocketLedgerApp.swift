@@ -3,11 +3,14 @@ import SwiftUI
 @main
 struct PocketLedgerApp: App {
     @StateObject private var store = LedgerStore()
+    @AppStorage("displayCurrency") private var currency = "KRW"
+    @AppStorage("displayCurrencyRevision") private var currencyRevision = 0
 
     var body: some Scene {
         WindowGroup {
             AppShell()
                 .environmentObject(store)
+                .environment(\.displayCurrencyRevision, currency + String(currencyRevision))
                 .preferredColorScheme(store.data.appearance.colorScheme)
                 .tint(LedgerTheme.accent)
         }

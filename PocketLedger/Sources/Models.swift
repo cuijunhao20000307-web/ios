@@ -171,8 +171,39 @@ struct LedgerData: Codable {
     }
 }
 
+enum DisplayCurrency: String, CaseIterable, Identifiable {
+    case KRW, CNY, JPY, USD, EUR, GBP, HKD, TWD, SGD, CAD, AUD, CHF, THB, INR, VND
+    var id: String { rawValue }
+    var fractionDigits: Int { [.KRW, .JPY, .VND].contains(self) ? 0 : 2 }
+    static var selected: DisplayCurrency {
+        DisplayCurrency(rawValue: UserDefaults.standard.string(forKey: "displayCurrency") ?? "KRW") ?? .KRW
+    }
+    var rate: Double? {
+        if self == .KRW { return 1 }
+        let value = UserDefaults.standard.double(forKey: "displayRate." + rawValue)
+        return value.isFinite && value > 0 ? value : nil
+    }
+    var formattedName: String {
+        Locale.current.localizedString(forCurrencyCode: rawValue).map { rawValue + " · " + $0 } ?? rawValue
+    }
+    static func format(_ amount: Int) -> String {
+        let choice = selected
+        let active: DisplayCurrency = choice.rate == nil ? .KRW : choice
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: UserDefaults.standard.string(forKey: "appLanguage").flatMap { $0 == "system" ? nil : $0 } ?? Locale.current.identifier)
+        formatter.numberStyle = .currency
+        formatter.currencyCode = active.rawValue
+        formatter.minimumFractionDigits = active.fractionDigits
+        formatter.maximumFractionDigits = active.fractionDigits
+        let rate = active.rate ?? 1
+        let value = Double(amount) / rate
+        let rendered = formatter.string(from: NSNumber(value: value)) ?? String(amount) + " KRW"
+        return active == .KRW ? rendered : "≈ " + rendered
+    }
+}
+
 extension Int {
-    var won: String { "₩" + NumberFormatter.localizedString(from: NSNumber(value: self), number: .decimal) }
+    var won: String { DisplayCurrency.format(self) }
 }
 
 extension Date {
@@ -186,4 +217,14 @@ extension String {
         return clean.isEmpty ? "미등록" : "•••• " + String(clean.suffix(4))
     }
     var toMoneyInt: Int { Int(filter(\.isNumber)) ?? 0 }
+}
+
+private struct DisplayCurrencyRevisionKey: EnvironmentKey {
+    static let defaultValue = "KRW0"
+}
+extension EnvironmentValues {
+    var displayCurrencyRevision: String {
+        get { self[DisplayCurrencyRevisionKey.self] }
+        set { self[DisplayCurrencyRevisionKey.self] = newValue }
+    }
 }

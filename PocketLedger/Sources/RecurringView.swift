@@ -12,6 +12,7 @@ extension UUID {
 
 struct RecurringView: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var showSubscriptions = false
     @State private var showForm = false
     var body: some View {
@@ -59,6 +60,7 @@ struct RecurringView: View {
 
 struct RecurringForm: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     @State private var title = ""
     @State private var amount = ""

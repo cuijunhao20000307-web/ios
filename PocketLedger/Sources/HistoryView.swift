@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var monthOffset = 0
     @State private var filter: String = "전체"
     @State private var showAdd = false
@@ -83,6 +84,7 @@ struct HistoryView: View {
 
 struct TransactionForm: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     var existing: MoneyEntry? = nil
     @State private var title = ""
@@ -119,7 +121,7 @@ struct TransactionForm: View {
                         ForEach(store.data.cards) { card in Text("카드 · " + card.name).tag(card.id.uuidString) }
                         ForEach(store.data.accounts) { account in Text("통장 · " + account.nickname).tag(account.id.uuidString) }
                     }
-                    Text("거래를 기록해도 통장 잔액은 자동으로 변경되지 않습니다.")
+                    Text("거래는 홈의 가계부 잔액에 자동 반영됩니다. 은행 계좌의 실제 잔액과는 연동되지 않습니다.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }

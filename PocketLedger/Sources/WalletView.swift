@@ -4,6 +4,7 @@ import UniformTypeIdentifiers
 
 struct WalletView: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @State private var showPrivateWallet = false
     @State private var section = 0
     @State private var showCard = false
@@ -175,7 +176,7 @@ struct WalletView: View {
                         }
                     }
                 }
-                Text("표시 잔액은 직접 입력한 값이며, 은행과 실시간 연동되지 않습니다.")
+                Text("통장 잔액은 직접 입력한 기초 잔액입니다. 홈의 가계부 잔액은 거래에 따라 계산합니다.")
                     .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
             }
         }
@@ -301,6 +302,7 @@ private enum LinkedCardVault {
 
 struct LedgerCardDetail: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.scenePhase) private var phase
     @Environment(\.dismiss) private var dismiss
     let cardID: UUID
@@ -447,6 +449,7 @@ struct LedgerCardDetail: View {
 
 struct CardForm: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var phase
     var existing: PaymentCard? = nil
@@ -590,6 +593,7 @@ struct CardForm: View {
 
 struct BankAccountForm: View {
     @EnvironmentObject private var store: LedgerStore
+    @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
     var existing: BankAccount? = nil
     @State private var nickname = ""
@@ -609,7 +613,7 @@ struct BankAccountForm: View {
                     TextField("은행명", text: $bank)
                     TextField("계좌번호 · 선택", text: $accountNumber).keyboardType(.numbersAndPunctuation)
                     HStack {
-                        Text("현재 잔액")
+                        Text("기초 잔액 (KRW)")
                         Spacer()
                         TextField("0", text: $balance).keyboardType(.numberPad).multilineTextAlignment(.trailing)
                         Text("원").foregroundStyle(.secondary)

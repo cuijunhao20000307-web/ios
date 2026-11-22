@@ -57,6 +57,16 @@ final class LedgerStore: ObservableObject {
         if !newEntries.isEmpty { data.entries.append(contentsOf: newEntries) }
     }
 
+    // Recorded account balances are opening amounts, not a live bank feed.
+    // Derive from transaction history each time instead of mutating stored balances.
+    var ledgerBalance: Int {
+        let opening = data.accounts.reduce(0) { $0 + $1.balance }
+        let endOfToday = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: .now)) ?? .now
+        return data.entries.filter { $0.date < endOfToday }.reduce(opening) {
+            $0 + ($1.kind == .income ? $1.amount : -$1.amount)
+        }
+    }
+
     func entries(in month: Date) -> [MoneyEntry] {
         guard let range = month.monthInterval() else { return [] }
         return data.entries.filter { range.contains($0.date) }.sorted { $0.date > $1.date }
