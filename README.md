@@ -1,4 +1,8 @@
-# PocketLedger v0.4.3
+# PocketLedger v0.4.35
+
+## v0.4.35 Duo card-stack animation (Build 42)
+The card wallet now uses reference-specific internal and external screen layouts: a center stack collapses into a left-side selected card with a right-side transaction list on the inner screen, while the outer screen expands the selected card to the top and displays transactions below it. Motion remains a continuous transform of the same card rather than switching to a full-screen trailing slide. Custom card artwork, two-digit security-card lookup, long-press drag-to-reorder, transaction editing and the original card-detail screen remain supported. App behavior and physical dimensions require real Duo verification; iOS Reduce Motion is respected.
+
 
 SwiftUI personal ledger for iOS 17+. Korean UI. Local data storage, spending and income, cards and accounts, monthly budget, six-month charts, recurring entries, light/dark mode, CSV export, Face ID/device passcode and native system tab bar (Duo adaptive placement and standard iPhone navigation).
 
