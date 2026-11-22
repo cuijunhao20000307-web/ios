@@ -267,7 +267,7 @@ struct WalletView: View {
                     Surface {
                         VStack(alignment: .leading, spacing: 17) {
                             HStack(spacing: 12) {
-                                BankLogoMark(bank: BankDirectory.resolve(id: account.bankLogoID, name: account.bankName), tone: account.tone, size: 50)
+                                BankLogoMark(bank: BankDirectory.resolve(id: account.bankLogoID, name: account.bankName), tone: account.tone, size: 54)
                                 VStack(alignment: .leading, spacing: 3) {
                                     Text(account.nickname).font(.system(size: 16, weight: .bold))
                                     Text(account.bankName).font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
@@ -1680,21 +1680,21 @@ private enum BankDirectory {
         .init(id: "kr-hana", country: "KR", name: "하나은행", aliases: "Hana KEB 韩亚银行", tone: .emerald, asset: "bank-kr-hana"),
         .init(id: "kr-ibk", country: "KR", name: "IBK기업은행", aliases: "IBK 기업은행 Industrial 企业银行", tone: .cobalt, asset: "bank-kr-ibk"),
         .init(id: "kr-sc", country: "KR", name: "SC제일은행", aliases: "SC 제일은행 Standard Chartered 渣打银行", tone: .emerald, asset: "bank-kr-sc"),
-        .init(id: "kr-nh", country: "KR", name: "NH농협은행", aliases: "NH Nonghyup 농협 农协", tone: .emerald, asset: nil),
-        .init(id: "kr-kakao", country: "KR", name: "카카오뱅크", aliases: "KakaoBank", tone: .midnight, asset: nil),
-        .init(id: "kr-toss", country: "KR", name: "토스뱅크", aliases: "Toss Bank", tone: .cobalt, asset: nil),
-        .init(id: "kr-kbank", country: "KR", name: "케이뱅크", aliases: "K Bank", tone: .cobalt, asset: nil),
-        .init(id: "kr-kdb", country: "KR", name: "KDB산업은행", aliases: "KDB 산업은행", tone: .cobalt, asset: nil),
-        .init(id: "kr-busan", country: "KR", name: "부산은행", aliases: "BNK Busan", tone: .coral, asset: nil),
-        .init(id: "kr-im", country: "KR", name: "iM뱅크", aliases: "대구은행 Daegu", tone: .cobalt, asset: nil),
-        .init(id: "kr-post", country: "KR", name: "우체국", aliases: "Korea Post", tone: .coral, asset: nil),
-        .init(id: "kr-mg", country: "KR", name: "새마을금고", aliases: "MG", tone: .cobalt, asset: nil),
-        .init(id: "kr-cu", country: "KR", name: "신협", aliases: "Credit Union", tone: .emerald, asset: nil),
-        .init(id: "kr-suhyup", country: "KR", name: "Sh수협은행", aliases: "수협 Suhyup", tone: .cobalt, asset: nil),
-        .init(id: "kr-gyeongnam", country: "KR", name: "경남은행", aliases: "BNK Kyongnam", tone: .coral, asset: nil),
-        .init(id: "kr-gwangju", country: "KR", name: "광주은행", aliases: "Kwangju", tone: .cobalt, asset: nil),
-        .init(id: "kr-jeonbuk", country: "KR", name: "전북은행", aliases: "Jeonbuk", tone: .cobalt, asset: nil),
-        .init(id: "kr-jeju", country: "KR", name: "제주은행", aliases: "Jeju", tone: .cobalt, asset: nil),
+        .init(id: "kr-nh", country: "KR", name: "NH농협은행", aliases: "NH Nonghyup 농협 农协", tone: .emerald, asset: "bank-kr-nh"),
+        .init(id: "kr-kakao", country: "KR", name: "카카오뱅크", aliases: "KakaoBank", tone: .midnight, asset: "bank-kr-kakao"),
+        .init(id: "kr-toss", country: "KR", name: "토스뱅크", aliases: "Toss Bank", tone: .cobalt, asset: "bank-kr-toss"),
+        .init(id: "kr-kbank", country: "KR", name: "케이뱅크", aliases: "K Bank", tone: .cobalt, asset: "bank-kr-kbank"),
+        .init(id: "kr-kdb", country: "KR", name: "KDB산업은행", aliases: "KDB 산업은행", tone: .cobalt, asset: "bank-kr-kdb"),
+        .init(id: "kr-busan", country: "KR", name: "부산은행", aliases: "BNK Busan", tone: .coral, asset: "bank-kr-busan"),
+        .init(id: "kr-im", country: "KR", name: "iM뱅크", aliases: "대구은행 Daegu", tone: .cobalt, asset: "bank-kr-im"),
+        .init(id: "kr-post", country: "KR", name: "우체국", aliases: "Korea Post", tone: .coral, asset: "bank-kr-post"),
+        .init(id: "kr-mg", country: "KR", name: "새마을금고", aliases: "MG", tone: .cobalt, asset: "bank-kr-mg"),
+        .init(id: "kr-cu", country: "KR", name: "신협", aliases: "Credit Union", tone: .emerald, asset: "bank-kr-cu"),
+        .init(id: "kr-suhyup", country: "KR", name: "Sh수협은행", aliases: "수협 Suhyup", tone: .cobalt, asset: "bank-kr-suhyup"),
+        .init(id: "kr-gyeongnam", country: "KR", name: "경남은행", aliases: "BNK Kyongnam", tone: .coral, asset: "bank-kr-gyeongnam"),
+        .init(id: "kr-gwangju", country: "KR", name: "광주은행", aliases: "Kwangju", tone: .cobalt, asset: "bank-kr-gwangju"),
+        .init(id: "kr-jeonbuk", country: "KR", name: "전북은행", aliases: "Jeonbuk", tone: .cobalt, asset: "bank-kr-jeonbuk"),
+        .init(id: "kr-jeju", country: "KR", name: "제주은행", aliases: "Jeju", tone: .cobalt, asset: "bank-kr-jeju"),
         .init(id: "cn-icbc", country: "CN", name: "中国工商银行", aliases: "工商银行 ICBC", tone: .coral, asset: "bank-cn-icbc"),
         .init(id: "cn-ccb", country: "CN", name: "中国建设银行", aliases: "建设银行 CCB", tone: .cobalt, asset: "bank-cn-ccb"),
         .init(id: "cn-abc", country: "CN", name: "中国农业银行", aliases: "农业银行 ABC", tone: .emerald, asset: "bank-cn-abc"),
@@ -1709,32 +1709,32 @@ private enum BankDirectory {
         .init(id: "cn-ceb", country: "CN", name: "中国光大银行", aliases: "光大银行 CEB", tone: .violet, asset: "bank-cn-ceb"),
         .init(id: "cn-pingan", country: "CN", name: "平安银行", aliases: "Ping An", tone: .coral, asset: "bank-cn-pingan"),
         .init(id: "cn-hxb", country: "CN", name: "华夏银行", aliases: "Huaxia", tone: .coral, asset: "bank-cn-hxb"),
-        .init(id: "cn-gdb", country: "CN", name: "广发银行", aliases: "CGB", tone: .coral, asset: nil),
-        .init(id: "cn-bob", country: "CN", name: "北京银行", aliases: "Bank of Beijing", tone: .coral, asset: nil),
-        .init(id: "cn-bos", country: "CN", name: "上海银行", aliases: "Bank of Shanghai", tone: .cobalt, asset: nil),
-        .init(id: "cn-czb", country: "CN", name: "浙商银行", aliases: "CZBank", tone: .coral, asset: nil),
+        .init(id: "cn-gdb", country: "CN", name: "广发银行", aliases: "CGB", tone: .coral, asset: "bank-cn-gdb"),
+        .init(id: "cn-bob", country: "CN", name: "北京银行", aliases: "Bank of Beijing", tone: .coral, asset: "bank-cn-bob"),
+        .init(id: "cn-bos", country: "CN", name: "上海银行", aliases: "Bank of Shanghai", tone: .cobalt, asset: "bank-cn-bos"),
+        .init(id: "cn-czb", country: "CN", name: "浙商银行", aliases: "CZBank", tone: .coral, asset: "bank-cn-czb"),
         .init(id: "jp-mufg", country: "JP", name: "三菱UFJ銀行", aliases: "MUFG 三菱日联", tone: .coral, asset: "bank-jp-mufg"),
         .init(id: "jp-smbc", country: "JP", name: "三井住友銀行", aliases: "SMBC 三井住友", tone: .emerald, asset: "bank-jp-smbc"),
         .init(id: "jp-mizuho", country: "JP", name: "みずほ銀行", aliases: "Mizuho 瑞穗银行", tone: .cobalt, asset: "bank-jp-mizuho"),
-        .init(id: "jp-jppost", country: "JP", name: "ゆうちょ銀行", aliases: "Japan Post Bank 日本邮政", tone: .emerald, asset: nil),
-        .init(id: "jp-resona", country: "JP", name: "りそな銀行", aliases: "Resona 理索纳", tone: .emerald, asset: nil),
-        .init(id: "jp-rakuten", country: "JP", name: "楽天銀行", aliases: "Rakuten 乐天银行", tone: .coral, asset: nil),
-        .init(id: "jp-seven", country: "JP", name: "セブン銀行", aliases: "Seven Bank", tone: .emerald, asset: nil),
-        .init(id: "jp-paypay", country: "JP", name: "PayPay銀行", aliases: "PayPay Bank", tone: .coral, asset: nil),
-        .init(id: "jp-sbi", country: "JP", name: "住信SBIネット銀行", aliases: "SBI Sumishin", tone: .cobalt, asset: nil),
-        .init(id: "jp-sony", country: "JP", name: "ソニー銀行", aliases: "Sony Bank", tone: .cobalt, asset: nil),
+        .init(id: "jp-jppost", country: "JP", name: "ゆうちょ銀行", aliases: "Japan Post Bank 日本邮政", tone: .emerald, asset: "bank-jp-jppost"),
+        .init(id: "jp-resona", country: "JP", name: "りそな銀行", aliases: "Resona 理索纳", tone: .emerald, asset: "bank-jp-resona"),
+        .init(id: "jp-rakuten", country: "JP", name: "楽天銀行", aliases: "Rakuten 乐天银行", tone: .coral, asset: "bank-jp-rakuten"),
+        .init(id: "jp-seven", country: "JP", name: "セブン銀行", aliases: "Seven Bank", tone: .emerald, asset: "bank-jp-seven"),
+        .init(id: "jp-paypay", country: "JP", name: "PayPay銀行", aliases: "PayPay Bank", tone: .coral, asset: "bank-jp-paypay"),
+        .init(id: "jp-sbi", country: "JP", name: "住信SBIネット銀行", aliases: "SBI Sumishin", tone: .cobalt, asset: "bank-jp-sbi"),
+        .init(id: "jp-sony", country: "JP", name: "ソニー銀行", aliases: "Sony Bank", tone: .cobalt, asset: "bank-jp-sony"),
         .init(id: "us-chase", country: "US", name: "Chase", aliases: "JPMorgan Chase 摩根大通", tone: .cobalt, asset: "bank-us-chase"),
         .init(id: "us-boa", country: "US", name: "Bank of America", aliases: "美国银行 BofA", tone: .cobalt, asset: "bank-us-boa"),
         .init(id: "us-wells", country: "US", name: "Wells Fargo", aliases: "富国银行", tone: .coral, asset: "bank-us-wells"),
         .init(id: "us-citi", country: "US", name: "Citibank", aliases: "花旗银行 Citi", tone: .cobalt, asset: "bank-us-citi"),
-        .init(id: "us-usbank", country: "US", name: "U.S. Bank", aliases: "US Bank", tone: .cobalt, asset: nil),
-        .init(id: "us-capitalone", country: "US", name: "Capital One", aliases: "第一资本", tone: .cobalt, asset: nil),
-        .init(id: "us-pnc", country: "US", name: "PNC Bank", aliases: "PNC", tone: .coral, asset: nil),
-        .init(id: "us-truist", country: "US", name: "Truist", aliases: "Truist Bank", tone: .violet, asset: nil),
-        .init(id: "us-td", country: "US", name: "TD Bank", aliases: "Toronto Dominion", tone: .emerald, asset: nil),
-        .init(id: "us-amex", country: "US", name: "American Express National Bank", aliases: "AMEX 美国运通", tone: .cobalt, asset: nil),
-        .init(id: "us-bmo", country: "US", name: "BMO Bank", aliases: "BMO", tone: .cobalt, asset: nil),
-        .init(id: "us-eastwest", country: "US", name: "East West Bank", aliases: "华美银行", tone: .cobalt, asset: nil)
+        .init(id: "us-usbank", country: "US", name: "U.S. Bank", aliases: "US Bank", tone: .cobalt, asset: "bank-us-usbank"),
+        .init(id: "us-capitalone", country: "US", name: "Capital One", aliases: "第一资本", tone: .cobalt, asset: "bank-us-capitalone"),
+        .init(id: "us-pnc", country: "US", name: "PNC Bank", aliases: "PNC", tone: .coral, asset: "bank-us-pnc"),
+        .init(id: "us-truist", country: "US", name: "Truist", aliases: "Truist Bank", tone: .violet, asset: "bank-us-truist"),
+        .init(id: "us-td", country: "US", name: "TD Bank", aliases: "Toronto Dominion", tone: .emerald, asset: "bank-us-td"),
+        .init(id: "us-amex", country: "US", name: "American Express National Bank", aliases: "AMEX 美国运通", tone: .cobalt, asset: "bank-us-amex"),
+        .init(id: "us-bmo", country: "US", name: "BMO Bank", aliases: "BMO", tone: .cobalt, asset: "bank-us-bmo"),
+        .init(id: "us-eastwest", country: "US", name: "East West Bank", aliases: "华美银行", tone: .cobalt, asset: "bank-us-eastwest")
     ]
     static func byID(_ id: String) -> BankDirectoryEntry? { entries.first { $0.id == id } }
     static func normalize(_ s: String) -> String {
@@ -1753,9 +1753,9 @@ private struct BankLogoMark: View {
     let size: CGFloat
     var body: some View {
         Group {
-            if let asset = bank?.asset {
+            if let asset = bank?.asset, UIImage(named: asset) != nil {
                 Image(asset).renderingMode(.original).resizable().scaledToFit()
-                    .padding(size * 0.10)
+                    .padding(size * 0.035)
                     .background(Color.white)
             } else {
                 Image(systemName: "building.columns.fill").font(.system(size: size * 0.38))
@@ -1802,12 +1802,12 @@ private struct BankLogoPicker: View {
                                 choose(bank); dismiss()
                             } label: {
                                 HStack(spacing: 7) {
-                                    BankLogoMark(bank: bank, tone: bank.tone, size: 34)
+                                    BankLogoMark(bank: bank, tone: bank.tone, size: 40)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(bank.name).font(.system(size: 13, weight: .semibold))
                                             .lineLimit(2).minimumScaleFactor(0.7)
                                             .foregroundStyle(.primary)
-                                        if bank.asset == nil { Text(L("등록된 로고 없음")).font(.caption2).foregroundStyle(.secondary) }
+                                        if bank.asset.flatMap({ UIImage(named: $0) }) == nil { Text(L("등록된 로고 없음")).font(.caption2).foregroundStyle(.secondary) }
                                     }
                                     Spacer(minLength: 0)
                                     if selected == bank.id {

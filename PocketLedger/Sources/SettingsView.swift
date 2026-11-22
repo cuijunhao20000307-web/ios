@@ -186,7 +186,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("PocketLedger · v0.4.17")
+                Text("PocketLedger · v0.4.18")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

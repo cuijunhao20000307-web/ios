@@ -67,3 +67,6 @@ Currency preference changes symbol only; no FX conversion or stored value migrat
 
 ## v0.4.17 bank logo directory
 61 bank entries (KR, CN, JP, US), 27 bundled logos and clear generic fallbacks for other entries. Search, country filters, automatic logo selection for matching legacy bank names, manual entry, and automatic tone suggestions. Optional bankLogoID preserves old data decoding. Existing bank security, photos, and payment functions unchanged. See BankLogoCredits; device testing required.
+
+## v0.4.18 bank logo expansion
+50 logo assets in repository, including all 21 Korean entries and 18 Chinese entries; 11 additional Japan/US logos sourced at build time with validated SVG and actual asset availability fallback. Shinhan replaced by vector artwork with larger intrinsic size; picker icons enlarged, IBK and KB switched to locally sourced symbols. No runtime downloads, existing accounts unaffected. Some graphics reflect earlier bank branding. Build and device tests required.
