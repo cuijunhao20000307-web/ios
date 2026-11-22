@@ -105,6 +105,7 @@ struct PaymentCard: Codable, Identifiable, Equatable {
     var artwork: Data? = nil
     var artworkTextDark: Bool? = nil
     var artworkDim: Double? = nil
+    var artworkShowNetwork: Bool? = nil
     var network: String? = nil
 }
 
@@ -252,6 +253,11 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "뒤로 이동": ["Move backward","向后移动","向後移動","奥に移動"],
+        "앞으로 이동": ["Move forward","向前移动","向前移動","手前に移動"],
+        "카드를 길게 눌러 순서를 변경할 수 있어요": ["Hold a card to rearrange it","长按卡片可拖动排序","長按卡片可拖動排序","長押しでカードを並べ替え"],
+        "카드 선택": ["Select card","选择卡片","選擇卡片","カードを選択"],
+        "카드 브랜드 표시": ["Show network on artwork","卡面显示品牌标识","卡面顯示品牌標識","カード画像にブランドを表示","Mostrar marca","Afficher le réseau","Kartennetz anzeigen"],
         "거래가 없어요": ["No transactions","暂无交易","暫無交易","取引がありません","Sin movimientos","Aucune opération","Keine Buchungen"],
         "아직 지출이 없어요": ["No expenses yet","暂无支出","暫無支出","支出はまだありません","Sin gastos","Aucune dépense","Noch keine Ausgaben"],
         "샘플 데이터 · 설정에서 초기화 가능": ["Sample data · Reset in Settings","示例数据 · 可在设置中重置","範例資料 · 可在設定中重設","サンプルデータ・設定でリセット","Datos de ejemplo","Données d’exemple","Beispieldaten"],

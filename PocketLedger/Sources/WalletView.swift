@@ -14,6 +14,9 @@ struct WalletView: View {
     @State private var showCard = false
     @State private var showAccount = false
     @State private var selectedCard: UUID?
+    @Namespace private var cardTransition
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var deckDragging = false
     @State private var search = ""
     @AppStorage("walletStacked") private var stacked = true
     @State private var searchVisible = false
@@ -66,6 +69,7 @@ struct WalletView: View {
                 .padding(.horizontal, 20).padding(.vertical, 16)
                 .frame(maxWidth: 920).frame(maxWidth: .infinity)
             }
+            .scrollDisabled(deckDragging)
             .background(LedgerTheme.background)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -89,7 +93,13 @@ struct WalletView: View {
                     } label: { Image(systemName: "ellipsis") }
                 }
             }
-            .navigationDestination(item: $selectedCard) { id in LedgerCardDetail(cardID: id) }
+            .navigationDestination(item: $selectedCard) { id in
+                if #available(iOS 18.0, *), !reduceMotion {
+                    LedgerCardDetail(cardID: id).navigationTransition(.zoom(sourceID: id, in: cardTransition))
+                } else {
+                    LedgerCardDetail(cardID: id)
+                }
+            }
         }
         .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
         .sheet(isPresented: $showCard) { CardForm() }
@@ -122,25 +132,30 @@ struct WalletView: View {
                     .frame(maxWidth: 400)
             } else {
                 if stacked {
-                    WalletDeckLayout {
-                        ForEach(cards) { card in
-                            Button { selectedCard = card.id } label: {
-                                LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
-                                    .aspectRatio(1.586, contentMode: .fit)
-                                    .contentShape(RoundedRectangle(cornerRadius: 19))
+                    InteractiveWalletDeck(cards: cards, transition: cardTransition, canReorder: search.isEmpty,
+                        dragging: $deckDragging,
+                        spent: { store.spent(on: $0, in: .now) },
+                        select: { selectedCard = $0 },
+                        reorder: { id, target in
+                            guard search.isEmpty,
+                                  let index = store.data.cards.firstIndex(where: { $0.id == id }),
+                                  store.data.cards.indices.contains(target), index != target else { return }
+                            withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) {
+                                store.data.cards.move(fromOffsets: IndexSet(integer: index), toOffset: target > index ? target + 1 : target)
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(card.name + " " + L("카드 정보"))
-                        }
+                        })
+                        .frame(maxWidth: 365)
+                    if search.isEmpty && cards.count > 1 {
+                        Text(L("카드를 길게 눌러 순서를 변경할 수 있어요"))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
-                    .frame(maxWidth: 365)
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 365), spacing: 16)], spacing: 16) {
                         ForEach(cards) { card in
                             Button { selectedCard = card.id } label: {
-                                LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
-                                    .aspectRatio(1.586, contentMode: .fit)
-                            }.buttonStyle(.plain)
+                                WalletTransitionCard(card: card, spent: store.spent(on: card, in: .now), namespace: cardTransition)
+                            }
+                            .buttonStyle(.plain)
                             .accessibilityLabel(card.name + " " + L("카드 정보"))
                         }
                     }
@@ -219,12 +234,147 @@ private struct LedgerCardBackground: View {
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
                     (card.artworkTextDark == true ? Color.white : Color.black)
-                        .opacity(min(max(card.artworkDim ?? 0.18, 0), 0.65))
+                        .opacity(min(max(card.artworkShowNetwork == nil && card.artworkDim == 0.18 ? 0 : (card.artworkDim ?? 0), 0), 0.65))
                 }
             }.clipped()
         }
     }
 }
+// Native navigation transition, independent of the deck's drag animation.
+private struct WalletTransitionCard: View {
+    let card: PaymentCard
+    let spent: Int
+    let namespace: Namespace.ID
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var body: some View {
+        let art = LedgerStackCard(card: card, spent: spent).aspectRatio(1.586, contentMode: .fit)
+        if #available(iOS 18.0, *), !reduceMotion {
+            art.matchedTransitionSource(id: card.id, in: namespace)
+        } else { art }
+    }
+}
+
+private struct DeckDragState: Equatable {
+    let id: UUID
+    var translation: CGFloat = 0
+}
+
+// The full cards are drawn in a fixed coordinate space, with dedicated hit regions
+// for the visible strips. Long press lifts a card; dragging changes its proposed
+// slot, and only release writes the new order to persistent ledger data.
+private struct InteractiveWalletDeck: View {
+    let cards: [PaymentCard]
+    let transition: Namespace.ID
+    let canReorder: Bool
+    @Binding var dragging: Bool
+    let spent: (PaymentCard) -> Int
+    let select: (UUID) -> Void
+    let reorder: (UUID, Int) -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var drag: DeckDragState?
+    @Namespace private var dragSpace
+
+    private func stepFor(_ width: CGFloat) -> CGFloat { max(43, min(58, width * 0.155)) }
+    private func target(_ id: UUID, _ distance: CGFloat, _ step: CGFloat) -> Int {
+        let origin = cards.firstIndex { $0.id == id } ?? 0
+        return min(max(0, origin + Int((distance / step).rounded())), max(0, cards.count - 1))
+    }
+    private func slot(_ index: Int, origin: Int?, destination: Int?) -> Int {
+        guard let origin, let destination else { return index }
+        if index == origin { return destination }
+        if origin < destination && index > origin && index <= destination { return index - 1 }
+        if destination < origin && index >= destination && index < origin { return index + 1 }
+        return index
+    }
+    var body: some View {
+        WalletDeckLayout {
+            ForEach(cards) { _ in Color.clear }
+        }
+        .overlay {
+            GeometryReader { geo in
+                let width = min(365, geo.size.width)
+                let height = width / 1.586
+                let step = stepFor(width)
+                let origin = drag.flatMap { value in cards.firstIndex { $0.id == value.id } }
+                let destination = drag.map { target($0.id, $0.translation, step) }
+                ZStack(alignment: .topLeading) {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                        let lifted = drag?.id == card.id
+                        let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0) :
+                            CGFloat(slot(index, origin: origin, destination: destination)) * step
+                        WalletTransitionCard(card: card, spent: spent(card), namespace: transition)
+                            .frame(width: width, height: height)
+                            .scaleEffect(lifted && !reduceMotion ? 1.035 : 1)
+                            .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
+                            .offset(y: y)
+                            .zIndex(lifted ? Double(cards.count + 1) : Double(index))
+                            .animation(lifted || reduceMotion ? nil : .linear(duration: 0.15), value: destination)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                    VStack(spacing: 0) {
+                        ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                            touchRegion(card, index: index, width: width,
+                                height: index == cards.count - 1 ? height : step, step: step)
+                        }
+                    }
+                    .zIndex(Double(cards.count + 2))
+                }
+                .frame(width: width, height: geo.size.height, alignment: .topLeading)
+                .coordinateSpace(name: dragSpace)
+            }
+        }
+        .onChange(of: drag?.id) { _, id in dragging = id != nil }
+        .onDisappear { dragging = false }
+    }
+
+    @ViewBuilder private func touchRegion(_ card: PaymentCard, index: Int, width: CGFloat, height: CGFloat, step: CGFloat) -> some View {
+        let shape = Rectangle().fill(Color.clear)
+            .contentShape(Rectangle())
+            .frame(width: width, height: height)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(L("카드 선택") + ": " + card.name)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { select(card.id) }
+        if canReorder && cards.count > 1 {
+            shape
+                .gesture(interaction(card.id, step: step))
+                .accessibilityAction(named: Text(L("앞으로 이동"))) {
+                    if index < cards.count - 1 { reorder(card.id, index + 1) }
+                }
+                .accessibilityAction(named: Text(L("뒤로 이동"))) {
+                    if index > 0 { reorder(card.id, index - 1) }
+                }
+        } else {
+            shape.onTapGesture { select(card.id) }
+        }
+    }
+
+    private func interaction(_ id: UUID, step: CGFloat) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.20, maximumDistance: 12)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(dragSpace)))
+            .exclusively(before: TapGesture())
+            .updating($drag) { value, state, _ in
+                switch value {
+                case .first(.first(true)):
+                    state = DeckDragState(id: id)
+                case .first(.second(true, let movement)):
+                    state = DeckDragState(id: id, translation: movement?.translation.height ?? 0)
+                default: break
+                }
+            }
+            .onEnded { value in
+                switch value {
+                case .second: select(id)
+                case .first(.second(true, let movement)):
+                    reorder(id, target(id, movement?.translation.height ?? 0, step))
+                default: break
+                }
+                dragging = false
+            }
+    }
+}
+
 private struct WalletDeckLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = min(proposal.width ?? 365, 365)
@@ -328,6 +478,25 @@ struct LedgerStackCard: View {
         let _ = moneyRefresh
         GeometryReader { geo in
             let pad = max(12, geo.size.width * 0.055)
+            Group {
+                if card.artwork != nil {
+                    ZStack(alignment: .bottomLeading) {
+                        LedgerCardBackground(card: card)
+                        HStack(alignment: .bottom, spacing: 8) {
+                            Text("•••• " + card.lastFour)
+                                .font(.system(size: max(12, min(19, geo.size.width * 0.043)), weight: .medium))
+                                .monospacedDigit()
+                                .foregroundStyle(card.artworkTextDark == true ? Color.black : Color.white)
+                                .shadow(color: card.artworkTextDark == true ? .white.opacity(0.24) : .black.opacity(0.32), radius: 1.5)
+                            Spacer(minLength: 4)
+                            if card.artworkShowNetwork == true {
+                                LedgerNetworkBadge(network: card.network ?? "none")
+                            }
+                        }
+                        .padding(.horizontal, max(12, geo.size.width * 0.055))
+                        .padding(.bottom, max(10, geo.size.height * 0.07))
+                    }
+                } else {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -368,6 +537,9 @@ struct LedgerStackCard: View {
             .foregroundStyle(card.artwork != nil && card.artworkTextDark == true ? Color.black : Color.white)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background { LedgerCardBackground(card: card) }
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
             .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 19).strokeBorder(.white.opacity(0.19), lineWidth: 1))
             .shadow(color: .black.opacity(0.13), radius: 6, x: 0, y: 2)
@@ -461,6 +633,8 @@ struct LedgerCardDetail: View {
                         VStack(alignment: .leading, spacing: 20) {
                         Text(L("카드 정보")).font(.title2.bold())
                         VStack(spacing: 0) {
+                            info("카드번호", value: authorized ? formattedCardNumber(record?.fields["카드번호"]) : "•••• " + card.lastFour)
+                            Divider()
                             HStack(spacing: 14) {
                                 badge("lock.shield")
                                 VStack(alignment: .leading, spacing: 6) {
@@ -521,6 +695,19 @@ struct LedgerCardDetail: View {
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
         .onDisappear { clear() }
         .alert(L("확인"), isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button(L("확인")) {error = nil} } message: { Text(error ?? "") }
+    }
+    private func formattedCardNumber(_ value: String?) -> String? {
+        let digits = Array((value ?? "").filter(\.isNumber))
+        guard !digits.isEmpty else { return nil }
+        let groups = digits.count == 15 ? [4, 6, 5] : Array(repeating: 4, count: (digits.count + 3) / 4)
+        var index = 0
+        return groups.compactMap { length -> String? in
+            guard index < digits.count else { return nil }
+            let end = min(index + length, digits.count)
+            let part = String(digits[index..<end])
+            index = end
+            return part
+        }.joined(separator: " ")
     }
     private func badge(_ icon: String) -> some View {
         Image(systemName: icon).foregroundStyle(accent).frame(width: 46, height: 46)
@@ -589,7 +776,8 @@ struct CardForm: View {
 
     @State private var artwork: Data?
     @State private var artworkDark = false
-    @State private var artworkDim = 0.18
+    @State private var artworkDim = 0.0
+    @State private var artworkShowNetwork = false
     @State private var network = "none"
     @State private var networkEdited = false
     @State private var photo: PhotosPickerItem?
@@ -640,6 +828,7 @@ struct CardForm: View {
                     if artwork != nil {
                         Button(L("이미지 제거"), role: .destructive) { artwork = nil; photo = nil }
                         Toggle(L("어두운 글자"), isOn: $artworkDark)
+                        Toggle(L("카드 브랜드 표시"), isOn: $artworkShowNetwork)
                         HStack {
                             Text(L("이미지 음영"))
                             Slider(value: $artworkDim, in: 0...0.65)
@@ -693,7 +882,9 @@ struct CardForm: View {
                     id = existing.id; name = existing.name; issuer = existing.issuer; lastFour = existing.lastFour
                     tone = existing.tone; limit = String(existing.spendingLimit)
                     artwork = existing.artwork; artworkDark = existing.artworkTextDark ?? false
-                    artworkDim = min(max(existing.artworkDim ?? 0.18, 0), 0.65); network = existing.network ?? "none"
+                    artworkDim = min(max(existing.artworkShowNetwork == nil && existing.artworkDim == 0.18 ? 0 : (existing.artworkDim ?? 0), 0), 0.65)
+                    artworkShowNetwork = existing.artworkShowNetwork ?? false
+                    network = existing.network ?? "none"
                 }
             }
             .task(id: photo) {
@@ -708,6 +899,7 @@ struct CardForm: View {
                         return
                     }
                     artwork = converted
+                    artworkDim = 0
                 } catch { if !Task.isCancelled && photo == item { self.error = L("이미지를 불러올 수 없습니다.") } }
             }
             .onChange(of: phase) { _, p in
@@ -739,7 +931,7 @@ struct CardForm: View {
         catch { self.error = error.localizedDescription }
     }
     private func draftCard() -> PaymentCard {
-        PaymentCard(id: id, name: name, issuer: issuer, lastFour: effectiveLastFour, tone: tone, spendingLimit: limit.toMoneyInt, artwork: artwork, artworkTextDark: artworkDark, artworkDim: artworkDim, network: networkEdited || existing?.network != nil || existing == nil ? network : nil)
+        PaymentCard(id: id, name: name, issuer: issuer, lastFour: effectiveLastFour, tone: tone, spendingLimit: limit.toMoneyInt, artwork: artwork, artworkTextDark: artworkDark, artworkDim: artworkDim, artworkShowNetwork: artworkShowNetwork, network: networkEdited || existing?.network != nil || existing == nil ? network : nil)
     }
     private func save() {
         guard valid else { return }

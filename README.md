@@ -28,3 +28,6 @@ Responsive two-column Dashboard, Settings and card detail using available safe-a
 
 ## v0.4.4 interface refinement
 Unified grouped dashboard with full-width balance, monthly income and expenses, budget and proportional category sections, native add action. Wallet search is on demand; native toolbar carries add and menu, centered genuine overlapping cards with correct ratio and consistent width, optional grid. Original native Duo navigation and data model retained.
+
+## v0.4.5 artwork-first interactive wallet
+Custom artwork displays with only the last four digits and optional network badge; full card number stays in authenticated details. Every exposed card strip is selectable. Long-press and drag lifts a card, animates other cards into rearranged slots, and saves order on release. Drag reorder is disabled during search to avoid changing hidden cards. Native matched zoom navigation on supported iOS, reduced-motion fallback. No actual Apple Pay default payment changes. Existing data and native Duo dock remain intact.
