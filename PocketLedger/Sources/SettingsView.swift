@@ -300,7 +300,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.43")
+                Text("Digital Wallet · v0.4.44")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -681,7 +681,7 @@ struct PaymentLinksView: View {
                     }
                     Picker(L("결제 수단 · 선택"), selection: $source) { sources }
                     Picker(L("카테고리"), selection: $category) {
-                        ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) }
+                        ForEach(MoneyCategory.selectableCases) { Text(L($0.rawValue)).tag($0) }
                     }
                     Button { importing = true } label: { Label(L("CSV 가져오기"), systemImage: "doc.badge.plus") }
                     Text("date,merchant,amount,kind,id\n2026-01-01,Sample,1000,expense,example-1")

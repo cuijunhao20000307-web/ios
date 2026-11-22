@@ -41,7 +41,11 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
     case shopping = "쇼핑"
     case transit = "교통"
     case housing = "주거"
+    // Legacy category is retained for decoding older transactions / rules.
+    // New entries select either water or electricity instead.
     case bills = "공과금"
+    case water = "수도 요금"
+    case electricity = "전기 요금"
     case creditCardRepayment = "신용카드 상환"
     case mobileBill = "휴대폰 요금"
     case health = "건강"
@@ -50,6 +54,7 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
     case transfer = "이체"
     case other = "기타"
     var id: String { rawValue }
+    static var selectableCases: [MoneyCategory] { allCases.filter { $0 != .bills } }
     var icon: String {
         switch self {
         case .food: "fork.knife"
@@ -57,6 +62,8 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
         case .transit: "tram.fill"
         case .housing: "house.fill"
         case .bills: "bolt.fill"
+        case .water: "drop.fill"
+        case .electricity: "bolt.fill"
         case .creditCardRepayment: "creditcard.fill"
         case .mobileBill: "iphone"
         case .health: "cross.case.fill"
@@ -73,6 +80,8 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
         case .transit: .blue
         case .housing: .indigo
         case .bills: .yellow
+        case .water: .cyan
+        case .electricity: .yellow
         case .creditCardRepayment: .red
         case .mobileBill: .teal
         case .health: .green
@@ -460,7 +469,9 @@ enum AppLocalization {
         "쇼핑": ["Shopping", "购物", "購物", "買い物", "Compras", "Achats", "Einkäufe"],
         "교통": ["Transport", "交通", "交通", "交通", "Transporte", "Transport", "Verkehr"],
         "주거": ["Housing", "住房", "住房", "住居", "Vivienda", "Logement", "Wohnen"],
-        "공과금": ["Bills", "水电杂费", "水電雜費", "光熱費", "Facturas", "Factures", "Nebenkosten"],
+        "공과금": ["Bills (old category)", "水电杂费（旧分类）", "水電雜費（舊分類）", "水道・電気など（旧分類）", "Facturas (anterior)", "Factures (ancien)", "Nebenkosten (alt)"],
+        "수도 요금": ["Water bill", "水费", "水費", "水道代", "Agua", "Eau", "Wasser"],
+        "전기 요금": ["Electricity bill", "电费", "電費", "電気代", "Electricidad", "Électricité", "Strom"],
         "신용카드 상환": ["Credit card repayment", "信用卡还款", "信用卡還款", "クレジットカード返済", "Pago de tarjeta", "Remboursement de carte", "Kreditkartenrückzahlung"],
         "휴대폰 요금": ["Mobile phone bill", "手机费", "手機費", "携帯電話料金", "Factura móvil", "Facture mobile", "Mobilfunkrechnung"],
         "건강": ["Health", "健康", "健康", "健康", "Salud", "Santé", "Gesundheit"],

@@ -209,7 +209,7 @@ struct RecurringForm: View {
     @State private var title = ""
     @State private var amount = ""
     @State private var kind: MoneyKind = .expense
-    @State private var category: MoneyCategory = .bills
+    @State private var category: MoneyCategory = .other
     @State private var day = 1
     @State private var startDate = Date()
     @State private var sourceId: UUID?
@@ -229,10 +229,11 @@ struct RecurringForm: View {
                         Picker(L("구분"), selection: $kind) {
                             ForEach(MoneyKind.allCases) { Text(L($0.rawValue)).tag($0) }
                         }
-                        .onChange(of: kind) { _, v in category = v == .income ? .salary : .bills }
+                        .onChange(of: kind) { _, v in category = v == .income ? .salary : .other }
                     }
                     Picker(L("분류"), selection: $category) {
-                        ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) }
+                        if category == .bills { Text(L(MoneyCategory.bills.rawValue)).tag(MoneyCategory.bills) }
+                        ForEach(MoneyCategory.selectableCases) { Text(L($0.rawValue)).tag($0) }
                     }
                     Stepper(L("매월 결제일") + ": " + String(day), value: $day, in: 1...31)
                     DatePicker(L("시작일"), selection: $startDate, displayedComponents: .date)

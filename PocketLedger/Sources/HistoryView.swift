@@ -124,7 +124,10 @@ struct TransactionForm: View {
                         Text(DisplayCurrency.selected.symbol).foregroundStyle(.secondary)
                     }
                     Picker(L("카테고리"), selection: $category) {
-                        ForEach(MoneyCategory.allCases) { Text(L($0.rawValue)).tag($0) }
+                        // Old transactions can still be edited with their saved
+                        // legacy category; newly entered items offer water/electricity.
+                        if category == .bills { Text(L(MoneyCategory.bills.rawValue)).tag(MoneyCategory.bills) }
+                        ForEach(MoneyCategory.selectableCases) { Text(L($0.rawValue)).tag($0) }
                     }
                     DatePicker(L("날짜"), selection: $date, displayedComponents: .date)
                 }

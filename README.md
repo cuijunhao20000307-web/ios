@@ -1,4 +1,8 @@
-# PocketLedger v0.4.43
+# PocketLedger v0.4.44
+
+## v0.4.44 Split water and electricity expenses (Build 51)
+The old combined "Bills/水电杂费/공과금" entry choice is replaced by two distinct categories: Water bill (水费/수도 요금) and Electricity bill (电费/전기 요금). Both are available in regular transaction entry, CSV import categorization and monthly fixed expense schedules, with distinct SF symbols, colors and individual statistics. The legacy combined enum case remains decodable and visible for previously stored records / existing recurring schedules, but is hidden from new entry selectors. Old transactions are not guessed or reassigned to water or electricity, protecting the historical ledger and backups. Card UI and animation are unchanged.
+
 
 ## v0.4.43 Native-style background card retreat (Build 50)
 Choosing a bank card animates the unselected cards backward (slight scale reduction, rising depth offset and subtle dimming) while the chosen card lifts and the detail opens from the bottom with a linear slide-and-fade. Returning or swiping down to dismiss reverses these motions. Only the render-only card art receives the depth transform; the existing touch zones, card order, spacing, scroll view, internal/external layouts and drag-to-reorder mechanics remain unchanged. Reduce Motion disables decorative depth. Includes all prior backup, online update, security card and fixed expense features.
