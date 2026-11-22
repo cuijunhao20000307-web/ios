@@ -253,6 +253,23 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "보안 저장 실패": ["Secure storage failed","安全存储失败","安全儲存失敗","安全な保存に失敗"],
+        "조회 초기화": ["Clear lookup","清空查询","清除查詢","照会をクリア"],
+        "뒤 두 자리": ["Last two digits","后两位","後兩位","末尾2桁"],
+        "앞 두 자리": ["First two digits","前两位","前兩位","先頭2桁"],
+        "보안카드 조회": ["Security card lookup","安全卡查询","安全卡查詢","セキュリティカード照会"],
+        "보안카드 삭제": ["Delete security card","删除安全卡","刪除安全卡","セキュリティカード削除"],
+        "이 기기에만 저장 · 백업 및 동기화 제외": ["Device only · No backup or sync","仅本机保存，不备份或同步","僅本機儲存，不備份或同步","端末のみ保存・同期なし"],
+        "개수를 줄이면 마지막 코드가 삭제됩니다.": ["Reducing the count removes the last codes when saved.","减少数量并保存后会删除末尾代码。","減少數量並儲存後會刪除末尾代碼。","件数を減らして保存すると末尾のコードが削除されます。"],
+        "뒤로": ["Back","返回","返回","戻る"],
+        "완료": ["Done","完成","完成","完了"],
+        "코드 입력": ["Enter codes","录入代码","輸入代碼","コード入力"],
+        "세로": ["Down","纵向","縱向","縦"],
+        "가로": ["Across","横向","橫向","横"],
+        "방향": ["Direction","排列方向","排列方向","方向"],
+        "개수": ["Count","数量","數量","件数"],
+        "통장 저장 후 등록하세요.": ["Save the account first.","请先保存账户。","請先儲存帳戶。","先に口座を保存してください。"],
+        "보안카드 등록 · 수정": ["Add/edit security card","登记或编辑安全卡","登記或編輯安全卡","セキュリティカード登録・編集"],
         "개인정보": ["Personal info", "个人信息", "個人資訊", "個人情報", "Datos personales", "Informations personnelles", "Persönliche Daten"],
         "뒤로 이동": ["Move backward","向后移动","向後移動","奥に移動"],
         "앞으로 이동": ["Move forward","向前移动","向前移動","手前に移動"],

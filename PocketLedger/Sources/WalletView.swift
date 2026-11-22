@@ -22,6 +22,7 @@ struct WalletView: View {
     @State private var searchVisible = false
     @FocusState private var searchFocused: Bool
     @State private var editAccount: BankAccount?
+    @State private var securityAccount: BankAccount?
     @State private var secretShown = false
     @State private var revealedSecret: String?
     @State private var unlockFailed = false
@@ -46,6 +47,7 @@ struct WalletView: View {
         .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
         .sheet(isPresented: $showAccount) { BankAccountForm() }
         .sheet(item: $editAccount) { BankAccountForm(existing: $0) }
+        .sheet(item: $securityAccount) { BankSecurityCardView(account: $0) }
         .alert("보호된 코드", isPresented: $secretShown) {
             Button(L("닫기")) { revealedSecret = nil }
         } message: {
@@ -271,6 +273,14 @@ struct WalletView: View {
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundStyle(LedgerTheme.accent)
                             }
+                            Divider()
+                            Button { securityAccount = account } label: {
+                                HStack {
+                                    Label(L("보안카드"), systemImage: "number.square")
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption)
+                                }.contentShape(Rectangle())
+                            }.buttonStyle(.plain).foregroundStyle(LedgerTheme.accent)
                         }
                     }
                 }
@@ -1046,6 +1056,7 @@ struct BankAccountForm: View {
     @State private var tone: WalletTone = .emerald
     @State private var confirmDelete = false
     @State private var saveError = false
+    @State private var showSecurity = false
 
     var body: some View {
         let _ = languageRefresh
@@ -1072,6 +1083,15 @@ struct BankAccountForm: View {
                     Text("비밀코드는 이 기기의 iOS 키체인에 따로 보관합니다. 조회할 때 기기 인증이 필요해요. 은행 로그인 비밀번호 저장은 권장하지 않습니다.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                Section(L("보안카드")) {
+                    if existing != nil {
+                        Button { showSecurity = true } label: {
+                            Label(L("보안카드 등록 · 수정"), systemImage: "number.square")
+                        }
+                    } else {
+                        Text(L("통장 저장 후 등록하세요.")).font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 if existing != nil { Section { Button(L("통장 삭제"), role: .destructive) { confirmDelete = true } } }
             }
             .navigationTitle(L(existing == nil ? "통장 등록" : "통장 수정"))
@@ -1082,6 +1102,9 @@ struct BankAccountForm: View {
                     Button(L("저장")) { save() }
                         .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || bank.isEmpty)
                 }
+            }
+            .sheet(isPresented: $showSecurity) {
+                if let existing { BankSecurityCardView(account: existing, startEditing: true) }
             }
             .alert("키체인 저장 실패", isPresented: $saveError) {
                 Button(L("확인"), role: .cancel) { }
@@ -1108,5 +1131,228 @@ struct BankAccountForm: View {
         if let index = store.data.accounts.firstIndex(where: { $0.id == id }) { store.data.accounts[index] = account }
         else { store.data.accounts.append(account) }
         dismiss()
+    }
+}
+
+
+struct BankSecurityCardView: View {
+    let account: BankAccount
+    var startEditing = false
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
+    @State private var card: BankSecurityCard?
+    @State private var busy = false
+    @State private var editing = false
+    @State private var grid = false
+    @State private var reveal = false
+    @State private var serialVisible = false
+    @State private var hasSaved = false
+    @State private var error = false
+    @State private var deleteConfirmation = false
+    @State private var session = UUID()
+    @State private var front = ""
+    @State private var back = ""
+    @FocusState private var focused: Int?
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if let card {
+                    if grid { codeGrid(card) }
+                    else if editing { settings(card) }
+                    else { lookup(card) }
+                } else {
+                    VStack(spacing: 16) {
+                        Image(systemName: "lock.shield.fill").font(.system(size: 48)).foregroundStyle(.teal)
+                        Text(L("보안카드")).font(.title2.bold())
+                        Text(account.nickname).foregroundStyle(.secondary)
+                        Button(L("보관함 열기")) { Task { await unlock() } }
+                            .buttonStyle(.borderedProminent).disabled(busy)
+                    }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .navigationTitle(L(grid ? "코드 입력" : "보안카드"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L(grid ? "뒤로" : "닫기")) {
+                        if grid { closeGrid() } else { lock(); dismiss() }
+                    }
+                }
+                if card != nil {
+                    ToolbarItem(placement: .confirmationAction) {
+                        if grid { Button(L("완료")) { closeGrid() } }
+                        else if editing { Button(L("저장"), action: save).disabled(card?.valid != true) }
+                        else {
+                            Button { editing = true; front = ""; back = "" } label: { Image(systemName: "square.and.pencil") }
+                                .accessibilityLabel(L("수정"))
+                        }
+                    }
+                }
+            }
+            .task { await unlock() }
+            .onChange(of: phase) { _, p in if p == .background { lock() } }
+            .onDisappear { lock() }
+            .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
+            .alert(L("보안 저장 실패"), isPresented: $error) { Button(L("확인")) {} }
+            .confirmationDialog(L("보안카드 삭제"), isPresented: $deleteConfirmation) {
+                Button(L("삭제"), role: .destructive) {
+                    do { try BankSecurityStorage.remove(account.id); lock(); dismiss() } catch { self.error = true }
+                }
+            }
+        }
+    }
+    private var serialBinding: Binding<String> {
+        Binding(get: { card?.serial ?? "" }, set: { card?.serial = String($0.prefix(64)) })
+    }
+    private func settings(_ value: BankSecurityCard) -> some View {
+        Form {
+            Section {
+                HStack {
+                    Group {
+                        if serialVisible { TextField(L("일련번호"), text: serialBinding) }
+                        else { SecureField(L("일련번호"), text: serialBinding) }
+                    }
+                    Button { serialVisible.toggle() } label: { Image(systemName: serialVisible ? "eye" : "eye.slash") }
+                        .buttonStyle(.plain).accessibilityLabel(L("내용 표시"))
+                }.privacySensitive()
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(L("개수"), systemImage: "number")
+                    Picker(L("개수"), selection: Binding(get: { card?.codes.count ?? 30 }, set: { card?.resize($0) })) {
+                        ForEach(BankSecurityCard.counts, id: \.self) { Text(String($0)).tag($0) }
+                    }.pickerStyle(.segmented)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    Label(L("방향"), systemImage: "arrow.left.and.right")
+                    Picker(L("방향"), selection: Binding(get: { card?.vertical ?? true }, set: { card?.vertical = $0 })) {
+                        Text(L("가로")).tag(false)
+                        Text(L("세로")).tag(true)
+                    }.pickerStyle(.segmented)
+                }
+                Button {
+                    serialVisible = false; reveal = false; grid = true
+                } label: {
+                    HStack {
+                        Text(L("코드 입력"))
+                        Spacer()
+                        Text("\(value.codes.filter { $0.count == 4 }.count)/\(value.codes.count)").foregroundStyle(.secondary)
+                        Image(systemName: "chevron.right").font(.caption)
+                    }
+                }
+            } header: { Text(L("보안카드")) } footer: {
+                Text(L("개수를 줄이면 마지막 코드가 삭제됩니다."))
+            }
+            if hasSaved { Section { Button(L("보안카드 삭제"), role: .destructive) { deleteConfirmation = true } } }
+            Section { Text(L("이 기기에만 저장 · 백업 및 동기화 제외")).font(.caption).foregroundStyle(.secondary) }
+        }
+    }
+    private func codeGrid(_ value: BankSecurityCard) -> some View {
+        ScrollView {
+            VStack(spacing: 18) {
+                Toggle(L("내용 표시"), isOn: $reveal).padding(.horizontal)
+                ViewThatFits(in: .horizontal) {
+                    columns(value)
+                    ScrollView(.horizontal) { columns(value) }
+                }
+                .frame(maxWidth: .infinity)
+            }.padding(12)
+        }
+        .privacySensitive()
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Button { moveFocus(-1, count: value.codes.count) } label: { Image(systemName: "chevron.up") }
+                Button { moveFocus(1, count: value.codes.count) } label: { Image(systemName: "chevron.down") }
+                Spacer()
+                Button(L("완료")) { focused = nil }
+            }
+        }
+    }
+    private func columns(_ value: BankSecurityCard) -> some View {
+        let rows = value.codes.count / 5
+        return LazyVGrid(columns: Array(repeating: GridItem(.fixed(88), spacing: 9), count: 5), spacing: 16) {
+            ForEach(0..<value.codes.count, id: \.self) { cell in
+                let index = value.vertical ? (cell % 5) * rows + cell / 5 : cell
+                HStack(spacing: 4) {
+                    Text(String(format: "%02d", index + 1)).font(.caption.monospacedDigit()).frame(width: 22)
+                    Group {
+                        if reveal { TextField("----", text: codeBinding(index)) }
+                        else { SecureField("----", text: codeBinding(index)) }
+                    }
+                    .keyboardType(.numberPad)
+                    .multilineTextAlignment(.center)
+                    .font(.system(size: 16, weight: .medium, design: .monospaced))
+                    .focused($focused, equals: index)
+                    .frame(width: 62, height: 48)
+                    .background(Color(uiColor: .secondarySystemFill), in: RoundedRectangle(cornerRadius: 12))
+                    .accessibilityLabel(L("코드 입력") + " " + String(index + 1))
+                }
+            }
+        }.frame(width: 476).fixedSize(horizontal: true, vertical: false)
+    }
+    private func codeBinding(_ index: Int) -> Binding<String> {
+        Binding(get: { guard let card, card.codes.indices.contains(index) else { return "" }; return card.codes[index] }, set: {
+            guard card?.codes.indices.contains(index) == true else { return }
+            card?.codes[index] = BankSecurityCard.digits($0, max: 4)
+        })
+    }
+    private func moveFocus(_ offset: Int, count: Int) {
+        focused = min(max((focused ?? (offset > 0 ? -1 : 0)) + offset, 0), count - 1)
+    }
+    private func closeGrid() { focused = nil; reveal = false; grid = false }
+    private func lookup(_ value: BankSecurityCard) -> some View {
+        Form {
+            Section(account.nickname) {
+                LabeledContent(L("개수"), value: String(value.codes.count))
+                HStack {
+                    Text(L("일련번호")); Spacer()
+                    Text(serialVisible ? value.serial : "••••••").privacySensitive()
+                    Button { serialVisible.toggle() } label: { Image(systemName: "eye") }.buttonStyle(.plain)
+                }
+            }
+            Section(L("보안카드 조회")) {
+                lookupRow(L("앞 두 자리"), number: $front, value: value, first: true)
+                lookupRow(L("뒤 두 자리"), number: $back, value: value, first: false)
+                Button(L("조회 초기화")) { front = ""; back = "" }
+            }
+            Section { Button(L("보안카드 등록 · 수정")) { editing = true; front = ""; back = "" } }
+        }
+    }
+    private func lookupRow(_ title: String, number: Binding<String>, value: BankSecurityCard, first: Bool) -> some View {
+        let index = (Int(number.wrappedValue) ?? 0) - 1
+        let code = value.codes.indices.contains(index) ? value.codes[index] : ""
+        return HStack {
+            Text(title)
+            Spacer()
+            TextField("01", text: Binding(get: { number.wrappedValue }, set: { number.wrappedValue = BankSecurityCard.digits($0, max: 2) }))
+                .keyboardType(.numberPad).multilineTextAlignment(.center).frame(width: 60)
+            Text(code.count == 4 ? (first ? String(code.prefix(2)) : String(code.suffix(2))) : "••")
+                .font(.headline.monospacedDigit()).frame(width: 60).privacySensitive()
+        }
+    }
+    @MainActor private func unlock() async {
+        guard card == nil, !busy else { return }
+        busy = true
+        let token = session
+        defer { busy = false }
+        guard await LocalUnlock.authorize(), !Task.isCancelled, token == session, phase != .background else { return }
+        do {
+            let stored = try BankSecurityStorage.load(account.id)
+            card = stored ?? BankSecurityCard()
+            hasSaved = stored != nil
+            editing = startEditing || stored == nil
+        } catch { self.error = true }
+    }
+    private func save() {
+        guard let card, card.valid, phase == .active else { return }
+        do {
+            try BankSecurityStorage.save(card, id: account.id)
+            hasSaved = true; editing = false; serialVisible = false; reveal = false
+            if startEditing { lock(); dismiss() }
+        } catch { self.error = true }
+    }
+    private func lock() {
+        session = UUID(); card = nil; editing = false; grid = false; reveal = false
+        serialVisible = false; front = ""; back = ""; focused = nil
     }
 }

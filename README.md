@@ -40,3 +40,6 @@ Explicit selected-card state renders the detail pane inside the existing native 
 
 ## v0.4.8 wallet personal information tab
 Third wallet segment 개인정보 embeds the existing authenticated private vault instead of showing a separate sheet from the card list. Leaving the embedded vault locks it. Existing settings and recurring-entry sheet presentations remain available. Native Duo navigation and stored data unchanged.
+
+## v0.4.9 bank security cards
+Account-specific optional security cards: 25–50 entries, five-column numbered grid (horizontal scrolling when narrow), vertical or horizontal numbering, masked input with reveal toggle, device authentication, two-digit lookup, device-only passcode-protected Keychain storage. No screenshot values or backup/CSV inclusion. Requires device verification.

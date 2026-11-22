@@ -89,10 +89,12 @@ final class LedgerStore: ObservableObject {
 
     func deleteAccount(_ account: BankAccount) {
         SecureVault.remove(for: account.id)
+        try? BankSecurityStorage.remove(account.id)
         data.accounts.removeAll { $0.id == account.id }
     }
 
     func loadSample() {
+        for account in data.accounts { try? BankSecurityStorage.remove(account.id) }
         let card1 = PaymentCard(name: "데일리 카드", issuer: "현대카드", lastFour: "1256", tone: .midnight, spendingLimit: 800_000)
         let card2 = PaymentCard(name: "생활 카드", issuer: "신한카드", lastFour: "7834", tone: .cobalt, spendingLimit: 500_000)
         let account = BankAccount(nickname: "월급 통장", bankName: "국민은행", accountNumber: "123456789012", balance: 2_680_000, tone: .emerald)
@@ -128,7 +130,7 @@ final class LedgerStore: ObservableObject {
     }
 
     func clear() {
-        for account in data.accounts { SecureVault.remove(for: account.id) }
+        for account in data.accounts { SecureVault.remove(for: account.id); try? BankSecurityStorage.remove(account.id) }
         let dock = data.dockPlacement
         data = LedgerData()
         data.dockPlacement = dock
