@@ -5,6 +5,7 @@ import Combine
 
 @main
 struct PocketLedgerApp: App {
+    init() { DigitalWalletShortcuts.updateAppShortcutParameters() }
     @StateObject private var store = LedgerStore()
     @AppStorage("appLanguage") private var appLanguage = "system"
     @AppStorage("displayCurrency") private var currency = "KRW"
@@ -207,5 +208,19 @@ struct RecordWalletPaymentIntent: AppIntent {
         let id = external.isEmpty ? UUID() : UUID.deterministic("Apple Wallet|" + external)
         try PaymentInbox.enqueue(PendingApplePayment(id: id, title: merchant, amount: amount, date: date))
         return .result()
+    }
+}
+
+
+// The system indexes the action in Shortcuts. A personal Transaction
+// automation still requires user consent and setup inside Apple's app.
+struct DigitalWalletShortcuts: AppShortcutsProvider {
+    static var appShortcuts: [AppShortcut] {
+        AppShortcut(
+            intent: RecordWalletPaymentIntent(),
+            phrases: ["Record payment with \(.applicationName)"],
+            shortTitle: "Record Wallet Payment",
+            systemImageName: "creditcard.fill"
+        )
     }
 }

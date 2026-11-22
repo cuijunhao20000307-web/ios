@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var showPaymentLinks = false
     @State private var notificationError = false
     @State private var showPrivateSettings = false
+    @State private var showICloudBackup = false
     @State private var budgetText = ""
     @State private var confirmReset = false
     @State private var confirmSample = false
@@ -146,6 +147,11 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionHeading(title: "데이터")
+                        Button { showICloudBackup = true } label: {
+                            Label(L("iCloud 백업 · 복원"), systemImage: "icloud.and.arrow.up")
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        Divider()
                         Button { showPrivateSettings = true } label: {
                             Label(L("보관함 백업 · 글꼴 · 휴지통"), systemImage: "lock.doc")
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -191,7 +197,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.20")
+                Text("Digital Wallet · v0.4.21")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -199,6 +205,7 @@ struct SettingsView: View {
             .frame(maxWidth: 920).frame(maxWidth: .infinity)
         }
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
+        .sheet(isPresented: $showICloudBackup) { DigitalCloudBackupView() }
         .onAppear { budgetText = String(store.data.monthlyBudget) }
         .onChange(of: currency) { _, _ in currencyRevision += 1 }
         .sheet(isPresented: $showCovers) { CurrencyCoverSettingsView() }
@@ -503,11 +510,24 @@ struct PaymentLinksView: View {
     @State private var skipped = 0
     @State private var message: String?
     @AppStorage("applePaymentSource") private var appleSource = "none"
+    @Environment(\.openURL) private var openURL
     private var newItems: [PaymentImport] { preview.filter { item in !store.data.entries.contains { $0.id == item.id } } }
     var body: some View {
         NavigationStack {
             Form {
                 Section("Apple Wallet") {
+                    Button {
+                        if let url = URL(string: "shortcuts://") { openURL(url) }
+                    } label: {
+                        Label(L("Apple Pay 바로가기 설정"), systemImage: "square.stack.3d.up")
+                    }
+                    Text(L("단축어 앱 → 자동화 → + → 거래(Transaction) → 카드 선택 → 즉시 실행 → Digital Wallet의 Record Wallet Payment 동작 추가. 결제 금액·가맹점을 변수로 연결하고 저장하세요."))
+                        .font(.caption).foregroundStyle(.secondary)
+                    Button {
+                        UIPasteboard.general.string = L("단축어 앱 → 자동화 → + → 거래(Transaction) → 카드 선택 → 즉시 실행 → Digital Wallet의 Record Wallet Payment 동작 추가. 결제 금액·가맹점을 변수로 연결하고 저장하세요.")
+                    } label: {
+                        Label(L("연동 절차 복사"), systemImage: "doc.on.doc")
+                    }
                     Text(L("단축어 앱의 거래 자동화에서 Digital Wallet 결제 기록 동작을 추가하세요. 금액과 가맹점, 가능하면 거래 날짜 및 고유 ID를 전달합니다."))
                         .font(.subheadline)
                     Picker(L("결제 수단 · 선택"), selection: $appleSource) { sources }

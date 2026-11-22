@@ -262,6 +262,10 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "단축어 앱 → 자동화 → + → 거래(Transaction) → 카드 선택 → 즉시 실행 → Digital Wallet의 Record Wallet Payment 동작 추가. 결제 금액·가맹점을 변수로 연결하고 저장하세요.": ["Shortcuts → Automation → + → Transaction → select cards → Run Immediately → add Digital Wallet's Record Wallet Payment action. Pass amount and merchant from transaction variables and save.","快捷指令 → 自动化 → + → 交易 → 选择卡片 → 立即运行 → 添加 Digital Wallet 的 Record Wallet Payment 动作，将交易金额与商户变量对应后保存。","捷徑 → 自動化 → + → 交易 → 選擇卡片 → 立即執行 → 加入 Digital Wallet 的 Record Wallet Payment 動作，連結金額與商家變數後儲存。","ショートカット→オートメーション→取引→カードを選択→すぐに実行→Digital Walletの「Record Wallet Payment」アクションを追加し、金額と加盟店の変数を設定して保存してください。"],
+        "연동 절차 복사": ["Copy setup instructions","复制设置步骤","複製設定步驟","設定手順をコピー"],
+        "Apple Pay 바로가기 설정": ["Set up Apple Pay Shortcut","设置 Apple Pay 快捷指令","設定 Apple Pay 捷徑","Apple Payショートカットを設定"],
+        "iCloud 백업 · 복원": ["iCloud Backup & Restore","iCloud 备份与恢复","iCloud 備份與恢復","iCloud バックアップと復元","Copia iCloud y restauración","Sauvegarde et restauration iCloud","iCloud-Sicherung und Wiederherstellung"],
         "한중일 문자 입력이 안 되면 내용 표시를 켜서 입력한 뒤 다시 잠그세요.": ["If secure input blocks CJK characters, enable Show Content to type them, then hide them again.","如果隐藏输入时无法输入中日韩文字，请先开启“显示内容”输入，完成后再关闭。","若隱藏輸入時無法輸入中日韓文字，請先開啟「顯示內容」輸入，再關閉。","保護入力で文字を打てないときは「内容を表示」で入力後、再び隠してください。"],
         "키보드의 지구본 버튼으로도 언어를 전환할 수 있어요.": ["You can also switch languages using the keyboard globe key.","也可以通过键盘上的地球图标切换语言。","也可透過鍵盤上的地球圖示切換語言。","キーボードの地球儀キーでも言語を変更できます。"],
         "선택한 키보드가 없어요. iPhone 설정 → 일반 → 키보드 → 키보드 → 새로운 키보드 추가에서 설치하세요.": ["The selected keyboard is not installed. Add it in iPhone Settings > General > Keyboard > Keyboards > Add New Keyboard.","未安装所选键盘。前往 iPhone 设置 → 通用 → 键盘 → 键盘 → 添加新键盘。","未安裝所選鍵盤。前往 iPhone 設定 → 一般 → 鍵盤 → 鍵盤 → 加入新鍵盤。","キーボードが未設定です。iPhoneの設定 → 一般 → キーボード → 新しいキーボードを追加。"],

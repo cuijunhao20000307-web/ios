@@ -146,7 +146,7 @@ private struct ProtectedEnvelope: Codable {
     let sealed: Data
 }
 enum PrivateBackup {
-    private static func key(_ password: String, salt: Data) throws -> SymmetricKey {
+    static func key(_ password: String, salt: Data) throws -> SymmetricKey {
         var output = Data(count: 32)
         let length = output.count
         let bytes = Array(password.utf8)

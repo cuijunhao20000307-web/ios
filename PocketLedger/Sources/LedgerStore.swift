@@ -19,6 +19,12 @@ final class LedgerStore: ObservableObject {
         processRecurring()
     }
 
+    // Explicit durable write for cross-device restore. Do not silently claim success.
+    func restoreFromBackup(_ replacement: LedgerData) throws {
+        let bytes = try JSONEncoder().encode(replacement)
+        try bytes.write(to: url, options: [.atomic, .completeFileProtectionUnlessOpen])
+        data = replacement
+    }
     private func save() {
         do {
             let encoded = try JSONEncoder().encode(data)
