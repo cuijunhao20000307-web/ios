@@ -704,9 +704,13 @@ struct LedgerCardDetail: View {
     @State private var busy = false
     @State private var error: String?
     @State private var copied = false
+    @State private var editingTransaction: MoneyEntry?
     @State private var authSession = UUID()
     private var card: PaymentCard? { store.data.cards.first { $0.id == cardID } }
     private var accent: Color { Color.primary }
+    private var thisMonthExpenses: [MoneyEntry] {
+        store.entries(in: .now).filter { $0.kind == .expense && $0.sourceId == cardID }
+    }
 
     var body: some View {
         let _ = languageRefresh
@@ -735,6 +739,46 @@ struct LedgerCardDetail: View {
                                 Label(L(copied ? "복사 완료" : "카드번호 복사"), systemImage: "doc.on.doc")
                                     .frame(maxWidth: .infinity).padding(.vertical, 10)
                             }.buttonStyle(NeutralCardActionStyle()).disabled(busy)
+                        }
+                        Text(L("이번 달 사용")).font(.title2.bold())
+                        Surface {
+                            VStack(alignment: .leading, spacing: 9) {
+                                Text(store.spent(on: card, in: .now).won)
+                                    .font(.title.bold()).monospacedDigit()
+                                    .lineLimit(1).minimumScaleFactor(0.55)
+                                if card.spendingLimit > 0 {
+                                    Text(L("월 사용 한도") + " " + card.spendingLimit.won)
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                }
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(L("카드 소비 내역")).font(.title2.bold())
+                            Spacer()
+                            Text(String(thisMonthExpenses.count) + " " + L("건"))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Surface {
+                            if thisMonthExpenses.isEmpty {
+                                Label(L("이 카드로 기록된 이번 달 지출이 없습니다."),
+                                      systemImage: "list.bullet.rectangle")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+                            } else {
+                                VStack(spacing: 2) {
+                                    ForEach(thisMonthExpenses) { entry in
+                                        Button { editingTransaction = entry } label: {
+                                            EntryLine(entry: entry, source: nil)
+                                                .contentShape(Rectangle())
+                                        }
+                                        .buttonStyle(.plain)
+                                        if entry.id != thisMonthExpenses.last?.id {
+                                            Divider().opacity(0.55)
+                                        }
+                                    }
+                                }
+                            }
                         }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -768,15 +812,6 @@ struct LedgerCardDetail: View {
                         }
                         Text(L("사진")).font(.title2.bold())
                         Surface { ProtectedPhotoLink(owner: "card", id: card.id) }
-                        Text(L("이번 달 사용")).font(.title2.bold())
-                        Surface {
-                            VStack(alignment: .leading, spacing: 9) {
-                                Text(store.spent(on: card, in: .now).won).font(.title.bold())
-                                if card.spendingLimit > 0 {
-                                    Text("월 사용 한도 " + card.spendingLimit.won).font(.subheadline).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
                         if authorized && record == nil {
                             Text("전체 카드 정보가 아직 등록되지 않았습니다. 편집에서 카드번호, 유효기간을 입력하세요.")
                                 .font(.caption).foregroundStyle(.secondary)
@@ -792,6 +827,7 @@ struct LedgerCardDetail: View {
                     .overlay(alignment: .bottom) { Button(L("닫기"), action: onClose).padding() }
             }
         }
+        .sheet(item: $editingTransaction) { TransactionForm(existing: $0) }
         .onChange(of: editingCard) { _, value in if value { clear() } }
         .onChange(of: phase) { _, p in if p == .background { clear() } }
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }

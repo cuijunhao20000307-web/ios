@@ -76,3 +76,6 @@ KRW/CNY/JPY/USD select the corresponding balance-cover-{CODE} asset, or an impor
 
 ## Digital Wallet display name
 Home screen display name and bundle name: **Digital Wallet**. Executable name and bundle identifier are kept unchanged for side-load updates and to preserve app data. Updated in-app settings branding, local monthly notification title, and monthly summary branding. Existing v0.4.19 build remains compatible with original 2240x1000 currency-cover artwork. The renamed cover-bundled unsigned IPA is supplied as a repackaged artifact.
+
+## Digital Wallet v0.4.20 Duo card detail and multilingual document input
+Card detail left pane places monthly spending below card artwork and shows this card's current month expense records, with tap to edit; right pane keeps card information and photos. For identity and passport fields, use installed iOS Chinese, Korean, Japanese, English or system keyboards via a native UITextField input-mode selector, plus instructions for installing missing keyboards in iOS Settings. Hidden fields remain protected; show temporarily to enter CJK characters on iOS configurations where secure input disallows IME composition. Existing data and bundle ID unchanged. Device testing required.

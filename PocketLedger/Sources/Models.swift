@@ -262,6 +262,13 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "한중일 문자 입력이 안 되면 내용 표시를 켜서 입력한 뒤 다시 잠그세요.": ["If secure input blocks CJK characters, enable Show Content to type them, then hide them again.","如果隐藏输入时无法输入中日韩文字，请先开启“显示内容”输入，完成后再关闭。","若隱藏輸入時無法輸入中日韓文字，請先開啟「顯示內容」輸入，再關閉。","保護入力で文字を打てないときは「内容を表示」で入力後、再び隠してください。"],
+        "키보드의 지구본 버튼으로도 언어를 전환할 수 있어요.": ["You can also switch languages using the keyboard globe key.","也可以通过键盘上的地球图标切换语言。","也可透過鍵盤上的地球圖示切換語言。","キーボードの地球儀キーでも言語を変更できます。"],
+        "선택한 키보드가 없어요. iPhone 설정 → 일반 → 키보드 → 키보드 → 새로운 키보드 추가에서 설치하세요.": ["The selected keyboard is not installed. Add it in iPhone Settings > General > Keyboard > Keyboards > Add New Keyboard.","未安装所选键盘。前往 iPhone 设置 → 通用 → 键盘 → 键盘 → 添加新键盘。","未安裝所選鍵盤。前往 iPhone 設定 → 一般 → 鍵盤 → 鍵盤 → 加入新鍵盤。","キーボードが未設定です。iPhoneの設定 → 一般 → キーボード → 新しいキーボードを追加。"],
+        "시스템 키보드": ["System keyboard","系统键盘","系統鍵盤","システムキーボード","Teclado del sistema","Clavier système","Systemtastatur"],
+        "키보드 언어": ["Keyboard language","键盘语言","鍵盤語言","キーボードの言語","Idioma del teclado","Langue du clavier","Tastatursprache"],
+        "이 카드로 기록된 이번 달 지출이 없습니다.": ["No spending recorded for this card this month.","这张银行卡本月暂无消费记录。","這張銀行卡本月暫無消費紀錄。","今月、このカードの支出記録はありません。","No hay gastos con esta tarjeta este mes.","Aucune dépense enregistrée ce mois-ci pour cette carte.","Keine Ausgaben für diese Karte in diesem Monat."],
+        "카드 소비 내역": ["Card spending details","银行卡消费明细","銀行卡消費明細","カード利用明細","Gastos de tarjeta","Dépenses de carte","Kartenausgaben"],
         "커버 파일을 확인하세요": ["Check cover files","请检查封面文件","請檢查封面檔案","画像ファイルを確認してください","Comprueba los archivos","Vérifiez les fichiers","Dateien prüfen"],
         "커버 PNG 가져오기": ["Import cover PNGs","导入封面PNG","匯入封面PNG","PNGを取り込む","Importar PNG","Importer PNG","PNG importieren"],
         "커버 미등록": ["No cover installed","未导入封面","未匯入封面","カバー未登録","Sin portada","Sans couverture","Kein Cover"],

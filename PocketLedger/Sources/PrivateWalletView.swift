@@ -601,6 +601,7 @@ struct PrivateRecordEditor: View {
     var fixedKind = false
     let save: (PrivateRecord) -> Bool
     @State private var visible = false
+    @State private var writingLanguage: DocumentWritingLanguage = .system
     @State private var failed = false
     var body: some View {
         let _ = languageRefresh
@@ -611,7 +612,8 @@ struct PrivateRecordEditor: View {
                     if !fixedKind {
                         Picker(L("종류"), selection: $record.kind) { ForEach(PrivateKind.allCases) { Text(L($0.rawValue)).tag($0) } }
                     }
-                    TextField(L("이름"), text: $record.title)
+                    DocumentLanguageField(text: $record.title, placeholder: L("이름"), language: writingLanguage, secure: false)
+                        .frame(minHeight: 40)
                     if !fixedKind { Toggle(L("즐겨찾기"), isOn: $record.favorite) }
                     if record.kind == .card || record.kind == .account {
                         Picker(L("가계부 연결"), selection: $record.link) {
@@ -634,11 +636,36 @@ struct PrivateRecordEditor: View {
                     }
                 }
                 Section(L("보호된 정보")) {
+                    if record.kind == .identity || record.kind == .passport {
+                        Picker(L("키보드 언어"), selection: $writingLanguage) {
+                            ForEach(DocumentWritingLanguage.allCases) { item in
+                                Text(L(item.title)).tag(item)
+                            }
+                        }.pickerStyle(.menu)
+                        if writingLanguage != .system && !writingLanguage.isInstalled {
+                            Text(L("선택한 키보드가 없어요. iPhone 설정 → 일반 → 키보드 → 키보드 → 새로운 키보드 추가에서 설치하세요."))
+                                .font(.caption).foregroundStyle(.orange)
+                        } else {
+                            Text(L("키보드의 지구본 버튼으로도 언어를 전환할 수 있어요."))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
                     Toggle(L("내용 표시"), isOn: $visible)
                     ForEach(record.kind.fields, id: \.self) { field in
                         HStack {
-                            let binding = Binding(get: {record.fields[field] ?? ""}, set: {record.fields[field] = $0})
-                            if visible {
+                            let binding = Binding(get: { record.fields[field] ?? "" }, set: { record.fields[field] = $0 })
+                            if record.kind == .identity || record.kind == .passport {
+                                DocumentLanguageField(text: binding, placeholder: L(field),
+                                    language: writingLanguage, secure: !visible)
+                                    .frame(minHeight: 42)
+                                if visible {
+                                    Button {
+                                        UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: binding.wrappedValue]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)])
+                                    } label: { Image(systemName: "doc.on.doc") }
+                                    .buttonStyle(.borderless).disabled(binding.wrappedValue.isEmpty)
+                                    .accessibilityLabel(field + " 복사")
+                                }
+                            } else if visible {
                                 TextField(L(field), text: binding).autocorrectionDisabled().textInputAutocapitalization(.never)
                                 Button {
                                     UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: binding.wrappedValue]], options: [.localOnly: true, .expirationDate: Date().addingTimeInterval(60)])
@@ -647,6 +674,10 @@ struct PrivateRecordEditor: View {
                                 SecureField(L(field), text: binding).autocorrectionDisabled().textInputAutocapitalization(.never)
                             }
                         }
+                    }
+                    if (record.kind == .identity || record.kind == .passport) && !visible {
+                        Text(L("한중일 문자 입력이 안 되면 내용 표시를 켜서 입력한 뒤 다시 잠그세요."))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     Text("복사한 정보는 이 기기에서 60초 후 만료되도록 설정됩니다.").font(.caption).foregroundStyle(.secondary)
                 }
@@ -709,5 +740,82 @@ struct PrivateSubscriptionEditor: View {
             .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
             .alert(L("저장 실패"), isPresented: $failed) { Button(L("확인")) {} }
         }
+    }
+}
+
+
+// Uses keyboards enabled in iOS. The app cannot install iOS keyboard languages.
+private enum DocumentWritingLanguage: String, CaseIterable, Identifiable {
+    case system, chinese, korean, japanese, english
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .system: "시스템 키보드"
+        case .chinese: "中文"
+        case .korean: "한국어"
+        case .japanese: "日本語"
+        case .english: "English"
+        }
+    }
+    var primaryPrefix: String? {
+        switch self {
+        case .system: nil
+        case .chinese: "zh"
+        case .korean: "ko"
+        case .japanese: "ja"
+        case .english: "en"
+        }
+    }
+    var isInstalled: Bool {
+        guard let prefix = primaryPrefix else { return true }
+        return UITextInputMode.activeInputModes.contains {
+            $0.primaryLanguage?.lowercased().hasPrefix(prefix) == true
+        }
+    }
+}
+private final class DocumentModeTextField: UITextField {
+    var preferredLanguagePrefix: String?
+    override var textInputMode: UITextInputMode? {
+        if let prefix = preferredLanguagePrefix,
+           let matching = UITextInputMode.activeInputModes.first(where: {
+               $0.primaryLanguage?.lowercased().hasPrefix(prefix) == true
+           }) { return matching }
+        return super.textInputMode
+    }
+}
+private struct DocumentLanguageField: UIViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let language: DocumentWritingLanguage
+    let secure: Bool
+    func makeUIView(context: Context) -> DocumentModeTextField {
+        let input = DocumentModeTextField(frame: .zero)
+        input.font = .preferredFont(forTextStyle: .body)
+        input.adjustsFontForContentSizeCategory = true
+        input.autocorrectionType = .no
+        input.autocapitalizationType = .none
+        input.keyboardType = .default
+        input.textContentType = nil
+        input.clearButtonMode = .never
+        input.delegate = context.coordinator
+        input.addTarget(context.coordinator, action: #selector(Coordinator.changed(_:)), for: .editingChanged)
+        return input
+    }
+    func updateUIView(_ input: DocumentModeTextField, context: Context) {
+        context.coordinator.parent = self
+        if input.text != text { input.text = text }
+        if input.placeholder != placeholder { input.placeholder = placeholder }
+        if input.isSecureTextEntry != secure { input.isSecureTextEntry = secure }
+        if input.preferredLanguagePrefix != language.primaryPrefix {
+            input.preferredLanguagePrefix = language.primaryPrefix
+            if input.isFirstResponder { input.reloadInputViews() }
+        }
+        input.accessibilityLabel = placeholder
+    }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    final class Coordinator: NSObject, UITextFieldDelegate {
+        var parent: DocumentLanguageField
+        init(_ parent: DocumentLanguageField) { self.parent = parent }
+        @objc func changed(_ field: UITextField) { parent.text = field.text ?? "" }
     }
 }
