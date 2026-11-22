@@ -20,8 +20,7 @@ struct SettingsView: View {
     @State private var showPrivateSettings = false
     @State private var showICloudBackup = false
     @State private var budgetText = ""
-    @State private var confirmReset = false
-    @State private var confirmSample = false
+    @State private var pendingDestructiveAction: SettingsDestructiveAction?
     @State private var deviceAuthUnavailable = false
     @State private var exportURL: URL?
     @State private var exportError = false
@@ -88,8 +87,15 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 18) {
                         SectionHeading(title: "메뉴 위치")
-                        Label(L("시스템 자동 배치"), systemImage: "rectangle.split.3x1")
-                            .font(.body)
+                        HStack(spacing: 12) {
+                            DuoAutomaticLayoutIcon()
+                                .fill(Color.secondary.opacity(0.78), style: FillStyle(eoFill: true))
+                                .frame(width: 28, height: 28)
+                                .accessibilityHidden(true)
+                            Text(L("시스템 자동 배치"))
+                                .font(.body)
+                        }
+                        .accessibilityElement(children: .combine)
                         Text("iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다.")
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                     }
@@ -172,12 +178,12 @@ struct SettingsView: View {
                             }
                         }
                         Divider()
-                        Button { confirmSample = true } label: {
+                        Button { withAnimation(.easeInOut(duration: 0.20)) { pendingDestructiveAction = .sample } } label: {
                             Label(L("예시 데이터 채우기"), systemImage: "sparkles")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         Divider()
-                        Button(role: .destructive) { confirmReset = true } label: {
+                        Button(role: .destructive) { withAnimation(.easeInOut(duration: 0.20)) { pendingDestructiveAction = .reset } } label: {
                             Label(L("가계부 기록 삭제 (보관함 제외)"), systemImage: "trash")
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
@@ -197,7 +203,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.21")
+                Text("Digital Wallet · v0.4.22")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -220,12 +226,24 @@ struct SettingsView: View {
         } message: {
             Text("iPhone에 Face ID 또는 잠금 암호를 설정한 뒤 다시 시도하세요.")
         }
-        .confirmationDialog("현재 데이터를 예시 데이터로 바꿀까요?", isPresented: $confirmSample, titleVisibility: .visible) {
-            Button("예시 데이터 적용", role: .destructive) { store.clear(); store.loadSample(); budgetText = String(store.data.monthlyBudget) }
-        } message: { Text("기존 거래와 카드, 통장 기록이 삭제됩니다.") }
-        .confirmationDialog("모든 데이터를 삭제할까요?", isPresented: $confirmReset, titleVisibility: .visible) {
-            Button("모두 삭제", role: .destructive) { store.clear(); budgetText = String(store.data.monthlyBudget) }
-        } message: { Text("기존 가계부 거래, 카드, 통장, 통장 비밀코드가 삭제됩니다. 별도 개인정보 보관함은 유지됩니다. 복구할 수 없습니다.") }
+        .overlay {
+            if let action = pendingDestructiveAction {
+                SettingsCenteredConfirmation(
+                    action: action,
+                    onCancel: { withAnimation(.easeInOut(duration: 0.18)) { pendingDestructiveAction = nil } },
+                    onConfirm: {
+                        // Dismiss before changing the store so the confirmation cannot be retriggered.
+                        pendingDestructiveAction = nil
+                        store.clear()
+                        if action == .sample { store.loadSample() }
+                        budgetText = String(store.data.monthlyBudget)
+                    }
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.18), value: pendingDestructiveAction)
+
     }
 }
 
@@ -697,5 +715,139 @@ struct CurrencyCoverSettingsView: View {
                 Button(L("확인")) { message = nil }
             } message: { Text(message ?? "") }
         }
+    }
+}
+
+
+// The platform confirmationDialog is represented as a floating popover on
+// certain Duo expanded layouts and may be clipped by the scrolled viewport.
+// Use a viewport-centered, two-action confirmation instead, never anchored
+// to the tapped row. Destructive operations require a second explicit tap.
+private enum SettingsDestructiveAction: Equatable {
+    case sample
+    case reset
+
+    var title: String {
+        switch self {
+        case .sample: "현재 데이터를 예시 데이터로 바꿀까요?"
+        case .reset: "모든 가계부 데이터를 삭제할까요?"
+        }
+    }
+    var details: String {
+        switch self {
+        case .sample: "기존 거래·카드·통장과 은행 보안 정보가 삭제되고 예시 데이터로 교체됩니다. 개인정보 보관함은 유지됩니다."
+        case .reset: "거래·카드·통장과 관련 은행 보안 정보가 영구 삭제됩니다. 개인정보 보관함은 유지됩니다. 이 작업은 되돌릴 수 없습니다."
+        }
+    }
+    var buttonTitle: String {
+        switch self {
+        case .sample: "예시 데이터로 교체"
+        case .reset: "모두 삭제"
+        }
+    }
+}
+
+private struct SettingsCenteredConfirmation: View {
+    let action: SettingsDestructiveAction
+    let onCancel: () -> Void
+    let onConfirm: () -> Void
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black.opacity(0.23)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onCancel)
+
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 10) {
+                        Image(systemName: action == .sample ? "exclamationmark.triangle.fill" : "trash.fill")
+                            .font(.title3)
+                            .foregroundStyle(action == .sample ? Color.orange : Color.red)
+                            .frame(width: 34, height: 34)
+                            .background((action == .sample ? Color.orange : Color.red).opacity(0.11),
+                                        in: RoundedRectangle(cornerRadius: 10))
+                        Text(L(action.title))
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Text(L(action.details))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 12) {
+                        Button(action: onCancel) {
+                            Text(L("취소"))
+                                .font(.body.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.secondary)
+
+                        Button(role: .destructive, action: onConfirm) {
+                            Text(L(action.buttonTitle))
+                                .font(.body.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.red)
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(22)
+                .frame(maxWidth: min(430, max(260, geometry.size.width - 36)))
+                .background(Color(uiColor: .systemBackground),
+                            in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                }
+                .shadow(color: Color.black.opacity(0.16), radius: 24, y: 12)
+                .padding(.horizontal, 16)
+                .accessibilityElement(children: .contain)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+    }
+}
+
+// Vector reconstruction of the user's grey Duo/D-shaped system-layout symbol.
+private struct DuoAutomaticLayoutIcon: Shape {
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / 64
+        let ox = rect.midX - 32 * scale
+        let oy = rect.midY - 32 * scale
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: ox + x * scale, y: oy + y * scale)
+        }
+        var path = Path()
+        path.move(to: point(14, 5))
+        path.addLine(to: point(33, 5))
+        path.addCurve(to: point(56, 28), control1: point(48, 5), control2: point(56, 14))
+        path.addLine(to: point(56, 40))
+        path.addCurve(to: point(33, 60), control1: point(56, 54), control2: point(48, 60))
+        path.addLine(to: point(14, 60))
+        path.addQuadCurve(to: point(7, 53), control: point(7, 60))
+        path.addLine(to: point(7, 13))
+        path.addQuadCurve(to: point(14, 5), control: point(7, 5))
+        path.closeSubpath()
+
+        path.move(to: point(18, 16))
+        path.addLine(to: point(31, 16))
+        path.addCurve(to: point(45, 29), control1: point(40, 16), control2: point(45, 22))
+        path.addLine(to: point(45, 40))
+        path.addCurve(to: point(31, 49), control1: point(45, 47), control2: point(40, 49))
+        path.addLine(to: point(18, 49))
+        path.closeSubpath()
+
+        path.addEllipse(in: CGRect(x: ox + 37 * scale, y: oy + 20 * scale,
+                                   width: 6 * scale, height: 6 * scale))
+        path.addRoundedRect(in: CGRect(x: ox + 23 * scale, y: oy + 42 * scale,
+                                       width: 16 * scale, height: 4 * scale),
+                            cornerSize: CGSize(width: 2 * scale, height: 2 * scale))
+        return path
     }
 }

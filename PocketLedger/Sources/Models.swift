@@ -262,6 +262,12 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "모두 삭제": ["Delete all","全部删除","全部刪除","すべて削除","Eliminar todo","Tout supprimer","Alles löschen"],
+        "예시 데이터로 교체": ["Replace with sample","替换为示例数据","替換為範例資料","サンプルに置き換える","Reemplazar por ejemplo","Remplacer par un exemple","Durch Beispieldaten ersetzen"],
+        "거래·카드·통장과 관련 은행 보안 정보가 영구 삭제됩니다. 개인정보 보관함은 유지됩니다. 이 작업은 되돌릴 수 없습니다.": ["Transactions, cards, bank accounts and related security details will be permanently deleted. The private vault is preserved. This cannot be undone.","交易、银行卡、银行账户及相关银行安全资料将永久删除。个人信息保险库会保留，此操作无法撤销。","交易、銀行卡、銀行帳戶及相關銀行安全資料將永久刪除。個人資訊保險庫會保留，此操作無法復原。","取引、カード、口座と関連するセキュリティ情報は完全に削除されます。個人情報保管庫は保持されます。元に戻せません。"],
+        "기존 거래·카드·통장과 은행 보안 정보가 삭제되고 예시 데이터로 교체됩니다. 개인정보 보관함은 유지됩니다.": ["Existing transactions, cards, bank accounts and associated bank security details will be deleted and replaced with sample data. The private vault is preserved.","现有交易、银行卡、银行账户和相关银行安全资料将删除并替换为示例数据。个人信息保险库会保留。","現有交易、銀行卡、銀行帳戶及相關銀行安全資料將刪除並替換為範例資料。個人資訊保險庫會保留。","既存の取引、カード、口座および関連する銀行のセキュリティ情報は削除され、サンプルデータに置き換わります。個人情報保管庫は保持されます。"],
+        "모든 가계부 데이터를 삭제할까요?": ["Delete all ledger data?","删除全部账本数据？","刪除全部帳本資料？","家計簿のすべてのデータを削除しますか？","¿Eliminar todos los datos?","Supprimer toutes les données ?","Alle Haushaltsbuchdaten löschen?"],
+        "현재 데이터를 예시 데이터로 바꿀까요?": ["Replace current data with sample data?","将当前数据替换为示例数据？","將目前資料替換為範例資料？","現在のデータをサンプルデータに置き換えますか？","¿Sustituir los datos por ejemplos?","Remplacer les données par un exemple ?","Daten durch Beispieldaten ersetzen?"],
         "단축어 앱 → 자동화 → + → 거래(Transaction) → 카드 선택 → 즉시 실행 → Digital Wallet의 Record Wallet Payment 동작 추가. 결제 금액·가맹점을 변수로 연결하고 저장하세요.": ["Shortcuts → Automation → + → Transaction → select cards → Run Immediately → add Digital Wallet's Record Wallet Payment action. Pass amount and merchant from transaction variables and save.","快捷指令 → 自动化 → + → 交易 → 选择卡片 → 立即运行 → 添加 Digital Wallet 的 Record Wallet Payment 动作，将交易金额与商户变量对应后保存。","捷徑 → 自動化 → + → 交易 → 選擇卡片 → 立即執行 → 加入 Digital Wallet 的 Record Wallet Payment 動作，連結金額與商家變數後儲存。","ショートカット→オートメーション→取引→カードを選択→すぐに実行→Digital Walletの「Record Wallet Payment」アクションを追加し、金額と加盟店の変数を設定して保存してください。"],
         "연동 절차 복사": ["Copy setup instructions","复制设置步骤","複製設定步驟","設定手順をコピー"],
         "Apple Pay 바로가기 설정": ["Set up Apple Pay Shortcut","设置 Apple Pay 快捷指令","設定 Apple Pay 捷徑","Apple Payショートカットを設定"],
