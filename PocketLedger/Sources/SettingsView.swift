@@ -42,11 +42,9 @@ struct SettingsView: View {
                 Surface {
                     VStack(alignment: .leading, spacing: 18) {
                         SectionHeading(title: "메뉴 위치")
-                        Picker("도크", selection: $store.data.dockPlacement) {
-                            ForEach(DockPlacement.allCases) { Text($0.rawValue).tag($0) }
-                        }
-                        .pickerStyle(.menu)
-                        Text("자동은 앱 창 너비에 따라 전환됩니다. Duo에서 자동 인식이 안 되면 오른쪽 (Duo)를 선택하세요. 좁은 창에서도 오른쪽에 작은 투명 도크가 표시됩니다.")
+                        Label("시스템 자동 배치", systemImage: "rectangle.split.3x1")
+                            .font(.body)
+                        Text("iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다.")
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                     }
                 }
@@ -104,7 +102,7 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.3.2")
+                Text("PocketLedger · v0.3.3")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

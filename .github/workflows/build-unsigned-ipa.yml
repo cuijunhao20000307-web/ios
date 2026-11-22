@@ -12,10 +12,16 @@ permissions:
   contents: read
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Verify native Duo SDK
+        run: |
+          xcodebuild -version
+          sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iPhoneOS SDK: $sdk"
+          python3 -c 'import sys; v=tuple(int(x) for x in sys.argv[1].split(".")[:2]); assert v >= (27, 1), "iOS 27.1+ SDK required for native Duo bars"' "$sdk"
       - name: Restore original icon
         run: python3 scripts/restore_icon.py
       - name: Build iOS app without signing
@@ -27,13 +33,13 @@ jobs:
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
           cd package
-          zip -qry PocketLedger-v0.3.2-unsigned.ipa Payload
-          unzip -t PocketLedger-v0.3.2-unsigned.ipa
+          zip -qry PocketLedger-v0.3.3-unsigned.ipa Payload
+          unzip -t PocketLedger-v0.3.3-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-v0.3.2-unsigned-ipa
-          path: package/PocketLedger-v0.3.2-unsigned.ipa
+          name: PocketLedger-v0.3.3-unsigned-ipa
+          path: package/PocketLedger-v0.3.3-unsigned.ipa
           if-no-files-found: error
       - name: Upload build log
         if: always()
