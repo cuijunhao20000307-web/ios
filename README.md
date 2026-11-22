@@ -103,3 +103,6 @@ Replaces the old 27×27 programmatically drawn near-D icon with a transparent PN
 
 ## Digital Wallet v0.4.28 — automatic layout without menu setting
 Removed the entire Menu position / system automatic layout section and unused Duo icon asset. The existing native SwiftUI TabView automatically uses normal iPhone bottom tabs, and system-managed navigation where supported on Duo. Existing responsive DuoColumns selects columns based on available viewport, not device identity. No additional switch, model detection, data migration or user setup. Retains the same Bundle ID, app data and backup compatibility.
+
+## Digital Wallet v0.4.29 — 11 missing bank logos restored
+After auditing all 61 `BankDirectory.entries` asset references against `Assets.xcassets`, filled seven missing JP and four missing US image sets. Nine SVG source files are scalable and one further JP historic symbol is a carefully drawn simplified representation; the remaining US PNC logo is a 256px PNG. Existing IDs and stored banking data are unchanged. Sources are documented in BankLogoCredits. The SBI Sumishin bank has rebranded and its legacy list entry is preserved for stored-account compatibility. All bank logos are trademarks of their owners. iCloud, cards and Face ID unaffected.
