@@ -12,6 +12,7 @@ struct WalletView: View {
     @State private var showPrivateWallet = false
     @State private var section = 0
     @State private var showCard = false
+    @State private var editPaymentCard: PaymentCard?
     @State private var showAccount = false
     @State private var selectedCard: UUID?
     @Namespace private var cardTransition
@@ -78,6 +79,24 @@ struct WalletView: View {
                         Image(systemName: "plus").fontWeight(.semibold)
                     }.accessibilityLabel(L(section == 0 ? "카드 추가" : "통장 추가"))
                 }
+                if section == 0 && !store.data.cards.isEmpty {
+                    ToolbarItem(placement: .primaryAction) {
+                        if store.data.cards.count == 1, let card = store.data.cards.first {
+                            Button { editPaymentCard = card } label: {
+                                Image(systemName: "square.and.pencil")
+                            }.accessibilityLabel(L("카드 수정"))
+                        } else {
+                            Menu {
+                                ForEach(store.data.cards) { card in
+                                    Button { editPaymentCard = card } label: {
+                                        Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
+                                    }
+                                }
+                            } label: { Image(systemName: "square.and.pencil") }
+                            .accessibilityLabel(L("카드 수정"))
+                        }
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
@@ -85,6 +104,15 @@ struct WalletView: View {
                             searchFocused = searchVisible
                         } label: { Label(L("카드 및 은행 검색"), systemImage: "magnifyingglass") }
                         if section == 0 {
+                            if !store.data.cards.isEmpty {
+                                Menu {
+                                    ForEach(store.data.cards) { card in
+                                        Button { editPaymentCard = card } label: {
+                                            Label(card.name + " · " + card.lastFour, systemImage: "creditcard")
+                                        }
+                                    }
+                                } label: { Label(L("카드 수정"), systemImage: "square.and.pencil") }
+                            }
                             Button { withAnimation(.easeInOut(duration: 0.25)) { stacked.toggle() } } label: {
                                 Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "square.grid.2x2" : "rectangle.stack")
                             }
@@ -103,6 +131,7 @@ struct WalletView: View {
         }
         .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
         .sheet(isPresented: $showCard) { CardForm() }
+        .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
         .sheet(isPresented: $showAccount) { BankAccountForm() }
         .sheet(item: $editAccount) { BankAccountForm(existing: $0) }
         .alert("보호된 코드", isPresented: $secretShown) {
@@ -135,7 +164,7 @@ struct WalletView: View {
                     InteractiveWalletDeck(cards: cards, transition: cardTransition, canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
-                        select: { selectedCard = $0 },
+                        select: { id in if selectedCard == nil { selectedCard = id } },
                         reorder: { id, target in
                             guard search.isEmpty,
                                   let index = store.data.cards.firstIndex(where: { $0.id == id }),
@@ -329,46 +358,42 @@ private struct InteractiveWalletDeck: View {
     }
 
     @ViewBuilder private func touchRegion(_ card: PaymentCard, index: Int, width: CGFloat, height: CGFloat, step: CGFloat) -> some View {
-        let shape = Rectangle().fill(Color.clear)
-            .contentShape(Rectangle())
-            .frame(width: width, height: height)
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(L("카드 선택") + ": " + card.name)
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { select(card.id) }
+        let button = Button {
+            if drag == nil && !dragging { select(card.id) }
+        } label: {
+            Rectangle().fill(Color.clear)
+                .frame(width: width, height: height)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(L("카드 선택") + ": " + card.name)
         if canReorder && cards.count > 1 {
-            shape
-                .gesture(interaction(card.id, step: step))
+            button
+                .simultaneousGesture(reorderGesture(card.id, step: step))
                 .accessibilityAction(named: Text(L("앞으로 이동"))) {
                     if index < cards.count - 1 { reorder(card.id, index + 1) }
                 }
                 .accessibilityAction(named: Text(L("뒤로 이동"))) {
                     if index > 0 { reorder(card.id, index - 1) }
                 }
-        } else {
-            shape.onTapGesture { select(card.id) }
-        }
+        } else { button }
     }
 
-    private func interaction(_ id: UUID, step: CGFloat) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.20, maximumDistance: 12)
+    private func reorderGesture(_ id: UUID, step: CGFloat) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.25, maximumDistance: 12)
             .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .named(dragSpace)))
-            .exclusively(before: TapGesture())
             .updating($drag) { value, state, _ in
                 switch value {
-                case .first(.first(true)):
+                case .first(true):
                     state = DeckDragState(id: id)
-                case .first(.second(true, let movement)):
+                case .second(true, let movement):
                     state = DeckDragState(id: id, translation: movement?.translation.height ?? 0)
                 default: break
                 }
             }
             .onEnded { value in
-                switch value {
-                case .second: select(id)
-                case .first(.second(true, let movement)):
-                    reorder(id, target(id, movement?.translation.height ?? 0, step))
-                default: break
+                if case .second(true, let movement) = value, let movement {
+                    reorder(id, target(id, movement.translation.height, step))
                 }
                 dragging = false
             }

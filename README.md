@@ -31,3 +31,6 @@ Unified grouped dashboard with full-width balance, monthly income and expenses, 
 
 ## v0.4.5 artwork-first interactive wallet
 Custom artwork displays with only the last four digits and optional network badge; full card number stays in authenticated details. Every exposed card strip is selectable. Long-press and drag lifts a card, animates other cards into rearranged slots, and saves order on release. Drag reorder is disabled during search to avoid changing hidden cards. Native matched zoom navigation on supported iOS, reduced-motion fallback. No actual Apple Pay default payment changes. Existing data and native Duo dock remain intact.
+
+## v0.4.6 card editor accessibility
+Wallet root exposes a native edit toolbar item and an overflow edit fallback. With multiple cards the user selects the card by nickname and last four digits; the existing editor opens directly. Deck hit regions use Buttons independently of simultaneous long-press reordering. Detail edit and native Duo navigation retained. Device verification required.
