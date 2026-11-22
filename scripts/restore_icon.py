@@ -6,6 +6,14 @@ import struct
 import zlib
 
 root = Path(__file__).resolve().parent.parent
+target = root / 'PocketLedger/Assets.xcassets/AppIcon.appiconset/AppIcon.png'
+# Use an explicitly supplied replacement rather than overwriting it.
+if target.is_file():
+    header = target.read_bytes()[:33]
+    assert header[:8] == b'\x89PNG\r\n\x1a\n', 'AppIcon must be PNG'
+    assert struct.unpack_from('>II', header, 16) == (1024, 1024), 'AppIcon must be 1024x1024'
+    print('Using supplied 1024x1024 icon:', target)
+    raise SystemExit(0)
 payload = base64.b64decode((root / 'scripts/icon_pixels.b64').read_text())
 assert hashlib.sha256(payload).hexdigest() == 'f145213bd46cf8240beb256146db03794afdbfd90a1182552f9de8c9153bf53c'
 raw = lzma.decompress(payload)
