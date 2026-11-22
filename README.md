@@ -73,3 +73,6 @@ Currency preference changes symbol only; no FX conversion or stored value migrat
 
 ## v0.4.19 currency-specific dashboard covers
 KRW/CNY/JPY/USD select the corresponding balance-cover-{CODE} asset, or an imported original 2240x1000 PNG, automatically. Settings offers multi-file import by filename prefix. Imported artwork remains on-device; no change to balance amounts. Other currencies and missing covers fall back to original gradient. Assets maintain 2.24:1 with no crop, with left-side contrast scrim and bounded width on Duo. The four conversation uploads are supplied separately as an asset pack; they are not yet bundled in the repository. Device testing required.
+
+## Digital Wallet display name
+Home screen display name and bundle name: **Digital Wallet**. Executable name and bundle identifier are kept unchanged for side-load updates and to preserve app data. Updated in-app settings branding, local monthly notification title, and monthly summary branding. Existing v0.4.19 build remains compatible with original 2240x1000 currency-cover artwork. The renamed cover-bundled unsigned IPA is supplied as a repackaged artifact.

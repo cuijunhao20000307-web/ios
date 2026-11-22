@@ -285,7 +285,7 @@ enum AppLocalization {
         "CSV 가져오기": ["Import CSV","导入CSV","匯入CSV","CSVを取り込む","Importar CSV","Importer CSV","CSV importieren"],
         "결제 내역 가져오기": ["Import payments","导入支付账单","匯入支付帳單","決済履歴を取り込む","Importar pagos","Importer paiements","Zahlungen importieren"],
         "카드 결제 전체 내역을 직접 조회하지 않습니다. 입력값은 변환하지 않습니다.": ["No direct card history access or exchange conversion.","不直接读取全部卡片记录，不换算输入金额。","不直接讀取全部卡片紀錄，不換算金額。","カード履歴の直接取得・換算は行いません。"],
-        "단축어 앱의 거래 자동화에서 PocketLedger 결제 기록 동작을 추가하세요. 금액과 가맹점, 가능하면 거래 날짜 및 고유 ID를 전달합니다.": ["In Shortcuts, add Record Wallet Payment to a Transaction automation. Pass amount, merchant, date and unique ID when available.","在快捷指令的交易自动化中添加 Record Wallet Payment，传入金额、商户及可用的交易日期和唯一ID。","在捷徑交易自動化加入 Record Wallet Payment，傳入金額、商戶及可用的日期與ID。","取引オートメーションに Record Wallet Payment を追加し、金額・店名・日時・IDを渡します。"],
+        "단축어 앱의 거래 자동화에서 Digital Wallet 결제 기록 동작을 추가하세요. 금액과 가맹점, 가능하면 거래 날짜 및 고유 ID를 전달합니다.": ["In Shortcuts, add Record Wallet Payment to a Transaction automation. Pass amount, merchant, date and unique ID when available.","在快捷指令的交易自动化中添加 Record Wallet Payment，传入金额、商户及可用的交易日期和唯一ID。","在捷徑交易自動化加入 Record Wallet Payment，傳入金額、商戶及可用的日期與ID。","取引オートメーションに Record Wallet Payment を追加し、金額・店名・日時・IDを渡します。"],
         "자동 은행 조회 없이 단축어 및 CSV 가져오기를 사용합니다.": ["Use Shortcuts and CSV imports, not live bank access.","使用快捷指令和CSV导入，不实时读取银行。","使用捷徑及CSV匯入，不即時讀取銀行。","ショートカットとCSV取込を使用します。","Atajos e importación CSV.","Raccourcis et import CSV.","Kurzbefehle und CSV-Import."],
         "결제 연동": ["Payment integration","支付联动","支付連動","決済連携","Conectar pagos","Intégration paiements","Zahlungsintegration"],
         "건": ["transactions","笔","筆","件","operaciones","opérations","Buchungen"],

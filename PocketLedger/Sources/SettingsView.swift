@@ -191,7 +191,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("PocketLedger · v0.4.19")
+                Text("Digital Wallet · v0.4.19")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -243,7 +243,7 @@ enum MonthlyReportNotice {
             due.calendar = Calendar(identifier: .gregorian)
             due.day = 1; due.hour = 0; due.minute = 0
             let content = UNMutableNotificationContent()
-            content.title = "PocketLedger"
+            content.title = "Digital Wallet"
             content.body = L("지난달 결산이 준비되었습니다.")
             content.sound = .default
             try await center.add(UNNotificationRequest(identifier: identifier, content: content,
@@ -280,7 +280,7 @@ struct MonthlyReportCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
-                Label("PocketLedger", systemImage: "wallet.bifold.fill").font(.headline)
+                Label("Digital Wallet", systemImage: "wallet.bifold.fill").font(.headline)
                 Spacer()
                 Text(month.koreanMonthTitle).font(.caption.weight(.semibold))
             }.foregroundStyle(.secondary)
@@ -508,7 +508,7 @@ struct PaymentLinksView: View {
         NavigationStack {
             Form {
                 Section("Apple Wallet") {
-                    Text(L("단축어 앱의 거래 자동화에서 PocketLedger 결제 기록 동작을 추가하세요. 금액과 가맹점, 가능하면 거래 날짜 및 고유 ID를 전달합니다."))
+                    Text(L("단축어 앱의 거래 자동화에서 Digital Wallet 결제 기록 동작을 추가하세요. 금액과 가맹점, 가능하면 거래 날짜 및 고유 ID를 전달합니다."))
                         .font(.subheadline)
                     Picker(L("결제 수단 · 선택"), selection: $appleSource) { sources }
                     Text(L("카드 결제 전체 내역을 직접 조회하지 않습니다. 입력값은 변환하지 않습니다."))

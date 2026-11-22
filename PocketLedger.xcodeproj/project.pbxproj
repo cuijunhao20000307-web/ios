@@ -133,7 +133,8 @@
     CODE_SIGN_STYLE = Automatic;
     CURRENT_PROJECT_VERSION = 26;
     GENERATE_INFOPLIST_FILE = YES;
-    INFOPLIST_KEY_CFBundleDisplayName = "나의 가계부";
+    INFOPLIST_KEY_CFBundleDisplayName = "Digital Wallet";
+    INFOPLIST_KEY_CFBundleName = "Digital Wallet";
     INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
     INFOPLIST_KEY_NSFaceIDUsageDescription = "보호된 통장 비밀코드와 가계부를 Face ID로 확인합니다.";
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -158,7 +159,8 @@
     CODE_SIGN_STYLE = Automatic;
     CURRENT_PROJECT_VERSION = 26;
     GENERATE_INFOPLIST_FILE = YES;
-    INFOPLIST_KEY_CFBundleDisplayName = "나의 가계부";
+    INFOPLIST_KEY_CFBundleDisplayName = "Digital Wallet";
+    INFOPLIST_KEY_CFBundleName = "Digital Wallet";
     INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
     INFOPLIST_KEY_NSFaceIDUsageDescription = "보호된 통장 비밀코드와 가계부를 Face ID로 확인합니다.";
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
