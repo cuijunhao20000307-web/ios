@@ -53,12 +53,38 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 9) {
                         HStack(spacing: 8) {
                             CompactSettingsTitle(title: "표시 통화")
-                            Spacer(minLength: 2)
-                            Picker(L("통화"), selection: $currency) {
+                            Spacer(minLength: 4)
+                            // A Picker's automatic label wraps on Duo's narrow settings column.
+                            // Keep the complete selected currency code, symbol, and name inline.
+                            Menu {
                                 ForEach(DisplayCurrency.allCases) { item in
-                                    Text(item.formattedName).tag(item.rawValue)
+                                    Button {
+                                        currency = item.rawValue
+                                    } label: {
+                                        if currency == item.rawValue {
+                                            Label(item.formattedName, systemImage: "checkmark")
+                                        } else {
+                                            Text(item.formattedName)
+                                        }
+                                    }
                                 }
-                            }.pickerStyle(.menu)
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Text(DisplayCurrency(rawValue: currency)?.formattedName ?? DisplayCurrency.KRW.formattedName)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                        .allowsTightening(true)
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .fixedSize()
+                                }
+                                .foregroundStyle(LedgerTheme.accent)
+                                .frame(maxWidth: 230, alignment: .trailing)
+                                .contentShape(Rectangle())
+                                .accessibilityLabel(L("통화"))
+                            }
+                            .buttonStyle(.plain)
+                            .layoutPriority(1)
                         }
                         HStack(spacing: 10) {
                             Button { showCovers = true } label: {
@@ -234,7 +260,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.23")
+                Text("Digital Wallet · v0.4.24")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

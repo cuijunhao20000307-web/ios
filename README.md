@@ -88,3 +88,6 @@ The system automatic menu placement row uses a custom grey vector D/Duo icon mat
 
 ## Digital Wallet v0.4.23 compact settings on Duo
 Settings cards now use 11pt vertical and 14pt horizontal padding, 10pt intra-column spacing, and 12pt between Duo columns; key selectors and monthly budget are aligned into single rows. The long automatic-layout help and app-information text are still accessible via collapsed disclosure controls. All settings controls, security, iCloud backup, private vault and payment integration are retained. Wallet data and Bundle ID are unchanged. Needs on-device unfolded/folded verification.
+
+## Digital Wallet v0.4.24 currency selector single-line fix
+Replaces the currency Picker's automatic label with an accessible Menu whose value label stays on one line (e.g., KRW · ₩ · 韩元) and arrow stays adjacent. DisplayCurrency code, symbol, localized label and selection behavior are unchanged; selected currency continues to flow through AppStorage. Long strings can scale down in narrow columns. Existing compact settings, Duo adaptive layout, encrypted backup and photo assets preserved. Needs on-device layout validation.
