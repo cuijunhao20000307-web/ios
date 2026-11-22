@@ -14,6 +14,7 @@ struct WalletView: View {
     @State private var editPaymentCard: PaymentCard?
     @State private var showAccount = false
     @State private var selectedCard: UUID?
+    @State private var cinematicFullDetail = false
     @Namespace private var cardTransition
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var deckDragging = false
@@ -33,19 +34,41 @@ struct WalletView: View {
         NavigationStack {
             GeometryReader { viewport in
                 ZStack(alignment: .top) {
-                    walletRoot
-                        .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
-                        .allowsHitTesting(selectedCard == nil)
-                        .accessibilityHidden(selectedCard != nil)
-                        .zIndex(0)
-                    if let id = selectedCard {
-                        LedgerCardDetail(cardID: id, editingCard: editPaymentCard?.id == id, onClose: closeCard)
+                    if section == 0 && stacked {
+                        cinematicWallet(size: viewport.size)
+                            .frame(width: viewport.size.width, height: viewport.size.height)
+                            .zIndex(0)
+                        if cinematicFullDetail, let id = selectedCard {
+                            LedgerCardDetail(cardID: id,
+                                             editingCard: editPaymentCard?.id == id,
+                                             onClose: { cinematicFullDetail = false })
+                                .frame(width: viewport.size.width, height: viewport.size.height)
+                                .background(LedgerTheme.background)
+                                .transition(.opacity)
+                                .overlay(alignment: .topTrailing) {
+                                    Button { cinematicFullDetail = false } label: {
+                                        Image(systemName: "xmark")
+                                            .font(.headline).padding(12)
+                                            .background(.regularMaterial, in: Circle())
+                                    }
+                                    .padding(14)
+                                }
+                                .zIndex(2)
+                        }
+                    } else {
+                        walletRoot
                             .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
-                            .background(LedgerTheme.background)
-                            .clipped()
-                            // Opaque page movement: do not crossfade two card images or text.
-                            .transition(reduceMotion ? .identity : .move(edge: .trailing))
-                            .zIndex(1)
+                            .allowsHitTesting(selectedCard == nil)
+                            .accessibilityHidden(selectedCard != nil)
+                            .zIndex(0)
+                        if let id = selectedCard {
+                            LedgerCardDetail(cardID: id, editingCard: editPaymentCard?.id == id, onClose: closeCard)
+                                .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
+                                .background(LedgerTheme.background)
+                                .clipped()
+                                .transition(reduceMotion ? .identity : .move(edge: .trailing))
+                                .zIndex(1)
+                        }
                     }
                 }
                 .frame(width: viewport.size.width, height: viewport.size.height)
@@ -53,8 +76,9 @@ struct WalletView: View {
             }
             .background(LedgerTheme.background.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(section == 0 && stacked ? .hidden : .visible, for: .navigationBar)
             .toolbar {
-                if section != 2 {
+                if section != 2 && !(section == 0 && stacked) {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Button {
                             if selectedCard != nil { closeCard() }
@@ -135,15 +159,173 @@ struct WalletView: View {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
         searchFocused = false
         deckDragging = false
+        cinematicFullDetail = false
         withAnimation(reduceMotion ? nil : .timingCurve(0.32, 0.72, 0, 1, duration: 0.40)) {
             selectedCard = id
         }
     }
 
     private func closeCard() {
+        cinematicFullDetail = false
         withAnimation(reduceMotion ? nil : .timingCurve(0.32, 0.72, 0, 1, duration: 0.36)) {
             selectedCard = nil
         }
+    }
+
+    // Duo wallet reference: the card itself travels between the pile and
+    // its selected location. This avoids the old slide-in detail page and
+    // allows separate inside/cover-screen coordinates from the two recordings.
+    private func cinematicWallet(size: CGSize) -> some View {
+        let wide = size.width > size.height * 1.15
+        let railWidth: CGFloat = wide ? 72 : 84
+        let available = max(230, size.width - railWidth)
+        let cardWidth: CGFloat = wide
+            ? min(available * 0.46, size.height * 0.50)
+            : min(available * 0.90, size.height * 0.50)
+        let cardHeight = cardWidth / 1.586
+        let step = cardWidth * (wide ? 0.148 : 0.162)
+        let pileX = max(16, (available - cardWidth) / 2)
+        let pileY: CGFloat = wide ? 68 : 82
+        let selectedX: CGFloat = wide ? 50 : pileX
+        let selectedY: CGFloat = wide ? (size.height - cardHeight) * 0.49 : 14
+        let cards = filteredCards
+        let detailWidth: CGFloat = wide ? min(available * 0.41, 282) : cardWidth
+        let detailX: CGFloat = wide ? available - detailWidth - 12 : pileX
+        let detailY: CGFloat = wide ? 14 : selectedY + cardHeight + 25
+        let detailHeight: CGFloat = wide ? max(120, size.height - 30) :
+            max(120, size.height - detailY - 10)
+        return ZStack(alignment: .topLeading) {
+            LedgerTheme.background.ignoresSafeArea()
+            if selectedCard == nil {
+                Text(L("지갑"))
+                    .font(.system(size: wide ? 19 : 27, weight: .bold))
+                    .padding(.leading, wide ? 16 : 24)
+                    .padding(.top, wide ? 12 : 16)
+                    .transition(.opacity)
+                if cards.isEmpty {
+                    EmptyContent(symbol: "creditcard", title: "표시할 카드가 없어요",
+                                 subtitle: "+ 버튼으로 새 카드를 추가할 수 있어요")
+                        .frame(width: available - 48)
+                        .position(x: available / 2, y: size.height / 2)
+                }
+            }
+            if let id = selectedCard,
+               let active = cards.first(where: { $0.id == id }) {
+                CinematicCardTransactions(entries: store.entries(in: .now)
+                    .filter { $0.sourceId == active.id }, wide: wide,
+                    onTransaction: { edit in editPaymentCard = active;
+                        // Transaction edit remains in the detailed card view.
+                        cinematicFullDetail = true })
+                    .frame(width: detailWidth, height: detailHeight, alignment: .top)
+                    .position(x: detailX + detailWidth / 2,
+                              y: detailY + detailHeight / 2)
+                    .transition(reduceMotion ? .identity : .opacity)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.24).delay(0.14),
+                               value: selectedCard)
+                    .zIndex(1)
+            }
+            ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                let isSelected = selectedCard == card.id
+                let isOpen = selectedCard != nil
+                let x = isSelected ? selectedX : pileX
+                let y = isSelected ? selectedY : pileY + CGFloat(index) * step
+                LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
+                    .frame(width: cardWidth, height: cardHeight)
+                    .position(x: x + cardWidth / 2, y: y + cardHeight / 2)
+                    .opacity(isOpen && !isSelected ? 0 : 1)
+                    .zIndex(isSelected ? 50 : Double(index) + 2)
+                    .animation(reduceMotion ? nil :
+                               .timingCurve(0.22, 0.78, 0.16, 1, duration: 0.44),
+                               value: selectedCard)
+                    .contentShape(Rectangle())
+                    .onTapGesture { if selectedCard == nil { openCard(card.id) } }
+                    .accessibilityLabel(card.name + " " + L("카드 선택"))
+                    .accessibilityAddTraits(.isButton)
+            }
+            if searchVisible && selectedCard == nil {
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                    TextField(L("카드 및 은행 검색"), text: $search)
+                        .focused($searchFocused)
+                    Button { search = ""; searchVisible = false; searchFocused = false } label: {
+                        Image(systemName: "xmark.circle.fill")
+                    }
+                }
+                .padding(12)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 15))
+                .frame(width: min(available - 32, 380))
+                .position(x: available / 2, y: size.height - 62)
+                .zIndex(90)
+            }
+            VStack(spacing: wide ? 11 : 12) {
+                Button {
+                    if selectedCard != nil { closeCard() } else { showCard = true }
+                } label: {
+                    Image(systemName: selectedCard == nil ? "plus" : "xmark")
+                        .font(.system(size: 21, weight: .regular))
+                        .frame(width: 45, height: 45)
+                        .background(.regularMaterial, in: Circle())
+                }
+                .accessibilityLabel(L(selectedCard == nil ? "카드 추가" : "닫기"))
+                Button {
+                    if selectedCard != nil { cinematicFullDetail = true }
+                    else { section = 1 }
+                } label: {
+                    Image(systemName: selectedCard == nil ? "cube" : "creditcard")
+                        .font(.system(size: 20))
+                        .frame(width: 45, height: 45)
+                        .background(.regularMaterial, in: Circle())
+                }
+                .accessibilityLabel(L(selectedCard == nil ? "은행 통장" : "카드 정보"))
+                Menu {
+                    if let id = selectedCard, let card = store.data.cards.first(where: { $0.id == id }) {
+                        Button { editPaymentCard = card } label: {
+                            Label(L("카드 수정"), systemImage: "square.and.pencil")
+                        }
+                        Button { cinematicFullDetail = true } label: {
+                            Label(L("카드 정보"), systemImage: "creditcard")
+                        }
+                    } else {
+                        Button { section = 1 } label: {
+                            Label(L("은행 통장"), systemImage: "building.columns")
+                        }
+                        Button { section = 2 } label: {
+                            Label(L("개인정보 보관함"), systemImage: "lock.shield")
+                        }
+                        Button { stacked = false } label: {
+                            Label(L("목록 보기"), systemImage: "square.grid.2x2")
+                        }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 20))
+                        .frame(width: 45, height: 45)
+                        .background(.regularMaterial, in: Circle())
+                }
+                .accessibilityLabel(L("더 보기"))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .position(x: size.width - 34, y: wide ? 148 : 255)
+            .zIndex(100)
+            Button {
+                if selectedCard != nil { closeCard() }
+                searchVisible.toggle()
+                if !searchVisible { search = "" }
+                searchFocused = searchVisible
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 19))
+                    .frame(width: 45, height: 45)
+                    .background(.regularMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.primary)
+            .position(x: size.width - 34, y: size.height - 42)
+            .zIndex(100)
+        }
+        .frame(width: size.width, height: size.height, alignment: .topLeading)
+        .clipped()
     }
 
     private var walletSections: some View {
@@ -316,6 +498,62 @@ struct WalletView: View {
     }
 }
 
+
+// Designed around the two supplied screen recordings. Wide Duo unfolds to
+// a right-hand transaction rail; the cover screen places it below the card.
+private struct CinematicCardTransactions: View {
+    let entries: [MoneyEntry]
+    let wide: Bool
+    let onTransaction: (MoneyEntry) -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L("최근 거래 내역"))
+                .font(.system(size: wide ? 17 : 20, weight: .bold))
+                .padding(.horizontal, wide ? 2 : 14)
+                .padding(.top, wide ? 0 : 2)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if entries.isEmpty {
+                        Text(L("이 카드로 기록된 이번 달 지출이 없습니다."))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(15)
+                    } else {
+                        ForEach(entries.sorted(by: { $0.date > $1.date })) { entry in
+                            Button { onTransaction(entry) } label: {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    HStack(spacing: 8) {
+                                        Text(entry.title)
+                                            .lineLimit(1)
+                                            .font(.system(size: wide ? 12 : 15, weight: .semibold))
+                                        Spacer(minLength: 6)
+                                        Text(entry.amount.won)
+                                            .font(.system(size: wide ? 11 : 14, weight: .medium))
+                                            .monospacedDigit()
+                                    }
+                                    Text(L(entry.category.rawValue))
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                    Text(entry.date.formatted(.dateTime.month().day().locale(AppLocalization.locale)))
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                                .foregroundStyle(.primary)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 14)
+                            }
+                            .buttonStyle(.plain)
+                            Divider().padding(.horizontal, 14)
+                        }
+                    }
+                }
+                .background(Color(uiColor: .secondarySystemGroupedBackground),
+                            in: RoundedRectangle(cornerRadius: wide ? 18 : 20))
+            }
+            .scrollIndicators(.visible)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
 
 private struct LedgerCardBackground: View {
     let card: PaymentCard
