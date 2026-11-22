@@ -1,4 +1,8 @@
-# PocketLedger v0.4.39
+# PocketLedger v0.4.40
+
+## v0.4.40 Restore original wallet layout, linear card motion (Build 47)
+Reverted the experimental Duo cinematic card layout. The wallet's original stack/list geometry, toolbar, tap regions, scrolling, card detail screen and interactions are restored from the previously working v0.4.34. Only the opening, closing and reordering animation curves are linear. Keeps all newer security card, monthly expenses, backup restore and online update fixes.
+
 
 ## v0.4.39 Online updates (Build 46)
 Settings > Online updates now checks the official repository over HTTPS and compares numeric app versions with the installed version. Published GitHub Releases containing an IPA are preferred; while this repo has no Releases, the latest successful, non-expired GitHub Actions unsigned IPA artifact is offered as a fallback, with a link to its Actions run. The app never downloads private user data or sends wallet contents to GitHub. There is no silent on-device installation of unsigned IPAs on iOS. Users must sign and install with their own sideloading method and should back up first. No new update entitlement or App Store dependency is required.
