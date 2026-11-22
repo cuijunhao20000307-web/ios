@@ -4,6 +4,8 @@
  classes = {};
  objectVersion = 56;
  objects = {
+  BDA334A9FF2112000191A002 = { isa = PBXBuildFile; fileRef = BDA334A9FF2112000191A001; };
+  BDA334A9FF2112000191A001 = { isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
   5A39482673CAA34AA321DDCE = { isa = PBXBuildFile; fileRef = 697FA15BDBEBB67A51F033E2; };
   C436BA32D5648003ED884C88 = { isa = PBXBuildFile; fileRef = 7176A0827E0152EA710BD734; };
   FCF3A5EB537BD325C29FC92F = { isa = PBXBuildFile; fileRef = DE32296211F93190CDA9A543; };
@@ -33,7 +35,7 @@
   52BEEF38B4FE03B03EED52FD = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketLedger.app; sourceTree = BUILT_PRODUCTS_DIR; };
   D3BF4E9481D24142B9D79B2F = {
    isa = PBXGroup;
-   children = ( 6320DAB763E257F3200B222A, 9E59F255D3CFE25F396D9BFC, D7A366F65AE9AE8343069FC3, );
+   children = ( 6320DAB763E257F3200B222A, 9E59F255D3CFE25F396D9BFC, BDA334A9FF2112000191A001, D7A366F65AE9AE8343069FC3, );
    path = PocketLedger;
    sourceTree = "<group>";
   };
@@ -83,7 +85,7 @@
   B9EAB7E1B95EF1D1EF679A38 = {
    isa = PBXResourcesBuildPhase;
    buildActionMask = 2147483647;
-   files = ( CC8E464EBE9A22D1DF781E76, );
+   files = ( CC8E464EBE9A22D1DF781E76, BDA334A9FF2112000191A002, );
    runOnlyForDeploymentPostprocessing = 0;
   };
   AC11039C836330D92B22A08A = {
@@ -127,16 +129,18 @@
    buildSettings = {
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     CODE_SIGN_STYLE = Automatic;
-    CURRENT_PROJECT_VERSION = 3;
+    CURRENT_PROJECT_VERSION = 4;
     GENERATE_INFOPLIST_FILE = YES;
     INFOPLIST_KEY_CFBundleDisplayName = "나의 가계부";
     INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
     INFOPLIST_KEY_NSFaceIDUsageDescription = "보호된 통장 비밀코드와 가계부를 Face ID로 확인합니다.";
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+    INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
     INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
     INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+    "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
     IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-    MARKETING_VERSION = 0.3.0;
+    MARKETING_VERSION = 0.3.1;
     PRODUCT_BUNDLE_IDENTIFIER = com.example.pocketledger;
     PRODUCT_NAME = "$(TARGET_NAME)";
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -150,16 +154,18 @@
    buildSettings = {
     ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
     CODE_SIGN_STYLE = Automatic;
-    CURRENT_PROJECT_VERSION = 3;
+    CURRENT_PROJECT_VERSION = 4;
     GENERATE_INFOPLIST_FILE = YES;
     INFOPLIST_KEY_CFBundleDisplayName = "나의 가계부";
     INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
     INFOPLIST_KEY_NSFaceIDUsageDescription = "보호된 통장 비밀코드와 가계부를 Face ID로 확인합니다.";
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+    INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
     INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
     INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+    "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad" = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
     IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-    MARKETING_VERSION = 0.3.0;
+    MARKETING_VERSION = 0.3.1;
     PRODUCT_BUNDLE_IDENTIFIER = com.example.pocketledger;
     PRODUCT_NAME = "$(TARGET_NAME)";
     SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

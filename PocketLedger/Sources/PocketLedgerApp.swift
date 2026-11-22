@@ -22,10 +22,10 @@ struct AppShell: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let ratio = proxy.size.width / max(proxy.size.height, 1)
-            let duoLike = proxy.size.width >= 600 && ratio > 1.05
-            let rightRail = store.data.dockPlacement == .right ||
-                (store.data.dockPlacement == .automatic && duoLike)
+            // Use the actual available window, not device model or aspect ratio.
+            // An explicit right dock is still constrained to a usable wide window.
+            let supportsRightDock = proxy.size.width >= 580 && proxy.size.height >= 440
+            let rightRail = supportsRightDock && store.data.dockPlacement != .bottom
             ZStack {
                 LedgerTheme.background.ignoresSafeArea()
                 if store.data.appLockEnabled && !unlocked {
@@ -36,9 +36,11 @@ struct AppShell: View {
                     HStack(spacing: 0) {
                         page
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .layoutPriority(1)
                         LedgerDock(selection: $tab, vertical: true)
-                            .padding(.trailing, 12)
+                            .padding(.trailing, 10)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     VStack(spacing: 0) {
                         page.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -82,34 +84,36 @@ struct LedgerDock: View {
     var body: some View {
         Group {
             if vertical {
-                VStack(spacing: 10) { tabs }
-                    .padding(.vertical, 20)
-                    .padding(.horizontal, 9)
-                    .frame(width: 76)
+                VStack(spacing: 4) { tabs }
+                    .padding(.vertical, 10)
+                    .padding(.horizontal, 5)
+                    .frame(width: 64)
             } else {
                 HStack(spacing: 0) { tabs }
-                    .padding(.vertical, 11)
-                    .padding(.horizontal, 8)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 4)
             }
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 27, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 27).stroke(.white.opacity(0.8), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 27).stroke(Color.primary.opacity(0.08), lineWidth: 1))
         .shadow(color: .black.opacity(0.07), radius: 14, y: 5)
     }
 
     @ViewBuilder private var tabs: some View {
         ForEach(WalletTab.allCases) { item in
             Button { selection = item } label: {
-                VStack(spacing: 6) {
+                VStack(spacing: 3) {
                     Image(systemName: item.symbol)
-                        .font(.system(size: vertical ? 21 : 20, weight: selection == item ? .semibold : .regular))
+                        .font(.system(size: vertical ? 19 : 19, weight: selection == item ? .semibold : .regular))
                         .frame(height: 23)
                     Text(item.rawValue)
                         .font(.system(size: 10, weight: selection == item ? .bold : .medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
                 .foregroundStyle(selection == item ? LedgerTheme.accent : LedgerTheme.subtext)
                 .frame(maxWidth: vertical ? nil : .infinity)
-.frame(width: vertical ? 55 : nil, height: vertical ? 47 : 45)
+                .frame(width: vertical ? 54 : nil, height: vertical ? 47 : 44)
                 .background(selection == item ? LedgerTheme.accent.opacity(0.10) : Color.clear,
                             in: RoundedRectangle(cornerRadius: 15, style: .continuous))
             }
@@ -126,7 +130,7 @@ struct LockedView: View {
             Image(systemName: "lock.shield.fill")
                 .font(.system(size: 48)).foregroundStyle(LedgerTheme.accent)
                 .frame(width: 90, height: 90)
-                .background(.white, in: RoundedRectangle(cornerRadius: 26))
+                .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 26))
             Text("나의 가계부").font(.system(size: 29, weight: .bold))
             Text("보호된 가계부입니다").font(.subheadline).foregroundStyle(LedgerTheme.subtext)
             Button(action: onUnlock) {

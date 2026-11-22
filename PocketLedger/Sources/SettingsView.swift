@@ -21,9 +21,11 @@ struct SettingsView: View {
                         SectionHeading(title: "월 예산")
                         HStack {
                             TextField("예산", text: $budgetText).keyboardType(.numberPad)
-                            Text("원").foregroundStyle(LedgerTheme.subtext)
+                                .font(.system(.body, design: .rounded))
+                                .minimumScaleFactor(0.75)
+                            Text("원").foregroundStyle(LedgerTheme.subtext).fixedSize()
                             Button("저장") { store.data.monthlyBudget = max(1, budgetText.toMoneyInt) }
-                                .fontWeight(.semibold).disabled(budgetText.toMoneyInt < 1)
+                                .fontWeight(.semibold).fixedSize().disabled(budgetText.toMoneyInt < 1)
                         }
                     }
                 }
@@ -31,7 +33,9 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         SectionHeading(title: "화면 테마")
                         Picker("테마", selection: $store.data.appearance) {
-                            ForEach(AppearanceMode.allCases) { Text($0.rawValue).tag($0) }
+                            ForEach(AppearanceMode.allCases) { mode in
+                                Text(mode == .system ? "자동" : mode.rawValue).tag(mode)
+                            }
                         }.pickerStyle(.segmented)
                     }
                 }
@@ -42,7 +46,7 @@ struct SettingsView: View {
                             ForEach(DockPlacement.allCases) { Text($0.rawValue).tag($0) }
                         }
                         .pickerStyle(.menu)
-                        Text("자동 감지는 일반 iPhone에서는 하단, Duo처럼 펼친 화면에서는 오른쪽 도크를 사용합니다. 화면 형태가 다르게 인식되면 직접 선택하세요.")
+                        Text("넓은 화면에서는 오른쪽 도크, 좁은 화면에서는 하단 도크를 사용합니다. 오른쪽을 선택해도 공간이 부족하면 자동으로 하단으로 전환됩니다.")
                             .font(.system(size: 12)).foregroundStyle(LedgerTheme.subtext)
                     }
                 }
@@ -100,7 +104,7 @@ struct SettingsView: View {
                     }
                     .font(.system(size: 13))
                 }
-                Text("PocketLedger · v0.3.0")
+                Text("PocketLedger · v0.3.1")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

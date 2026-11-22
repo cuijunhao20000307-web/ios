@@ -38,7 +38,7 @@ struct HistoryView: View {
                     Button { monthOffset += 1 } label: { Image(systemName: "chevron.right") }
                 }
                 .padding(15)
-                .background(.white, in: RoundedRectangle(cornerRadius: 17))
+                .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 17))
 
                 Picker("거래 구분", selection: $filter) {
                     ForEach(["전체", "지출", "수입"], id: \.self) { Text($0).tag($0) }
