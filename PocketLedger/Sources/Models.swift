@@ -264,6 +264,14 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "저장된 보안카드가 없습니다.": ["No security card has been saved.","尚未保存保安卡。","尚未儲存保安卡。","保存されたセキュリティカードはありません。"],
+        "보안카드 코드를 보려면 기기 인증이 필요합니다.": ["Device authentication is required to view security card codes.","查看保安卡代码需要设备身份验证。","查看保安卡代碼需要裝置身分驗證。","コードの表示には端末の認証が必要です。"],
+        "번호 숨기기": ["Hide codes","隐藏代码","隱藏代碼","番号を隠す"],
+        "보안카드 전체 번호는 다른 사람에게 공개하지 마세요.": ["Never share the complete security card with anyone.","请勿向任何人泄露整张保安卡的代码。","請勿向任何人洩露整張保安卡的代碼。","セキュリティカードのすべての番号を他人に見せないでください。"],
+        "인증된 보안카드 조회": ["Verified security card","已验证的保安卡","已驗證的保安卡","認証済みセキュリティカード"],
+        "저장된 보안카드 코드": ["Saved security card codes","已保存的保安卡代码","已儲存的保安卡代碼","保存済みのセキュリティコード"],
+        "보안카드 전체 보기": ["View saved security card","查看已保存的保安卡","查看已儲存的保安卡","保存したセキュリティカードを見る","Ver tarjeta de seguridad","Voir la carte de sécurité","Gespeicherte Sicherheitskarte anzeigen"],
+        "보안카드 보기 · 수정": ["View/edit security card","查看／编辑保安卡","查看／編輯保安卡","セキュリティカードを表示・編集","Ver/editar tarjeta de seguridad","Afficher/modifier la carte de sécurité","Sicherheitskarte ansehen/bearbeiten"],
         "저장 완료": ["Saved","已保存","已儲存","保存しました","Guardado","Enregistré","Gespeichert"],
         "이 앱은 개인 기록용 가계부 프로토타입입니다. 실제 결제 또는 은행 로그인 기능을 제공하지 않습니다.": ["This is a personal ledger prototype. It cannot process actual payments or sign in to banks.","本应用是个人记账原型，不提供实际支付或银行登录。","本應用是個人記帳原型，不提供實際支付或銀行登入。","個人用の家計簿アプリです。実際の決済や銀行ログインには対応しません。"],
         "iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다.": ["On iPhone Duo, menu placement follows screen posture and status-bar space. Other iPhones use a bottom tab bar. Some items can move to More if space is limited.","在 iPhone Duo 上，系统根据折叠状态和状态栏调整菜单位置。普通 iPhone 使用底部标签栏；空间不足时部分菜单可能移入“更多”。","在 iPhone Duo 上，系統依折疊狀態及狀態列調整選單位置。一般 iPhone 使用底部標籤列；空間不足時部分選單可能移至「更多」。","iPhone Duoでは画面の姿勢とステータスバーに合わせてメニューを配置します。通常のiPhoneでは下部タブを使用します。","En iPhone Duo, el sistema adapta la barra a la pantalla. En otros iPhone usa pestañas inferiores.","Sur iPhone Duo, les menus s'adaptent à l'écran; sur iPhone classique, la barre d'onglets est en bas.","Auf dem iPhone Duo folgt das Menü der Displayhaltung; andere iPhones nutzen untere Tabs."],
