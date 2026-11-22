@@ -23,7 +23,6 @@ struct WalletView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("지갑").font(.largeTitle.bold())
-                        Text("카드와 통장을 한곳에").font(.subheadline).foregroundStyle(LedgerTheme.subtext)
                     }
                     Spacer()
                     Button { section == 0 ? (showCard = true) : (showAccount = true) } label: {
@@ -110,11 +109,17 @@ struct WalletView: View {
                                 LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                                     .aspectRatio(1.586, contentMode: .fit)
                             } else {
-                                LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
-                                    .aspectRatio(1.586, contentMode: .fit)
-                                    .frame(height: 54, alignment: .top)
-                                    .clipped()
-                                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: 19, topTrailingRadius: 19))
+                                HStack {
+                                    Text(card.issuer).font(.system(size: 16, weight: .bold)).lineLimit(1)
+                                    Spacer(minLength: 10)
+                                    Text(card.name).font(.system(size: 14, weight: .medium)).lineLimit(1)
+                                }
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 20)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 54)
+                                .background(LinearGradient(colors: card.tone.gradient, startPoint: .leading, endPoint: .trailing))
+                                .clipShape(UnevenRoundedRectangle(topLeadingRadius: 19, topTrailingRadius: 19))
                             }
                         }
                         .buttonStyle(.plain)
