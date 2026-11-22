@@ -116,6 +116,7 @@ struct BankAccount: Codable, Identifiable, Equatable {
     var accountNumber: String
     var balance: Int
     var tone: WalletTone
+    var bankLogoID: String? = nil
 }
 
 struct MoneyEntry: Codable, Identifiable, Equatable {
@@ -261,6 +262,11 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "등록된 로고 없음": ["Logo unavailable","暂无标志","暫無標誌","ロゴなし","Sin logo","Sans logo","Kein Logo"],
+        "은행 로고": ["Bank logo","银行标志","銀行標誌","銀行ロゴ","Logo bancario","Logo bancaire","Banklogo"],
+        "직접 입력": ["Enter manually","自定义银行","自訂銀行","手動入力","Entrada manual","Saisie manuelle","Manuell eingeben"],
+        "은행 검색": ["Search banks","搜索银行","搜尋銀行","銀行を検索","Buscar bancos","Rechercher une banque","Bank suchen"],
+        "은행 선택": ["Select bank","选择银行","選擇銀行","銀行を選択","Elegir banco","Choisir une banque","Bank auswählen"],
         "기초 잔액": ["Opening balance","期初余额","期初餘額","期首残高"],
         "알림 설정을 확인하세요": ["Check notification settings","请检查通知权限","請檢查通知權限","通知設定を確認してください"],
         "가져오기 완료": ["Import complete","导入完成","匯入完成","取込完了"],
