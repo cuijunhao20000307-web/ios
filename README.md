@@ -91,3 +91,6 @@ Settings cards now use 11pt vertical and 14pt horizontal padding, 10pt intra-col
 
 ## Digital Wallet v0.4.24 currency selector single-line fix
 Replaces the currency Picker's automatic label with an accessible Menu whose value label stays on one line (e.g., KRW · ₩ · 韩元) and arrow stays adjacent. DisplayCurrency code, symbol, localized label and selection behavior are unchanged; selected currency continues to flow through AppStorage. Long strings can scale down in narrow columns. Existing compact settings, Duo adaptive layout, encrypted backup and photo assets preserved. Needs on-device layout validation.
+
+## Digital Wallet v0.4.25: monthly-budget save button UI
+Changed the monthly-budget inline Save text to a blue pill with a save icon. After tapping it, a green check and localized 'Saved' label confirms the updated value. The button holds a fixed width so currency, amount, and title stay in one compact row on Duo. The feedback clears as soon as the user edits the amount. No model or bundle identifier changes.

@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showPrivateSettings = false
     @State private var showICloudBackup = false
     @State private var budgetText = ""
+    @State private var budgetSavedFeedback = false
     @State private var pendingDestructiveAction: SettingsDestructiveAction?
     @State private var deviceAuthUnavailable = false
     @State private var exportURL: URL?
@@ -100,20 +101,46 @@ struct SettingsView: View {
                 }
                 SettingsCompactSection {
                     VStack(alignment: .leading, spacing: 9) {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 7) {
                             CompactSettingsTitle(title: "월 예산")
-                            Spacer(minLength: 6)
+                            Spacer(minLength: 3)
                             TextField(L("예산"), text: $budgetText)
                                 .keyboardType(.numberPad)
                                 .font(.system(.body, design: .rounded))
+                                .monospacedDigit()
                                 .multilineTextAlignment(.trailing)
-                                .frame(minWidth: 70, maxWidth: 145)
+                                .lineLimit(1)
+                                .frame(minWidth: 65, maxWidth: 128)
+                                .onChange(of: budgetText) { _, _ in
+                                    budgetSavedFeedback = false
+                                }
                             Text(DisplayCurrency.selected.symbol)
-                                .foregroundStyle(LedgerTheme.subtext).fixedSize()
-                            Button(L("저장")) { store.data.monthlyBudget = max(1, budgetText.toMoneyInt) }
-                                .font(.subheadline.weight(.semibold))
+                                .font(.subheadline)
+                                .foregroundStyle(LedgerTheme.subtext)
                                 .fixedSize()
-                                .disabled(budgetText.toMoneyInt < 1)
+                            Button {
+                                store.data.monthlyBudget = max(1, budgetText.toMoneyInt)
+                                budgetSavedFeedback = true
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: budgetSavedFeedback ? "checkmark.circle.fill" : "square.and.arrow.down")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Text(L(budgetSavedFeedback ? "저장 완료" : "저장"))
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.75)
+                                }
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(budgetSavedFeedback ? Color.green : Color.white)
+                                .frame(width: 85, height: 34)
+                                .background(
+                                    budgetSavedFeedback ? Color.green.opacity(0.12) : LedgerTheme.accent,
+                                    in: Capsule()
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(L(budgetSavedFeedback ? "저장 완료" : "저장"))
+                            .disabled(budgetText.toMoneyInt < 1)
+                            .opacity(budgetText.toMoneyInt < 1 ? 0.45 : 1)
                         }
                     }
                 }
@@ -260,7 +287,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.24")
+                Text("Digital Wallet · v0.4.25")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }

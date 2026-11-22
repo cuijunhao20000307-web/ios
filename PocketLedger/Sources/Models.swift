@@ -262,6 +262,7 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "저장 완료": ["Saved","已保存","已儲存","保存しました","Guardado","Enregistré","Gespeichert"],
         "이 앱은 개인 기록용 가계부 프로토타입입니다. 실제 결제 또는 은행 로그인 기능을 제공하지 않습니다.": ["This is a personal ledger prototype. It cannot process actual payments or sign in to banks.","本应用是个人记账原型，不提供实际支付或银行登录。","本應用是個人記帳原型，不提供實際支付或銀行登入。","個人用の家計簿アプリです。実際の決済や銀行ログインには対応しません。"],
         "iPhone Duo에서는 시스템이 화면 자세와 상태 표시줄에 맞춰 메뉴를 배치합니다. 일반 iPhone에서는 하단 탭 막대를 사용합니다. 공간이 부족하면 일부 메뉴는 더 보기로 이동할 수 있습니다.": ["On iPhone Duo, menu placement follows screen posture and status-bar space. Other iPhones use a bottom tab bar. Some items can move to More if space is limited.","在 iPhone Duo 上，系统根据折叠状态和状态栏调整菜单位置。普通 iPhone 使用底部标签栏；空间不足时部分菜单可能移入“更多”。","在 iPhone Duo 上，系統依折疊狀態及狀態列調整選單位置。一般 iPhone 使用底部標籤列；空間不足時部分選單可能移至「更多」。","iPhone Duoでは画面の姿勢とステータスバーに合わせてメニューを配置します。通常のiPhoneでは下部タブを使用します。","En iPhone Duo, el sistema adapta la barra a la pantalla. En otros iPhone usa pestañas inferiores.","Sur iPhone Duo, les menus s'adaptent à l'écran; sur iPhone classique, la barre d'onglets est en bas.","Auf dem iPhone Duo folgt das Menü der Displayhaltung; andere iPhones nutzen untere Tabs."],
         "배치 설명": ["Layout explanation","布局说明","佈局說明","配置の説明","Descripción del diseño","Explication de la disposition","Layoutbeschreibung"],
