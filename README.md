@@ -37,3 +37,6 @@ Wallet root exposes a native edit toolbar item and an overflow edit fallback. Wi
 
 ## v0.4.7 card detail presentation
 Explicit selected-card state renders the detail pane inside the existing native NavigationStack, rather than relying on a matched zoom navigation destination. Linear 0.24-second slide transition with reduced-motion fallback. Native back and edit toolbar actions, direct detail selection in overflow menu, nontransparent hit regions and post-drag tap suppression. Keep reorder and authenticated card details. Device verification required.
+
+## v0.4.8 wallet personal information tab
+Third wallet segment 개인정보 embeds the existing authenticated private vault instead of showing a separate sheet from the card list. Leaving the embedded vault locks it. Existing settings and recurring-entry sheet presentations remain available. Native Duo navigation and stored data unchanged.

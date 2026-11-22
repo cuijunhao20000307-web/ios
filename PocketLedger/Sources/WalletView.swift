@@ -9,7 +9,6 @@ struct WalletView: View {
     @Environment(\.displayCurrencyRevision) private var moneyRefresh
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
-    @State private var showPrivateWallet = false
     @State private var section = 0
     @State private var showCard = false
     @State private var editPaymentCard: PaymentCard?
@@ -43,7 +42,6 @@ struct WalletView: View {
             }
             .background(LedgerTheme.background)
         }
-        .sheet(isPresented: $showPrivateWallet) { PrivateWalletView() }
         .sheet(isPresented: $showCard) { CardForm() }
         .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
         .sheet(isPresented: $showAccount) { BankAccountForm() }
@@ -71,7 +69,33 @@ struct WalletView: View {
         withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) { selectedCard = nil }
     }
 
-    private var walletRoot: some View {
+    private var walletSections: some View {
+        Picker(L("지갑"), selection: $section) {
+            Text(L("카드 지갑")).tag(0)
+            Text(L("통장 지갑")).tag(1)
+            Text(L("개인정보")).tag(2)
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 440)
+        .frame(maxWidth: .infinity)
+    }
+
+    @ViewBuilder private var walletRoot: some View {
+        if section == 2 {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text(L("지갑")).font(.largeTitle.bold())
+                        .accessibilityAddTraits(.isHeader)
+                    walletSections
+                }
+                .padding(.horizontal, 20).padding(.top, 16)
+                .frame(maxWidth: 920).frame(maxWidth: .infinity)
+                PrivateWalletView(embedded: true)
+                    .frame(maxWidth: 920).frame(maxWidth: .infinity)
+            }
+            .background(LedgerTheme.background)
+            .onAppear { searchFocused = false; deckDragging = false }
+        } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(L("지갑")).font(.largeTitle.bold())
@@ -91,22 +115,8 @@ struct WalletView: View {
                         .frame(maxWidth: 460)
                         .frame(maxWidth: .infinity)
                     }
-                    Picker(L("지갑"), selection: $section) {
-                        Text(L("카드 지갑")).tag(0)
-                        Text(L("통장 지갑")).tag(1)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 390)
-                    .frame(maxWidth: .infinity)
+                    walletSections
                     if section == 0 { cardsContent } else { accountsContent }
-                    Button { showPrivateWallet = true } label: {
-                        Label(L("개인정보 보관함"), systemImage: "lock.shield")
-                            .font(.subheadline.weight(.medium))
-                            .padding(.vertical, 7)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
                 }
                 .padding(.horizontal, 20).padding(.vertical, 16)
                 .frame(maxWidth: 920).frame(maxWidth: .infinity)
@@ -165,10 +175,11 @@ struct WalletView: View {
                                 Label(L(stacked ? "목록 보기" : "겹쳐 보기"), systemImage: stacked ? "square.grid.2x2" : "rectangle.stack")
                             }
                         }
-                        Button { showPrivateWallet = true } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
+                        Button { searchFocused = false; section = 2 } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
                     } label: { Image(systemName: "ellipsis") }
                 }
             }
+        }
     }
 
     private var filteredCards: [PaymentCard] {

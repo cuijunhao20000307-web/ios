@@ -238,10 +238,12 @@ struct PrivateWalletView: View {
     @AppStorage("privateWalletFont") private var font = "기본"
     @AppStorage("privateWalletSize") private var size = "기본"
     private let initialSection: Int
+    private let embedded: Bool
     @State private var section: Int
 
-    init(initialSection: Int = 0) {
+    init(initialSection: Int = 0, embedded: Bool = false) {
         self.initialSection = initialSection
+        self.embedded = embedded
         _section = State(initialValue: initialSection)
     }
     @State private var archive: PrivateArchive?
@@ -262,7 +264,14 @@ struct PrivateWalletView: View {
     var body: some View {
         let _ = languageRefresh
         let _ = moneyRefresh
-        NavigationStack {
+        if embedded {
+            vaultContent
+        } else {
+            NavigationStack { vaultContent }
+        }
+    }
+
+    private var vaultContent: some View {
             Group {
                 if let archive {
                     List {
@@ -289,10 +298,12 @@ struct PrivateWalletView: View {
                     }.padding(24)
                 }
             }
-            .navigationTitle(L("나의 디지털 지갑"))
+            .navigationTitle(embedded ? "" : L("나의 디지털 지갑"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(L("닫기")) { dismiss() } }
+                if !embedded {
+                    ToolbarItem(placement: .cancellationAction) { Button(L("닫기")) { dismiss() } }
+                }
                 if archive != nil {
                     ToolbarItem(placement: .primaryAction) {
                         Button { lock() } label: { Image(systemName: "lock") }.accessibilityLabel(L("잠그기"))
@@ -303,6 +314,7 @@ struct PrivateWalletView: View {
             .dynamicTypeSize(size == "작게" ? .small : size == "크게" ? .xxLarge : .large)
             .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
             .onAppear { section = initialSection }
+            .onDisappear { if embedded { lock() } }
             .onChange(of: phase) { _, value in if value == .background { lock() } }
             .sheet(item: $record) { item in
                 PrivateRecordEditor(record: item) { value in
@@ -370,7 +382,6 @@ struct PrivateWalletView: View {
                     _ = commit(a)
                 }
             }
-        }
     }
     @MainActor private func unlock() async {
         guard !authenticating else { return }

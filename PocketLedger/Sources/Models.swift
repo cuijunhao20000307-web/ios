@@ -253,6 +253,7 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "개인정보": ["Personal info", "个人信息", "個人資訊", "個人情報", "Datos personales", "Informations personnelles", "Persönliche Daten"],
         "뒤로 이동": ["Move backward","向后移动","向後移動","奥に移動"],
         "앞으로 이동": ["Move forward","向前移动","向前移動","手前に移動"],
         "카드를 길게 눌러 순서를 변경할 수 있어요": ["Hold a card to rearrange it","长按卡片可拖动排序","長按卡片可拖動排序","長押しでカードを並べ替え"],
