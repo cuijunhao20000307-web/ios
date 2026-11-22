@@ -300,7 +300,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.40")
+                Text("Digital Wallet · v0.4.41")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -947,6 +947,7 @@ private struct DigitalWalletUpdateCandidate {
     let url: URL
     let notes: String
     let channel: String
+    let downloadURL: URL?
 }
 
 private enum DigitalWalletUpdateSource {
@@ -963,6 +964,7 @@ private enum DigitalWalletUpdateSource {
     }
     private struct ReleaseAsset: Decodable {
         var name: String
+        var browser_download_url: URL?
     }
     private struct Runs: Decodable {
         var workflow_runs: [Run]
@@ -989,6 +991,15 @@ private enum DigitalWalletUpdateSource {
         url.scheme == "https" &&
         url.host?.lowercased() == "github.com" &&
         url.path.hasPrefix(ownerRepoPath)
+    }
+    // Never download an arbitrary URL from remote release metadata.
+    // IPA distribution is limited to this repository's public HTTPS release assets.
+    private static func verifiedIPADownload(_ asset: ReleaseAsset) -> URL? {
+        guard asset.name.lowercased().hasSuffix(".ipa"),
+              let url = asset.browser_download_url,
+              safeGitHub(url),
+              url.path.hasPrefix(ownerRepoPath + "releases/download/") else { return nil }
+        return url
     }
     private static func versionParts(_ name: String) -> [Int]? {
         let raw = name.hasPrefix("v") ? String(name.dropFirst()) : name
@@ -1029,12 +1040,14 @@ private enum DigitalWalletUpdateSource {
             for release in releases where !release.draft && !release.prerelease {
                 guard safeGitHub(release.html_url),
                       versionParts(release.tag_name) != nil,
-                      release.assets.contains(where: { $0.name.lowercased().hasSuffix(".ipa") }) else { continue }
+                      let assetURL = release.assets.compactMap(verifiedIPADownload).first
+                else { continue }
                 choices.append(DigitalWalletUpdateCandidate(
                     version: release.tag_name,
                     url: release.html_url,
                     notes: String((release.body ?? "").prefix(2400)),
-                    channel: "공식 릴리스"))
+                    channel: "공식 릴리스",
+                    downloadURL: assetURL))
             }
         } catch {
             // Network failures on one GitHub endpoint do not stop fallback.
@@ -1059,7 +1072,8 @@ private enum DigitalWalletUpdateSource {
                             version: candidateVersion,
                             url: run.html_url,
                             notes: "",
-                            channel: "GitHub 빌드"))
+                            channel: "GitHub 빌드",
+                            downloadURL: nil))
                     }
                     // The most recent available successful build is sufficient.
                     if choices.contains(where: { $0.url == run.html_url }) { break }
@@ -1079,6 +1093,9 @@ private struct DigitalWalletOnlineUpdateView: View {
     @State private var checked = false
     @State private var latest: DigitalWalletUpdateCandidate?
     @State private var failed = false
+    @State private var downloading = false
+    @State private var downloadError: String?
+    @State private var downloadedFile: DigitalWalletDownloadedFile?
 
     private var installed: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
@@ -1126,6 +1143,23 @@ private struct DigitalWalletOnlineUpdateView: View {
                                 .font(.caption)
                                 .textSelection(.enabled)
                         }
+                        if hasNewer, latest.downloadURL != nil {
+                            Button {
+                                Task { await downloadIPA(latest) }
+                            } label: {
+                                Label(L("앱에서 IPA 다운로드"), systemImage: "arrow.down.to.line")
+                            }
+                            .disabled(downloading)
+                            if downloading {
+                                HStack(spacing: 10) {
+                                    ProgressView()
+                                    Text(L("IPA 다운로드 중"))
+                                }
+                            }
+                        } else if hasNewer {
+                            Text(L("GitHub Actions 빌드는 직접 다운로드할 수 없습니다. 릴리스 IPA가 게시되면 앱 안에서 다운로드할 수 있습니다."))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
                         Link(destination: latest.url) {
                             Label(L("GitHub에서 업데이트 열기"),
                                   systemImage: "arrow.up.right.square")
@@ -1150,6 +1184,56 @@ private struct DigitalWalletOnlineUpdateView: View {
                 }
             }
             .task { if !checked { await check() } }
+            .sheet(item: $downloadedFile) { selected in
+                DigitalWalletIPAExporter(url: selected.url)
+            }
+            .alert(L("IPA 다운로드 실패"), isPresented: Binding(
+                get: { downloadError != nil },
+                set: { if !$0 { downloadError = nil } }
+            )) {
+                Button(L("확인")) { downloadError = nil }
+            } message: {
+                Text(downloadError ?? "")
+            }
+        }
+    }
+    @MainActor private func downloadIPA(_ candidate: DigitalWalletUpdateCandidate) async {
+        guard !downloading,
+              let url = candidate.downloadURL,
+              url.scheme == "https",
+              url.host?.lowercased() == "github.com",
+              url.path.hasPrefix("/cuijunhao20000307-web/ios/releases/download/"),
+              DigitalWalletUpdateSource.isNewer(candidate.version, than: installed)
+        else { return }
+        downloading = true
+        defer { downloading = false }
+        do {
+            // Download the actual IPA rather than presenting an Actions web page.
+            let (temporary, response) = try await URLSession.shared.download(from: url)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
+                throw DigitalWalletUpdateDownloadError.invalid
+            }
+            let fileSize = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            guard fileSize >= 100_000, fileSize <= 200_000_000 else {
+                throw DigitalWalletUpdateDownloadError.invalid
+            }
+            let handle = try FileHandle(forReadingFrom: temporary)
+            let magic = try handle.read(upToCount: 4)
+            try handle.close()
+            // An IPA is a ZIP archive. Do not execute or unzip it in the app.
+            guard magic == Data([0x50, 0x4b, 0x03, 0x04]) else {
+                throw DigitalWalletUpdateDownloadError.invalid
+            }
+            let safeVersion = candidate.version.filter { $0.isNumber || $0 == "." }
+            let destination = FileManager.default.temporaryDirectory
+                .appendingPathComponent("Digital-Wallet-v" + safeVersion + "-unsigned.ipa")
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.moveItem(at: temporary, to: destination)
+            downloadedFile = DigitalWalletDownloadedFile(url: destination)
+        } catch {
+            downloadError = error.localizedDescription
         }
     }
     @MainActor private func check() async {
@@ -1164,4 +1248,24 @@ private struct DigitalWalletOnlineUpdateView: View {
             failed = true
         }
     }
+}
+
+private enum DigitalWalletUpdateDownloadError: LocalizedError {
+    case invalid
+    var errorDescription: String? {
+        "The IPA download failed validation. Use the verified GitHub release page instead."
+    }
+}
+
+private struct DigitalWalletDownloadedFile: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+private struct DigitalWalletIPAExporter: UIViewControllerRepresentable {
+    let url: URL
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }

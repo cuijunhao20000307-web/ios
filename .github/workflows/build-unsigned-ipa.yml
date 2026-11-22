@@ -9,7 +9,7 @@ on:
       - 'scripts/**'
       - '.github/workflows/build-unsigned-ipa.yml'
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: xcode-27
@@ -35,14 +35,33 @@ jobs:
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
           cd package
-          zip -qry PocketLedger-v0.4.40-unsigned.ipa Payload
-          unzip -t PocketLedger-v0.4.40-unsigned.ipa
+          zip -qry PocketLedger-v0.4.41-unsigned.ipa Payload
+          unzip -t PocketLedger-v0.4.41-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-v0.4.40-unsigned-ipa
-          path: package/PocketLedger-v0.4.40-unsigned.ipa
+          name: PocketLedger-v0.4.41-unsigned-ipa
+          path: package/PocketLedger-v0.4.41-unsigned.ipa
           if-no-files-found: error
+      # Public Release assets have direct HTTPS download URLs, unlike the
+      # GitHub Actions artifact API, whose ZIP download requires authentication.
+      # This is an UNSIGNED IPA and cannot silently install itself on iOS.
+      - name: Publish IPA to GitHub Releases
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(grep -m1 'MARKETING_VERSION = ' PocketLedger.xcodeproj/project.pbxproj | sed -E 's/.*= ([0-9.]+);/\1/')"
+          tag="v${version}"
+          ipa="package/PocketLedger-v${version}-unsigned.ipa"
+          echo "Unsigned IPA. Must be signed with the user's valid iOS provisioning identity before installation." > /tmp/digital-wallet-notes.md
+          echo "This is an app build; no automatic in-app installation is supported." >> /tmp/digital-wallet-notes.md
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$ipa" --clobber
+          else
+            gh release create "$tag" "$ipa" --title "Digital Wallet $tag (unsigned)" --notes-file /tmp/digital-wallet-notes.md
+          fi
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
