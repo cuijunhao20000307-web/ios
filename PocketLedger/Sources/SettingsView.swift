@@ -157,9 +157,14 @@ struct SettingsView: View {
                 SettingsCompactSection {
                     VStack(alignment: .leading, spacing: 9) {
                         HStack(spacing: 9) {
-                            DuoAutomaticLayoutIcon()
-                                .fill(Color.secondary.opacity(0.78), style: FillStyle(eoFill: true))
-                                .frame(width: 27, height: 27)
+                            // Crisp transparent asset at its original portrait ratio.
+                            Image("DuoAutomaticLayout")
+                                .renderingMode(.template)
+                                .resizable()
+                                .interpolation(.high)
+                                .scaledToFit()
+                                .foregroundStyle(Color.secondary.opacity(0.82))
+                                .frame(width: 35, height: 44)
                                 .accessibilityHidden(true)
                             VStack(alignment: .leading, spacing: 2) {
                                 CompactSettingsTitle(title: "메뉴 위치")
@@ -287,7 +292,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.26")
+                Text("Digital Wallet · v0.4.27")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -922,40 +927,3 @@ private struct SettingsCenteredConfirmation: View {
     }
 }
 
-// Vector reconstruction of the user's grey Duo/D-shaped system-layout symbol.
-private struct DuoAutomaticLayoutIcon: Shape {
-    func path(in rect: CGRect) -> Path {
-        let scale = min(rect.width, rect.height) / 64
-        let ox = rect.midX - 32 * scale
-        let oy = rect.midY - 32 * scale
-        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
-            CGPoint(x: ox + x * scale, y: oy + y * scale)
-        }
-        var path = Path()
-        path.move(to: point(14, 5))
-        path.addLine(to: point(33, 5))
-        path.addCurve(to: point(56, 28), control1: point(48, 5), control2: point(56, 14))
-        path.addLine(to: point(56, 40))
-        path.addCurve(to: point(33, 60), control1: point(56, 54), control2: point(48, 60))
-        path.addLine(to: point(14, 60))
-        path.addQuadCurve(to: point(7, 53), control: point(7, 60))
-        path.addLine(to: point(7, 13))
-        path.addQuadCurve(to: point(14, 5), control: point(7, 5))
-        path.closeSubpath()
-
-        path.move(to: point(18, 16))
-        path.addLine(to: point(31, 16))
-        path.addCurve(to: point(45, 29), control1: point(40, 16), control2: point(45, 22))
-        path.addLine(to: point(45, 40))
-        path.addCurve(to: point(31, 49), control1: point(45, 47), control2: point(40, 49))
-        path.addLine(to: point(18, 49))
-        path.closeSubpath()
-
-        path.addEllipse(in: CGRect(x: ox + 37 * scale, y: oy + 20 * scale,
-                                   width: 6 * scale, height: 6 * scale))
-        path.addRoundedRect(in: CGRect(x: ox + 23 * scale, y: oy + 42 * scale,
-                                       width: 16 * scale, height: 4 * scale),
-                            cornerSize: CGSize(width: 2 * scale, height: 2 * scale))
-        return path
-    }
-}
