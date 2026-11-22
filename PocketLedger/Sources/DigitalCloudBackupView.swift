@@ -237,11 +237,9 @@ struct DigitalCloudBackupView: View {
                     if let preview {
                         Text(preview.date.formatted(date: .abbreviated, time: .shortened))
                             .font(.caption).foregroundStyle(.secondary)
-                        Text(L("거래") + ": \(preview.ledger.entries.count) · " +
-                             L("카드") + ": \(preview.ledger.cards.count) · " +
-                             L("통장") + ": \(preview.ledger.accounts.count) · " +
-                             L("개인정보") + ": \(preview.privateArchive.records.count) · " +
-                             L("사진") + ": \(preview.photos.count)")
+                        Text(summary(preview))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                         Button(role: .destructive) {
                             confirmRestore = true
                         } label: {
@@ -287,6 +285,14 @@ struct DigitalCloudBackupView: View {
                 get: { notice != nil }, set: { if !$0 { notice = nil } }
             )) { Button(L("확인")) { notice = nil } } message: { Text(notice ?? "") }
         }
+    }
+    private func summary(_ backup: DigitalCloudBackupPayload) -> String {
+        let ledger = L("거래") + ": " + String(backup.ledger.entries.count)
+        let cards = L("카드") + ": " + String(backup.ledger.cards.count)
+        let banks = L("통장") + ": " + String(backup.ledger.accounts.count)
+        let privateRecords = L("개인정보") + ": " + String(backup.privateArchive.records.count)
+        let photos = L("사진") + ": " + String(backup.photos.count)
+        return [ledger, cards, banks, privateRecords, photos].joined(separator: " · ")
     }
     private func wipe() {
         password = ""; confirmation = ""; incoming = nil; preview = nil; output = nil
