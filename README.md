@@ -52,3 +52,6 @@ Embedded wallet personal information shows only ID and passport sections with se
 
 ## v0.4.12 safe-area security grid, document photos, smoother card navigation
 Grid sizes from real available content width; no fixed-width horizontal overflow. Five columns when width permits, three on very narrow screens. Authenticated front/back photos for payment cards, bank accounts, ID and passport: AES-GCM file encryption, device-only passcode-protected key, excluded from backups, full-screen view, replace/delete. Photo edits save independently. Card detail uses eased scale/fade while retaining explicit selection and native toolbar. Device verification required.
+
+## v0.4.13 stable wallet header and card detail motion
+All wallet sections share a fixed top-aligned header and full-height content area. The embedded identity lock fills its available space without vertically recentering the wallet header. Card detail mounts without crossfading the previous wallet page; only its own content eases in and out, with the native toolbar preserved and reduced-motion fallback. Removes duplicate navigation title and softens deck reorder easing. Device verification required.

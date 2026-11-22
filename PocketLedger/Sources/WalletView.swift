@@ -31,17 +31,21 @@ struct WalletView: View {
         let _ = languageRefresh
         let _ = moneyRefresh
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .top) {
                 if let id = selectedCard {
                     LedgerCardDetail(cardID: id, onClose: closeCard)
-                        .transition(reduceMotion ? .identity : .scale(scale: 0.96, anchor: .center).combined(with: .opacity))
-                        .zIndex(1)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .background(LedgerTheme.background)
+                        .transition(.identity)
                 } else {
                     walletRoot
-                        .transition(.opacity)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                        .transition(.identity)
                 }
             }
-            .background(LedgerTheme.background)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(LedgerTheme.background.ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $showCard) { CardForm() }
         .sheet(item: $editPaymentCard) { CardForm(existing: $0) }
@@ -64,11 +68,11 @@ struct WalletView: View {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
         searchFocused = false
         deckDragging = false
-        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) { selectedCard = id }
+        selectedCard = id
     }
 
     private func closeCard() {
-        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) { selectedCard = nil }
+        selectedCard = nil
     }
 
     private var walletSections: some View {
@@ -82,51 +86,54 @@ struct WalletView: View {
         .frame(maxWidth: .infinity)
     }
 
-    @ViewBuilder private var walletRoot: some View {
-        if section == 2 {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(L("지갑")).font(.largeTitle.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    walletSections
-                }
-                .padding(.horizontal, 20).padding(.top, 16)
-                .frame(maxWidth: 920).frame(maxWidth: .infinity)
-                PrivateWalletView(embedded: true)
-                    .frame(maxWidth: 920).frame(maxWidth: .infinity)
-            }
-            .background(LedgerTheme.background)
-            .onAppear { searchFocused = false; deckDragging = false }
-        } else {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text(L("지갑")).font(.largeTitle.bold())
-                        .accessibilityAddTraits(.isHeader)
-                    if searchVisible {
-                        HStack(spacing: 10) {
-                            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                            TextField(L("카드 및 은행 검색"), text: $search)
-                                .focused($searchFocused)
-                            Button {
-                                search = ""; searchVisible = false; searchFocused = false
-                            } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
-                            .accessibilityLabel(L("닫기"))
-                        }
-                        .padding(12)
-                        .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 14))
-                        .frame(maxWidth: 460)
-                        .frame(maxWidth: .infinity)
+    private var walletRoot: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(L("지갑")).font(.largeTitle.bold())
+                    .accessibilityAddTraits(.isHeader)
+                if searchVisible && section != 2 {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                        TextField(L("카드 및 은행 검색"), text: $search)
+                            .focused($searchFocused)
+                        Button {
+                            search = ""; searchVisible = false; searchFocused = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+                        }.accessibilityLabel(L("닫기"))
                     }
-                    walletSections
-                    if section == 0 { cardsContent } else { accountsContent }
+                    .padding(12)
+                    .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 14))
+                    .frame(maxWidth: 460).frame(maxWidth: .infinity)
                 }
-                .padding(.horizontal, 20).padding(.vertical, 16)
-                .frame(maxWidth: 920).frame(maxWidth: .infinity)
+                walletSections
             }
-            .scrollDisabled(deckDragging)
-            .background(LedgerTheme.background)
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 16)
+            .frame(maxWidth: 920).frame(maxWidth: .infinity)
+            if section == 2 {
+                PrivateWalletView(embedded: true)
+                    .frame(maxWidth: 920, maxHeight: .infinity, alignment: .top)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            } else {
+                ScrollView {
+                    Group {
+                        if section == 0 { cardsContent } else { accountsContent }
+                    }
+                    .padding(.horizontal, 20).padding(.bottom, 16)
+                    .frame(maxWidth: 920).frame(maxWidth: .infinity)
+                }
+                .scrollDisabled(deckDragging)
+                .frame(maxHeight: .infinity, alignment: .top)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(LedgerTheme.background)
+        .onChange(of: section) { _, next in
+            searchFocused = false; deckDragging = false
+            if next == 2 { search = ""; searchVisible = false }
+        }
             .toolbar {
+                if section != 2 {
                 ToolbarItem(placement: .primaryAction) {
                     Button { if section == 0 { showCard = true } else { showAccount = true } } label: {
                         Image(systemName: "plus").fontWeight(.semibold)
@@ -180,8 +187,8 @@ struct WalletView: View {
                         Button { searchFocused = false; section = 2 } label: { Label(L("개인정보 보관함"), systemImage: "lock.shield") }
                     } label: { Image(systemName: "ellipsis") }
                 }
+                }
             }
-        }
     }
 
     private var filteredCards: [PaymentCard] {
@@ -207,7 +214,7 @@ struct WalletView: View {
                             guard search.isEmpty,
                                   let index = store.data.cards.firstIndex(where: { $0.id == id }),
                                   store.data.cards.indices.contains(target), index != target else { return }
-                            withAnimation(reduceMotion ? nil : .linear(duration: 0.24)) {
+                            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.30)) {
                                 store.data.cards.move(fromOffsets: IndexSet(integer: index), toOffset: target > index ? target + 1 : target)
                             }
                         })
@@ -384,7 +391,7 @@ private struct InteractiveWalletDeck: View {
                             .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
                             .offset(y: y)
                             .zIndex(lifted ? Double(cards.count + 1) : Double(index))
-                            .animation(lifted || reduceMotion ? nil : .linear(duration: 0.15), value: destination)
+                            .animation(lifted || reduceMotion ? nil : .easeOut(duration: 0.22), value: destination)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -673,6 +680,9 @@ struct LedgerCardDetail: View {
     @State private var busy = false
     @State private var error: String?
     @State private var copied = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var entered = false
+    @State private var closing = false
     private var card: PaymentCard? { store.data.cards.first { $0.id == cardID } }
     private var accent: Color { Color.teal }
 
@@ -753,14 +763,18 @@ struct LedgerCardDetail: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     .padding(20).frame(maxWidth: 920).frame(maxWidth: .infinity)
+                    .opacity(reduceMotion || entered ? 1 : 0)
+                    .offset(y: reduceMotion || entered ? 0 : 14)
+                    .scaleEffect(reduceMotion || entered ? 1 : 0.985, anchor: .top)
                 }
-                .navigationTitle(card.name)
+                .background(LedgerTheme.background)
+                .navigationTitle("")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigation) {
-                        Button { clear(); onClose() } label: {
+                        Button { closeAnimated() } label: {
                             Image(systemName: "chevron.left").fontWeight(.semibold)
-                        }.accessibilityLabel(L("닫기"))
+                        }.accessibilityLabel(L("닫기")).disabled(closing)
                     }
                     ToolbarItem(placement: .primaryAction) {
                         Button { clear(); edit = true } label: { Image(systemName: "square.and.pencil") }
@@ -775,10 +789,24 @@ struct LedgerCardDetail: View {
                     .toolbar { ToolbarItem(placement: .navigation) { Button(L("닫기"), action: onClose) } }
             }
         }
+        .onAppear {
+            closing = false
+            if reduceMotion { entered = true }
+            else { withAnimation(.easeOut(duration: 0.42)) { entered = true } }
+        }
         .onChange(of: phase) { _, p in if p == .background { clear() } }
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
         .onDisappear { clear() }
         .alert(L("확인"), isPresented: Binding(get: {error != nil}, set: {if !$0 {error = nil}})) { Button(L("확인")) {error = nil} } message: { Text(error ?? "") }
+    }
+    private func closeAnimated() {
+        guard !closing else { return }
+        closing = true
+        clear()
+        if reduceMotion { onClose(); return }
+        withAnimation(.easeInOut(duration: 0.27), completionCriteria: .logicallyComplete) {
+            entered = false
+        } completion: { onClose() }
     }
     private func formattedCardNumber(_ value: String?) -> String? {
         let digits = Array((value ?? "").filter(\.isNumber))

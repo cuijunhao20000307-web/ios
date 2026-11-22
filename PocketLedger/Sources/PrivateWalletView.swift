@@ -300,9 +300,14 @@ struct PrivateWalletView: View {
                         Text(L(embedded ? "신분증 · 여권" : "개인정보 보관함")).font(.title.bold())
                         Text("Face ID / Touch ID 또는 기기 암호로 보호됩니다.").font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
                         Button(L("보관함 열기")) { Task { await unlock() } }.buttonStyle(.borderedProminent).disabled(authenticating)
-                    }.padding(24)
+                    }
+                    .padding(24)
+                    .frame(maxWidth: embedded ? 500 : .infinity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: embedded ? .top : .center)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background(LedgerTheme.background)
             .navigationTitle(embedded ? "" : L("나의 디지털 지갑"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -436,8 +441,8 @@ struct PrivateWalletView: View {
                     }
                 }
             }
-            .padding(.horizontal, 20).padding(.vertical, 8)
-            .frame(maxWidth: 520).frame(maxWidth: .infinity)
+            .padding(.horizontal, 20).padding(.bottom, 16)
+            .frame(maxWidth: 520).frame(maxWidth: .infinity, alignment: .top)
         }
     }
     private func removeIdentity(_ id: UUID) {
