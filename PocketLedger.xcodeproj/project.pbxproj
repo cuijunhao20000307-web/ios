@@ -1,0 +1,173 @@
+// !$*UTF8*$!
+{
+ archiveVersion = 1;
+ classes = {};
+ objectVersion = 56;
+ objects = {
+  5A39482673CAA34AA321DDCE = { isa = PBXBuildFile; fileRef = 697FA15BDBEBB67A51F033E2; };
+  C436BA32D5648003ED884C88 = { isa = PBXBuildFile; fileRef = 7176A0827E0152EA710BD734; };
+  FCF3A5EB537BD325C29FC92F = { isa = PBXBuildFile; fileRef = DE32296211F93190CDA9A543; };
+  EFB4E6C70ADF3A5EAD287997 = { isa = PBXBuildFile; fileRef = 2A8D9543E771B85671690C99; };
+  CFBE70E8DF0EA78592700A4F = { isa = PBXBuildFile; fileRef = 4B62413DE7D63A4B054031D8; };
+  8660482086D6CA576722F0D8 = { isa = PBXBuildFile; fileRef = 0D6865BEA3134ED4E6FDEF36; };
+  B087883446281EE7973F22CB = { isa = PBXBuildFile; fileRef = FE83C66C63D95906D7412747; };
+  59FE7DA2F970B89D6962B990 = { isa = PBXBuildFile; fileRef = F515C6F36706A1CBFD21652B; };
+  6BEFDEC3B87EDBA9A5FE3DF7 = { isa = PBXBuildFile; fileRef = 265A43F041ACFAAFD73AE9D5; };
+  9783FFF5E1FCECC5165BE27B = { isa = PBXBuildFile; fileRef = 9B04DD151F7083882A7E3E14; };
+  59532B9D78CA62038658C155 = { isa = PBXBuildFile; fileRef = 55438CB013CC069BCE666621; };
+  0E1B38D18B403DA4121A5B05 = { isa = PBXBuildFile; fileRef = AB0285F838163F387B0FC283; };
+  CC8E464EBE9A22D1DF781E76 = { isa = PBXBuildFile; fileRef = 9E59F255D3CFE25F396D9BFC; };
+  697FA15BDBEBB67A51F033E2 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AnalyticsView.swift"; sourceTree = "<group>"; };
+  7176A0827E0152EA710BD734 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AnimatedWalletCard.swift"; sourceTree = "<group>"; };
+  DE32296211F93190CDA9A543 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RecurringView.swift"; sourceTree = "<group>"; };
+  2A8D9543E771B85671690C99 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DashboardView.swift"; sourceTree = "<group>"; };
+  4B62413DE7D63A4B054031D8 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HistoryView.swift"; sourceTree = "<group>"; };
+  0D6865BEA3134ED4E6FDEF36 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LedgerStore.swift"; sourceTree = "<group>"; };
+  FE83C66C63D95906D7412747 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models.swift"; sourceTree = "<group>"; };
+  F515C6F36706A1CBFD21652B = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PocketLedgerApp.swift"; sourceTree = "<group>"; };
+  265A43F041ACFAAFD73AE9D5 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SecureVault.swift"; sourceTree = "<group>"; };
+  9B04DD151F7083882A7E3E14 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
+  55438CB013CC069BCE666621 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme.swift"; sourceTree = "<group>"; };
+  AB0285F838163F387B0FC283 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WalletView.swift"; sourceTree = "<group>"; };
+  9E59F255D3CFE25F396D9BFC = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+  52BEEF38B4FE03B03EED52FD = { isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PocketLedger.app; sourceTree = BUILT_PRODUCTS_DIR; };
+  D3BF4E9481D24142B9D79B2F = {
+   isa = PBXGroup;
+   children = ( 6320DAB763E257F3200B222A, 9E59F255D3CFE25F396D9BFC, D7A366F65AE9AE8343069FC3, );
+   path = PocketLedger;
+   sourceTree = "<group>";
+  };
+  6320DAB763E257F3200B222A = {
+   isa = PBXGroup;
+   children = ( 697FA15BDBEBB67A51F033E2, 7176A0827E0152EA710BD734, DE32296211F93190CDA9A543, 2A8D9543E771B85671690C99, 4B62413DE7D63A4B054031D8, 0D6865BEA3134ED4E6FDEF36, FE83C66C63D95906D7412747, F515C6F36706A1CBFD21652B, 265A43F041ACFAAFD73AE9D5, 9B04DD151F7083882A7E3E14, 55438CB013CC069BCE666621, AB0285F838163F387B0FC283, );
+   path = Sources;
+   sourceTree = "<group>";
+  };
+  D7A366F65AE9AE8343069FC3 = {
+   isa = PBXGroup;
+   children = ( 52BEEF38B4FE03B03EED52FD, );
+   name = Products;
+   sourceTree = "<group>";
+  };
+  63E04387B5737D8EE9B5E474 = {
+   isa = PBXNativeTarget;
+   buildConfigurationList = E022BB42BE9E57847F366865;
+   buildPhases = ( 83810E091ED71D3128ED2A06, B9EAB7E1B95EF1D1EF679A38, );
+   buildRules = ( );
+   dependencies = ( );
+   name = PocketLedger;
+   productName = PocketLedger;
+   productReference = 52BEEF38B4FE03B03EED52FD;
+   productType = "com.apple.product-type.application";
+  };
+  51BA98C7DE57BB39631DB9F8 = {
+   isa = PBXProject;
+   attributes = { BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1600; TargetAttributes = { 63E04387B5737D8EE9B5E474 = { CreatedOnToolsVersion = 16.0; }; }; };
+   buildConfigurationList = AC11039C836330D92B22A08A;
+   compatibilityVersion = "Xcode 14.0";
+   developmentRegion = ko;
+   hasScannedForEncodings = 0;
+   knownRegions = ( ko, en, Base, );
+   mainGroup = D3BF4E9481D24142B9D79B2F;
+   productRefGroup = D7A366F65AE9AE8343069FC3;
+   projectDirPath = "";
+   projectRoot = "";
+   targets = ( 63E04387B5737D8EE9B5E474, );
+  };
+  83810E091ED71D3128ED2A06 = {
+   isa = PBXSourcesBuildPhase;
+   buildActionMask = 2147483647;
+   files = ( 5A39482673CAA34AA321DDCE, C436BA32D5648003ED884C88, FCF3A5EB537BD325C29FC92F, EFB4E6C70ADF3A5EAD287997, CFBE70E8DF0EA78592700A4F, 8660482086D6CA576722F0D8, B087883446281EE7973F22CB, 59FE7DA2F970B89D6962B990, 6BEFDEC3B87EDBA9A5FE3DF7, 9783FFF5E1FCECC5165BE27B, 59532B9D78CA62038658C155, 0E1B38D18B403DA4121A5B05, );
+   runOnlyForDeploymentPostprocessing = 0;
+  };
+  B9EAB7E1B95EF1D1EF679A38 = {
+   isa = PBXResourcesBuildPhase;
+   buildActionMask = 2147483647;
+   files = ( CC8E464EBE9A22D1DF781E76, );
+   runOnlyForDeploymentPostprocessing = 0;
+  };
+  AC11039C836330D92B22A08A = {
+   isa = XCConfigurationList;
+   buildConfigurations = ( DAC69F07FD1ECA8DF5760C7F, A251F47F69822FF7AE91C71E, );
+   defaultConfigurationIsVisible = 0;
+   defaultConfigurationName = Release;
+  };
+  E022BB42BE9E57847F366865 = {
+   isa = XCConfigurationList;
+   buildConfigurations = ( 5E8F4F30A6A4FA2F345B0562, 3D4AFBBDCEF621C8D498DD29, );
+   defaultConfigurationIsVisible = 0;
+   defaultConfigurationName = Release;
+  };
+  DAC69F07FD1ECA8DF5760C7F = {
+   isa = XCBuildConfiguration;
+   buildSettings = {
+    ALWAYS_SEARCH_USER_PATHS = NO;
+    CLANG_ENABLE_MODULES = YES;
+    IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+    SDKROOT = iphoneos;
+    SWIFT_VERSION = 5.0;
+    SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+   };
+   name = Debug;
+  };
+  A251F47F69822FF7AE91C71E = {
+   isa = XCBuildConfiguration;
+   buildSettings = {
+    ALWAYS_SEARCH_USER_PATHS = NO;
+    CLANG_ENABLE_MODULES = YES;
+    IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+    SDKROOT = iphoneos;
+    SWIFT_VERSION = 5.0;
+    SWIFT_OPTIMIZATION_LEVEL = "-O";
+   };
+   name = Release;
+  };
+  5E8F4F30A6A4FA2F345B0562 = {
+   isa = XCBuildConfiguration;
+   buildSettings = {
+    ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+    CODE_SIGN_STYLE = Automatic;
+    CURRENT_PROJECT_VERSION = 3;
+    GENERATE_INFOPLIST_FILE = YES;
+    INFOPLIST_KEY_CFBundleDisplayName = "나의 가계부";
+    INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+    INFOPLIST_KEY_NSFaceIDUsageDescription = "보호된 통장 비밀코드와 가계부를 Face ID로 확인합니다.";
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+    INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+    INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+    IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+    MARKETING_VERSION = 0.3.0;
+    PRODUCT_BUNDLE_IDENTIFIER = com.example.pocketledger;
+    PRODUCT_NAME = "$(TARGET_NAME)";
+    SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+    SWIFT_VERSION = 5.0;
+    TARGETED_DEVICE_FAMILY = "1,2";
+   };
+   name = Debug;
+  };
+  3D4AFBBDCEF621C8D498DD29 = {
+   isa = XCBuildConfiguration;
+   buildSettings = {
+    ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+    CODE_SIGN_STYLE = Automatic;
+    CURRENT_PROJECT_VERSION = 3;
+    GENERATE_INFOPLIST_FILE = YES;
+    INFOPLIST_KEY_CFBundleDisplayName = "나의 가계부";
+    INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+    INFOPLIST_KEY_NSFaceIDUsageDescription = "보호된 통장 비밀코드와 가계부를 Face ID로 확인합니다.";
+    INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+    INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+    INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+    IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+    MARKETING_VERSION = 0.3.0;
+    PRODUCT_BUNDLE_IDENTIFIER = com.example.pocketledger;
+    PRODUCT_NAME = "$(TARGET_NAME)";
+    SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+    SWIFT_VERSION = 5.0;
+    TARGETED_DEVICE_FAMILY = "1,2";
+   };
+   name = Release;
+  };
+ };
+ rootObject = 51BA98C7DE57BB39631DB9F8;
+}
