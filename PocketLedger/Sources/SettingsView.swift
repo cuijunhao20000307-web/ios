@@ -20,6 +20,7 @@ struct SettingsView: View {
     @State private var showPrivateSettings = false
     @State private var showICloudBackup = false
     @State private var showFixedExpenses = false
+    @State private var showOnlineUpdates = false
     @State private var budgetText = ""
     @State private var budgetSavedFeedback = false
     @State private var pendingDestructiveAction: SettingsDestructiveAction?
@@ -226,6 +227,20 @@ struct SettingsView: View {
                     }
                 }
                 SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
+                        CompactSettingsTitle(title: "온라인 업데이트")
+                        Button { showOnlineUpdates = true } label: {
+                            HStack {
+                                Label(L("업데이트 확인"), systemImage: "arrow.triangle.2.circlepath")
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.caption)
+                            }
+                        }
+                        Text(L("업데이트를 확인하려면 인터넷 연결이 필요합니다"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                SettingsCompactSection {
                     VStack(alignment: .leading, spacing: 10) {
                         CompactSettingsTitle(title: "데이터")
                         Button { showICloudBackup = true } label: {
@@ -285,7 +300,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.38")
+                Text("Digital Wallet · v0.4.39")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -295,6 +310,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .sheet(isPresented: $showICloudBackup) { DigitalCloudBackupView() }
         .sheet(isPresented: $showFixedExpenses) { FixedExpensesSettingsView() }
+        .sheet(isPresented: $showOnlineUpdates) { DigitalWalletOnlineUpdateView() }
         .onAppear { budgetText = String(store.data.monthlyBudget) }
         .onChange(of: currency) { _, _ in currencyRevision += 1 }
         .sheet(isPresented: $showCovers) { CurrencyCoverSettingsView() }
@@ -921,3 +937,231 @@ private struct SettingsCenteredConfirmation: View {
     }
 }
 
+
+
+// GitHub Release is the preferred stable channel. While this personal
+// repository has no Releases, the most recent successful Actions IPA is
+// a read-only fallback. Neither path installs unsigned code in-app.
+private struct DigitalWalletUpdateCandidate {
+    let version: String
+    let url: URL
+    let notes: String
+    let channel: String
+}
+
+private enum DigitalWalletUpdateSource {
+    private static let api = "https://api.github.com/repos/cuijunhao20000307-web/ios"
+    private static let ownerRepoPath = "/cuijunhao20000307-web/ios/"
+
+    private struct Release: Decodable {
+        var tag_name: String
+        var html_url: URL
+        var body: String?
+        var draft: Bool
+        var prerelease: Bool
+        var assets: [ReleaseAsset]
+    }
+    private struct ReleaseAsset: Decodable {
+        var name: String
+    }
+    private struct Runs: Decodable {
+        var workflow_runs: [Run]
+    }
+    private struct Run: Decodable {
+        var id: Int
+        var status: String
+        var conclusion: String?
+        var head_branch: String?
+        var name: String?
+        var html_url: URL
+    }
+    private struct ArtifactResult: Decodable {
+        var artifacts: [Artifact]
+    }
+    private struct Artifact: Decodable {
+        var name: String
+        var expired: Bool
+    }
+    private enum CheckError: Error {
+        case unavailable
+    }
+    private static func safeGitHub(_ url: URL) -> Bool {
+        url.scheme == "https" &&
+        url.host?.lowercased() == "github.com" &&
+        url.path.hasPrefix(ownerRepoPath)
+    }
+    private static func versionParts(_ name: String) -> [Int]? {
+        let raw = name.hasPrefix("v") ? String(name.dropFirst()) : name
+        let parts = raw.split(separator: ".")
+        guard parts.count == 3,
+              parts.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }) else { return nil }
+        let numbers = parts.compactMap { Int($0) }
+        return numbers.count == 3 ? numbers : nil
+    }
+    static func isNewer(_ remote: String, than installed: String) -> Bool {
+        guard let lhs = versionParts(remote), let rhs = versionParts(installed) else { return false }
+        for i in 0..<3 {
+            if lhs[i] != rhs[i] { return lhs[i] > rhs[i] }
+        }
+        return false
+    }
+    private static func best(_ list: [DigitalWalletUpdateCandidate]) -> DigitalWalletUpdateCandidate? {
+        list.max { left, right in isNewer(right.version, than: left.version) }
+    }
+    private static func fetchJSON<T: Decodable>(_ suffix: String) async throws -> T {
+        guard let url = URL(string: api + suffix) else { throw CheckError.unavailable }
+        var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData,
+                                 timeoutInterval: 15)
+        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        request.setValue("DigitalWallet-iOS-Updater", forHTTPHeaderField: "User-Agent")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200,
+              data.count <= 2_000_000 else { throw CheckError.unavailable }
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+    static func latest() async throws -> DigitalWalletUpdateCandidate? {
+        var choices: [DigitalWalletUpdateCandidate] = []
+        var feedWasReachable = false
+        do {
+            let releases: [Release] = try await fetchJSON("/releases")
+            feedWasReachable = true
+            for release in releases where !release.draft && !release.prerelease {
+                guard safeGitHub(release.html_url),
+                      versionParts(release.tag_name) != nil,
+                      release.assets.contains(where: { $0.name.lowercased().hasSuffix(".ipa") }) else { continue }
+                choices.append(DigitalWalletUpdateCandidate(
+                    version: release.tag_name,
+                    url: release.html_url,
+                    notes: String((release.body ?? "").prefix(2400)),
+                    channel: "공식 릴리스"))
+            }
+        } catch {
+            // Network failures on one GitHub endpoint do not stop fallback.
+        }
+        do {
+            let result: Runs = try await fetchJSON("/actions/workflows/build-unsigned-ipa.yml/runs?per_page=15")
+            feedWasReachable = true
+            for run in result.workflow_runs.prefix(15)
+                where run.status == "completed" && run.conclusion == "success" &&
+                      run.head_branch == "main" &&
+                      run.name == "Build PocketLedger unsigned IPA" && safeGitHub(run.html_url) {
+                do {
+                    let artifacts: ArtifactResult = try await fetchJSON("/actions/runs/\(run.id)/artifacts")
+                    for artifact in artifacts.artifacts where !artifact.expired {
+                        let prefix = "PocketLedger-v"
+                        let suffix = "-unsigned-ipa"
+                        guard artifact.name.hasPrefix(prefix), artifact.name.hasSuffix(suffix) else { continue }
+                        let candidateVersion = String(artifact.name.dropFirst(prefix.count)
+                            .dropLast(suffix.count))
+                        guard versionParts(candidateVersion) != nil else { continue }
+                        choices.append(DigitalWalletUpdateCandidate(
+                            version: candidateVersion,
+                            url: run.html_url,
+                            notes: "",
+                            channel: "GitHub 빌드"))
+                    }
+                    // The most recent available successful build is sufficient.
+                    if choices.contains(where: { $0.url == run.html_url }) { break }
+                } catch { continue }
+            }
+        } catch {
+            // A valid Release remains usable if Actions is unavailable.
+        }
+        guard feedWasReachable else { throw CheckError.unavailable }
+        return best(choices)
+    }
+}
+
+private struct DigitalWalletOnlineUpdateView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var loading = false
+    @State private var checked = false
+    @State private var latest: DigitalWalletUpdateCandidate?
+    @State private var failed = false
+
+    private var installed: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+    }
+    private var build: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "-"
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent(L("설치된 버전"),
+                                   value: "v" + installed + " · Build " + build)
+                    Button {
+                        Task { await check() }
+                    } label: {
+                        Label(L("업데이트 확인"), systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(loading)
+                    if loading {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text(L("업데이트 확인 중"))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                Section(L("온라인 업데이트")) {
+                    if checked && failed {
+                        Label(L("업데이트 확인 실패"), systemImage: "wifi.exclamationmark")
+                            .foregroundStyle(.orange)
+                        Text(L("업데이트를 확인하려면 인터넷 연결이 필요합니다"))
+                            .font(.caption).foregroundStyle(.secondary)
+                    } else if let latest {
+                        let hasNewer = DigitalWalletUpdateSource.isNewer(latest.version, than: installed)
+                        Label(L(hasNewer ? "새 버전" : "최신 버전입니다"),
+                              systemImage: hasNewer ? "arrow.down.circle.fill" : "checkmark.circle.fill")
+                            .foregroundStyle(hasNewer ? LedgerTheme.accent : .green)
+                        LabeledContent(L("새 버전"), value: latest.version)
+                        Text(L(latest.channel))
+                            .font(.caption).foregroundStyle(.secondary)
+                        if !latest.notes.isEmpty {
+                            Text(L("업데이트 내용")).font(.subheadline.weight(.semibold))
+                            Text(latest.notes)
+                                .font(.caption)
+                                .textSelection(.enabled)
+                        }
+                        Link(destination: latest.url) {
+                            Label(L("GitHub에서 업데이트 열기"),
+                                  systemImage: "arrow.up.right.square")
+                        }
+                    } else if checked {
+                        Label(L("다운로드 가능한 버전이 없습니다"),
+                              systemImage: "shippingbox")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Section {
+                    Text(L("서명 후 설치 안내"))
+                    Text(L("앱은 자동으로 IPA를 설치할 수 없습니다"))
+                }
+                .font(.caption).foregroundStyle(.secondary)
+            }
+            .navigationTitle(L("온라인 업데이트"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(L("닫기")) { dismiss() }
+                }
+            }
+            .task { if !checked { await check() } }
+        }
+    }
+    @MainActor private func check() async {
+        guard !loading else { return }
+        loading = true
+        defer { loading = false; checked = true }
+        do {
+            latest = try await DigitalWalletUpdateSource.latest()
+            failed = false
+        } catch {
+            latest = nil
+            failed = true
+        }
+    }
+}

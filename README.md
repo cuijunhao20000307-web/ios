@@ -1,4 +1,8 @@
-# PocketLedger v0.4.38
+# PocketLedger v0.4.39
+
+## v0.4.39 Online updates (Build 46)
+Settings > Online updates now checks the official repository over HTTPS and compares numeric app versions with the installed version. Published GitHub Releases containing an IPA are preferred; while this repo has no Releases, the latest successful, non-expired GitHub Actions unsigned IPA artifact is offered as a fallback, with a link to its Actions run. The app never downloads private user data or sends wallet contents to GitHub. There is no silent on-device installation of unsigned IPAs on iOS. Users must sign and install with their own sideloading method and should back up first. No new update entitlement or App Store dependency is required.
+
 
 ## v0.4.38 Adaptive five-column security card grid (Build 45)
 The Face ID-protected read-only security-card grid and the editing grid now fit their available width on inner and cover screens without any horizontal scrolling. They preserve five columns and the original printed card positions, adapt typography and inter-column spacing on narrow layouts, and avoid the previous hard-coded minimum of 380pt which cropped edge columns. Existing stored codes, two-digit forward/reverse lookup, monthly fixed expenses and backup restore behavior are unchanged.
