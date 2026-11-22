@@ -122,3 +122,48 @@ enum BankSecurityStorage {
         guard status == errSecSuccess || status == errSecItemNotFound else { throw PrivateVaultError.keychain(status) }
     }
 }
+
+
+struct BankWebsiteDetails: Codable {
+    var website = ""
+    var username = ""
+    var password = ""
+    var memo = ""
+    var valid: Bool { website.count <= 2048 && username.count <= 1024 && password.count <= 1024 && memo.count <= 8192 }
+}
+enum BankWebsiteStorage {
+    private static func query(_ id: UUID) -> [String: Any] {
+        [kSecClass as String: kSecClassGenericPassword,
+         kSecAttrService as String: "app.pocketledger.bank-website.v1",
+         kSecAttrAccount as String: id.uuidString]
+    }
+    static func load(_ id: UUID) throws -> BankWebsiteDetails? {
+        var q = query(id)
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var result: CFTypeRef?
+        let status = SecItemCopyMatching(q as CFDictionary, &result)
+        if status == errSecItemNotFound { return nil }
+        guard status == errSecSuccess, let data = result as? Data else { throw PrivateVaultError.keychain(status) }
+        let card = try JSONDecoder().decode(BankWebsiteDetails.self, from: data)
+        guard card.valid else { throw PrivateVaultError.invalidBackup }
+        return card
+    }
+    static func save(_ card: BankWebsiteDetails, id: UUID) throws {
+        guard card.valid else { throw PrivateVaultError.invalidBackup }
+        let q = query(id)
+        let data = try JSONEncoder().encode(card)
+        var status = SecItemUpdate(q as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if status == errSecItemNotFound {
+            var item = q
+            item[kSecValueData as String] = data
+            item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly
+            status = SecItemAdd(item as CFDictionary, nil)
+        }
+        guard status == errSecSuccess else { throw PrivateVaultError.keychain(status) }
+    }
+    static func remove(_ id: UUID) throws {
+        let status = SecItemDelete(query(id) as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else { throw PrivateVaultError.keychain(status) }
+    }
+}

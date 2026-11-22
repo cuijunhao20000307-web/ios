@@ -1047,6 +1047,7 @@ struct BankAccountForm: View {
     @EnvironmentObject private var store: LedgerStore
     @Environment(\.displayCurrencyRevision) private var currencyRevision
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     var existing: BankAccount? = nil
     @State private var nickname = ""
     @State private var bank = ""
@@ -1057,6 +1058,10 @@ struct BankAccountForm: View {
     @State private var confirmDelete = false
     @State private var saveError = false
     @State private var showSecurity = false
+    @State private var websiteDetails: BankWebsiteDetails?
+    @State private var revealPassword = false
+    @State private var authenticatingWebsite = false
+    @State private var websiteSession = UUID()
 
     var body: some View {
         let _ = languageRefresh
@@ -1083,6 +1088,42 @@ struct BankAccountForm: View {
                     Text("비밀코드는 이 기기의 iOS 키체인에 따로 보관합니다. 조회할 때 기기 인증이 필요해요. 은행 로그인 비밀번호 저장은 권장하지 않습니다.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
+                Section {
+                    if websiteDetails != nil {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Label(L("웹사이트"), systemImage: "globe").font(.subheadline.weight(.medium)).foregroundStyle(.teal)
+                            TextField(L("웹사이트"), text: websiteField(\.website))
+                                .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                            Divider()
+                            Label(L("웹사이트 ID"), systemImage: "person.crop.circle").font(.subheadline.weight(.medium)).foregroundStyle(.teal)
+                            TextField(L("웹사이트 ID"), text: websiteField(\.username))
+                                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                            Divider()
+                            Label(L("웹사이트 비밀번호"), systemImage: "key.fill").font(.subheadline.weight(.medium)).foregroundStyle(.teal)
+                            HStack {
+                                if revealPassword {
+                                    TextField(L("웹사이트 비밀번호"), text: websiteField(\.password))
+                                        .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                } else {
+                                    SecureField(L("웹사이트 비밀번호"), text: websiteField(\.password))
+                                }
+                                Button { revealPassword.toggle() } label: {
+                                    Image(systemName: revealPassword ? "eye" : "eye.slash").foregroundStyle(.secondary)
+                                }.buttonStyle(.plain).accessibilityLabel(L("내용 표시"))
+                            }
+                            Divider()
+                            Label(L("메모"), systemImage: "note.text").font(.subheadline).foregroundStyle(.secondary)
+                            TextEditor(text: websiteField(\.memo)).frame(minHeight: 92)
+                        }
+                        .privacySensitive()
+                    } else {
+                        Button { Task { await unlockWebsite() } } label: {
+                            Label(L("기기 인증 후 웹사이트 정보 수정"), systemImage: "lock.shield")
+                        }.disabled(authenticatingWebsite)
+                    }
+                } header: { Text(L("웹사이트 계정")) } footer: {
+                    Text(L("이 기기에만 저장 · 백업 및 동기화 제외"))
+                }
                 Section(L("보안카드")) {
                     if existing != nil {
                         Button { showSecurity = true } label: {
@@ -1100,7 +1141,7 @@ struct BankAccountForm: View {
                 ToolbarItem(placement: .cancellationAction) { Button(L("취소")) { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(L("저장")) { save() }
-                        .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || bank.isEmpty)
+                        .disabled(nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || bank.isEmpty || authenticatingWebsite || websiteDetails?.valid == false)
                 }
             }
             .sheet(isPresented: $showSecurity) {
@@ -1115,6 +1156,12 @@ struct BankAccountForm: View {
                     dismiss()
                 }
             }
+            .onChange(of: phase) { _, next in
+                if next != .active { revealPassword = false }
+                if next == .background { clearWebsite(); secret = "" }
+            }
+            .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
+            .onDisappear { clearWebsite() }
             .onAppear {
                 if let existing {
                     nickname = existing.nickname; bank = existing.bankName; accountNumber = existing.accountNumber
@@ -1123,8 +1170,31 @@ struct BankAccountForm: View {
             }
         }
     }
+    private func websiteField(_ key: WritableKeyPath<BankWebsiteDetails, String>) -> Binding<String> {
+        Binding(get: { websiteDetails?[keyPath: key] ?? "" }, set: { value in
+            websiteDetails?[keyPath: key] = value
+        })
+    }
+    @MainActor private func unlockWebsite() async {
+        guard !authenticatingWebsite else { return }
+        authenticatingWebsite = true
+        let token = websiteSession
+        defer { authenticatingWebsite = false }
+        guard await LocalUnlock.authorize(), token == websiteSession, phase != .background else { return }
+        do {
+            if let existing { websiteDetails = try BankWebsiteStorage.load(existing.id) ?? BankWebsiteDetails() }
+            else { websiteDetails = BankWebsiteDetails() }
+        } catch { saveError = true }
+    }
+    private func clearWebsite() {
+        websiteSession = UUID(); websiteDetails = nil; revealPassword = false
+    }
     private func save() {
         let id = existing?.id ?? UUID()
+        if let websiteDetails {
+            do { try BankWebsiteStorage.save(websiteDetails, id: id) }
+            catch { saveError = true; return }
+        }
         if !secret.isEmpty && !SecureVault.save(secret, for: id) { saveError = true; return }
         let account = BankAccount(id: id, nickname: nickname, bankName: bank,
                                   accountNumber: accountNumber, balance: balance.toMoneyInt, tone: tone)
@@ -1230,7 +1300,7 @@ struct BankSecurityCardView: View {
                     }.pickerStyle(.segmented)
                 }
                 Button {
-                    serialVisible = false; reveal = false; grid = true
+                    serialVisible = false; reveal = true; grid = true
                 } label: {
                     HStack {
                         Text(L("코드 입력"))
@@ -1293,7 +1363,13 @@ struct BankSecurityCardView: View {
     private func codeBinding(_ index: Int) -> Binding<String> {
         Binding(get: { guard let card, card.codes.indices.contains(index) else { return "" }; return card.codes[index] }, set: {
             guard card?.codes.indices.contains(index) == true else { return }
-            card?.codes[index] = BankSecurityCard.digits($0, max: 4)
+            let previous = card?.codes[index] ?? ""
+            let digits = BankSecurityCard.digits($0, max: 4)
+            card?.codes[index] = digits
+            if previous.count < 4 && digits.count == 4 && focused == index {
+                if let count = card?.codes.count, index + 1 < count { focused = index + 1 }
+                else { focused = nil }
+            }
         })
     }
     private func moveFocus(_ offset: Int, count: Int) {

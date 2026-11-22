@@ -253,6 +253,11 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "기기 인증 후 웹사이트 정보 수정": ["Authenticate to edit website details","验证设备后编辑网站资料","驗證裝置後編輯網站資料","端末認証後にウェブ情報を編集","Autenticar para editar","Authentifier pour modifier","Zum Bearbeiten authentifizieren"],
+        "메모": ["Memo","备注","備註","メモ","Nota","Note","Notiz"],
+        "웹사이트 비밀번호": ["Website password","网站密码","網站密碼","ウェブサイトのパスワード","Contraseña web","Mot de passe web","Web-Passwort"],
+        "웹사이트 ID": ["Website ID","网站账号","網站帳號","ウェブサイトID","Usuario web","Identifiant web","Web-Benutzername"],
+        "웹사이트 계정": ["Website account","网站账户","網站帳戶","ウェブサイトのアカウント","Cuenta web","Compte web","Webkonto"],
         "보안 저장 실패": ["Secure storage failed","安全存储失败","安全儲存失敗","安全な保存に失敗"],
         "조회 초기화": ["Clear lookup","清空查询","清除查詢","照会をクリア"],
         "뒤 두 자리": ["Last two digits","后两位","後兩位","末尾2桁"],

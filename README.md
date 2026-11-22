@@ -43,3 +43,6 @@ Third wallet segment 개인정보 embeds the existing authenticated private vaul
 
 ## v0.4.9 bank security cards
 Account-specific optional security cards: 25–50 entries, five-column numbered grid (horizontal scrolling when narrow), vertical or horizontal numbering, masked input with reveal toggle, device authentication, two-digit lookup, device-only passcode-protected Keychain storage. No screenshot values or backup/CSV inclusion. Requires device verification.
+
+## v0.4.10 bank website details
+Protected per-account website URL, ID, password with reveal control, and memo in the bank editor. Separate device-only Keychain service; never included in ledger JSON, backups or CSV. Security-card grid defaults to visible during authenticated editing, preserves leading zeroes and advances to the next code after four digits. All screenshot contents remain excluded. Device testing required.
