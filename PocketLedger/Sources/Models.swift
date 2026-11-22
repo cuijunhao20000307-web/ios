@@ -264,6 +264,11 @@ enum AppLocalization {
     }
     static var locale: Locale { Locale(identifier: code) }
     static let table: [String: [String]] = [
+        "같은 앞 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요.": ["Several entries have the same first two digits. Check the printed card number.","有多个条目使用相同的前两位，请核对实体卡编号。","有多個項目使用相同的前兩位，請核對實體卡編號。","先頭2桁が同じ項目が複数あります。カード番号をご確認ください。","Hay varios resultados. Compruebe el número de la tarjeta.","Plusieurs entrées correspondent. Vérifiez le numéro de carte.","Mehrere Treffer. Bitte die Kartennummer prüfen."],
+        "일치하는 코드가 없습니다.": ["No matching code found.","没有匹配的安全码。","沒有符合的安全碼。","一致するコードがありません。","No hay códigos coincidentes.","Aucun code correspondant.","Kein passender Code gefunden."],
+        "앞 두 자리를 입력하면 저장된 뒤 두 자리를 찾습니다.": ["Enter the first pair to find its matching last pair.","输入前两位，即可查找对应的后两位。","輸入前兩位，即可尋找對應的後兩位。","先頭2桁から対応する後半2桁を検索します。","Ingrese los dos primeros dígitos para encontrar los dos últimos.","Entrez les deux premiers chiffres pour voir les deux derniers.","Die ersten zwei Ziffern eingeben, um die letzten zwei zu finden."],
+        "앞 두 자리 입력": ["Enter first two digits","输入前两位","輸入前兩位","先頭2桁を入力","Introduzca los dos primeros","Saisissez les deux premiers","Erste zwei Ziffern eingeben"],
+        "앞 두 자리로 조회": ["Search by first two digits","按前两位查询","按前兩位查詢","先頭2桁で検索","Buscar por dos primeros dígitos","Rechercher avec les deux premiers chiffres","Nach ersten zwei Ziffern suchen"],
         "저장된 보안카드가 없습니다.": ["No security card has been saved.","尚未保存保安卡。","尚未儲存保安卡。","保存されたセキュリティカードはありません。"],
         "보안카드 코드를 보려면 기기 인증이 필요합니다.": ["Device authentication is required to view security card codes.","查看保安卡代码需要设备身份验证。","查看保安卡代碼需要裝置身分驗證。","コードの表示には端末の認証が必要です。"],
         "번호 숨기기": ["Hide codes","隐藏代码","隱藏代碼","番号を隠す"],

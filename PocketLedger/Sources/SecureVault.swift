@@ -69,6 +69,14 @@ enum LocalUnlock {
 }
 
 
+// A matching pair is identified by its printed card position. Keeping the
+// ordinal allows callers to distinguish duplicate first halves safely.
+struct BankSecurityPairMatch: Identifiable {
+    let ordinal: Int
+    let firstTwo: String
+    let lastTwo: String
+    var id: Int { ordinal }
+}
 struct BankSecurityCard: Codable {
     static let counts = [25, 30, 35, 40, 45, 50]
     var serial = ""
@@ -80,6 +88,23 @@ struct BankSecurityCard: Codable {
     var valid: Bool {
         Self.counts.contains(codes.count) && serial.count <= 64 &&
         codes.allSatisfy { $0.isEmpty || ($0.count == 4 && $0 == Self.digits($0, max: 4)) }
+    }
+    // All banks use the same *app-local security-card lookup UI*:
+    // enter the first two digits of a complete pair, return its final two.
+    // Match strings, not integers, to preserve leading zeros; if multiple
+    // cards rows share a prefix, return every row rather than guessing.
+    func matches(firstTwo raw: String) -> [BankSecurityPairMatch] {
+        let firstTwo = Self.digits(raw, max: 2)
+        guard firstTwo.count == 2 else { return [] }
+        return codes.enumerated().compactMap { index, code in
+            guard code.count == 4, code == Self.digits(code, max: 4),
+                  code.hasPrefix(firstTwo) else { return nil }
+            return BankSecurityPairMatch(
+                ordinal: index + 1,
+                firstTwo: String(code.prefix(2)),
+                lastTwo: String(code.suffix(2))
+            )
+        }
     }
     mutating func resize(_ n: Int) {
         guard Self.counts.contains(n) else { return }

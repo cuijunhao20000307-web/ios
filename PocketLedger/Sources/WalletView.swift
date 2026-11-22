@@ -1318,7 +1318,6 @@ struct BankSecurityCardView: View {
     @State private var unlockFailed = false
     @State private var session = UUID()
     @State private var front = ""
-    @State private var back = ""
     @FocusState private var focused: Int?
 
     var body: some View {
@@ -1354,7 +1353,7 @@ struct BankSecurityCardView: View {
                         if grid { Button(L("완료")) { closeGrid() } }
                         else if editing { Button(L("저장"), action: save).disabled(card?.valid != true) }
                         else {
-                            Button { editing = true; front = ""; back = "" } label: { Image(systemName: "square.and.pencil") }
+                            Button { editing = true; front = "" } label: { Image(systemName: "square.and.pencil") }
                                 .accessibilityLabel(L("수정"))
                         }
                     }
@@ -1463,16 +1462,26 @@ struct BankSecurityCardView: View {
                                     Text(String(format: "%02d", index + 1))
                                         .font(.caption.monospacedDigit())
                                         .foregroundStyle(.secondary)
-                                    Text(value.codes[index].count == 4
-                                         ? String(value.codes[index].prefix(2)) + " " + String(value.codes[index].suffix(2))
-                                         : "—")
-                                        .font(.system(size: min(19, max(12, cellWidth * 0.25)),
-                                                      weight: .semibold, design: .monospaced))
-                                        .lineLimit(1).minimumScaleFactor(0.8)
-                                        .frame(width: cellWidth, height: 48)
-                                        .background(Color(uiColor: .secondarySystemFill),
-                                                    in: RoundedRectangle(cornerRadius: 10))
-                                        .privacySensitive()
+                                    Group {
+                                        if value.codes[index].count == 4 {
+                                            HStack(spacing: 5) {
+                                                Text(String(value.codes[index].prefix(2)))
+                                                Rectangle()
+                                                    .fill(Color.secondary.opacity(0.30))
+                                                    .frame(width: 1, height: 18)
+                                                Text(String(value.codes[index].suffix(2)))
+                                            }
+                                        } else {
+                                            Text("—")
+                                        }
+                                    }
+                                    .font(.system(size: min(19, max(12, cellWidth * 0.23)),
+                                                  weight: .semibold, design: .monospaced))
+                                    .lineLimit(1).minimumScaleFactor(0.78)
+                                    .frame(width: cellWidth, height: 48)
+                                    .background(Color(uiColor: .secondarySystemFill),
+                                                in: RoundedRectangle(cornerRadius: 10))
+                                    .privacySensitive()
                                 }
                             } else {
                                 Color.clear.frame(height: 76)
@@ -1618,24 +1627,61 @@ struct BankSecurityCardView: View {
             } footer: {
                 Text(L("보안카드 코드를 보려면 기기 인증이 필요합니다."))
             }
-            Section(L("보안카드 조회")) {
-                lookupRow(L("앞 두 자리"), number: $front, value: value, first: true)
-                lookupRow(L("뒤 두 자리"), number: $back, value: value, first: false)
-                Button(L("조회 초기화")) { front = ""; back = "" }
+            Section(L("앞 두 자리로 조회")) {
+                HStack(spacing: 12) {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField(L("앞 두 자리 입력"), text: Binding(
+                        get: { front },
+                        set: { front = BankSecurityCard.digits($0, max: 2) }
+                    ))
+                    .keyboardType(.numberPad)
+                    .font(.title3.monospacedDigit())
+                    .multilineTextAlignment(.center)
+                    .frame(width: 112)
+                    .accessibilityLabel(L("앞 두 자리 입력"))
+                    Spacer(minLength: 0)
+                    Button(L("조회 초기화")) { front = "" }
+                        .disabled(front.isEmpty)
+                        .font(.subheadline)
+                }
+                if front.count != 2 {
+                    Text(L("앞 두 자리를 입력하면 저장된 뒤 두 자리를 찾습니다."))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    let matches = value.matches(firstTwo: front)
+                    if matches.isEmpty {
+                        Label(L("일치하는 코드가 없습니다."), systemImage: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        if matches.count > 1 {
+                            Text(L("같은 앞 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요."))
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                        ForEach(matches) { matched in
+                            HStack(spacing: 12) {
+                                Text(String(format: "%02d", matched.ordinal))
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(matched.firstTwo)
+                                    .font(.body.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "arrow.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(matched.lastTwo)
+                                    .font(.title3.monospacedDigit().bold())
+                                    .foregroundStyle(.primary)
+                            }
+                            .privacySensitive()
+                        }
+                    }
+                }
             }
-            Section { Button(L("보안카드 등록 · 수정")) { editing = true; front = ""; back = "" } }
-        }
-    }
-    private func lookupRow(_ title: String, number: Binding<String>, value: BankSecurityCard, first: Bool) -> some View {
-        let index = (Int(number.wrappedValue) ?? 0) - 1
-        let code = value.codes.indices.contains(index) ? value.codes[index] : ""
-        return HStack {
-            Text(title)
-            Spacer()
-            TextField("01", text: Binding(get: { number.wrappedValue }, set: { number.wrappedValue = BankSecurityCard.digits($0, max: 2) }))
-                .keyboardType(.numberPad).multilineTextAlignment(.center).frame(width: 60)
-            Text(code.count == 4 ? (first ? String(code.prefix(2)) : String(code.suffix(2))) : "••")
-                .font(.headline.monospacedDigit()).frame(width: 60).privacySensitive()
+            Section { Button(L("보안카드 등록 · 수정")) { editing = true; front = "" } }
         }
     }
     @MainActor private func showSavedCodes() async {
@@ -1649,7 +1695,6 @@ struct BankSecurityCardView: View {
             return
         }
         front = ""
-        back = ""
         serialVisible = false
         viewingSavedCodes = true
         grid = true
@@ -1679,7 +1724,7 @@ struct BankSecurityCardView: View {
     private func lock() {
         session = UUID(); card = nil; editing = false; grid = false; reveal = false
         viewingSavedCodes = false
-        serialVisible = false; front = ""; back = ""; focused = nil
+        serialVisible = false; front = ""; focused = nil
     }
 }
 
