@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var notificationError = false
     @State private var showPrivateSettings = false
     @State private var showICloudBackup = false
+    @State private var showFixedExpenses = false
     @State private var budgetText = ""
     @State private var budgetSavedFeedback = false
     @State private var pendingDestructiveAction: SettingsDestructiveAction?
@@ -177,6 +178,26 @@ struct SettingsView: View {
                 }
                 SettingsCompactSection {
                     VStack(alignment: .leading, spacing: 9) {
+                        CompactSettingsTitle(title: "매월 고정 지출 설정")
+                        Button { showFixedExpenses = true } label: {
+                            HStack {
+                                Label(L("매월 고정 지출 설정"), systemImage: "calendar.badge.clock")
+                                Spacer()
+                                Text(store.data.recurringRules
+                                    .filter { $0.enabled && $0.kind == .expense }
+                                    .reduce(0) { $0 + $1.amount }.won)
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                            }
+                        }
+                        Text(L("설정된 고정 지출은 앱을 열 때 지정일에 자동 기록됩니다."))
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                SettingsCompactSection {
+                    VStack(alignment: .leading, spacing: 9) {
                         CompactSettingsTitle(title: "결제 연동")
                         Button { showPaymentLinks = true } label: {
                             HStack {
@@ -264,7 +285,7 @@ struct SettingsView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Text("Digital Wallet · v0.4.33")
+                Text("Digital Wallet · v0.4.37")
                     .font(.caption).foregroundStyle(LedgerTheme.subtext)
                     .frame(maxWidth: .infinity)
             }
@@ -273,6 +294,7 @@ struct SettingsView: View {
         }
         .sheet(isPresented: $showPrivateSettings) { PrivateWalletView(initialSection: 3) }
         .sheet(isPresented: $showICloudBackup) { DigitalCloudBackupView() }
+        .sheet(isPresented: $showFixedExpenses) { FixedExpensesSettingsView() }
         .onAppear { budgetText = String(store.data.monthlyBudget) }
         .onChange(of: currency) { _, _ in currencyRevision += 1 }
         .sheet(isPresented: $showCovers) { CurrencyCoverSettingsView() }

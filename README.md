@@ -1,4 +1,8 @@
-# PocketLedger v0.4.36
+# PocketLedger v0.4.37
+
+## v0.4.37 Fixed monthly expenses (Build 44)
+Added Credit card repayment and Mobile phone bill spending categories with localized labels. The new Settings > Monthly fixed expenses sheet and Recurring tab let users add, edit, pause or delete monthly expenses, choose category, amount (KRW), due day (1–31), start date and optional payment source. Existing salary schedules are unchanged. Entries post when the app is next opened after the due date; months without the selected day use their final day. Existing posted entries remain unchanged when a rule is edited. Existing recurring IDs prevent duplicate automatic entries for the same month. Credit card repayments may double count spending if individual purchases are already recorded. The independent iCloud backup restore password input fix remains included.
+
 
 ## v0.4.36 Backup restore password entry (Build 43)
 The iCloud Drive backup screen now separates creation and recovery passwords. Creation still requires a new password and confirmation in its own section. When restoring, choose a backup file and enter its existing password **once** directly under the Restore section to inspect it. Decryption no longer reads the create-backup inputs. The password is cleared after successful verification; the user must separately confirm destructive restoration and pass device authentication. Backup format and encryption are unchanged.

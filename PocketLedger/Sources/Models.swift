@@ -42,6 +42,8 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
     case transit = "교통"
     case housing = "주거"
     case bills = "공과금"
+    case creditCardRepayment = "신용카드 상환"
+    case mobileBill = "휴대폰 요금"
     case health = "건강"
     case leisure = "여가"
     case salary = "급여"
@@ -55,6 +57,8 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
         case .transit: "tram.fill"
         case .housing: "house.fill"
         case .bills: "bolt.fill"
+        case .creditCardRepayment: "creditcard.fill"
+        case .mobileBill: "iphone"
         case .health: "cross.case.fill"
         case .leisure: "gamecontroller.fill"
         case .salary: "banknote.fill"
@@ -69,6 +73,8 @@ enum MoneyCategory: String, Codable, CaseIterable, Identifiable {
         case .transit: .blue
         case .housing: .indigo
         case .bills: .yellow
+        case .creditCardRepayment: .red
+        case .mobileBill: .teal
         case .health: .green
         case .leisure: .purple
         case .salary: .mint
@@ -455,6 +461,8 @@ enum AppLocalization {
         "교통": ["Transport", "交通", "交通", "交通", "Transporte", "Transport", "Verkehr"],
         "주거": ["Housing", "住房", "住房", "住居", "Vivienda", "Logement", "Wohnen"],
         "공과금": ["Bills", "水电杂费", "水電雜費", "光熱費", "Facturas", "Factures", "Nebenkosten"],
+        "신용카드 상환": ["Credit card repayment", "信用卡还款", "信用卡還款", "クレジットカード返済", "Pago de tarjeta", "Remboursement de carte", "Kreditkartenrückzahlung"],
+        "휴대폰 요금": ["Mobile phone bill", "手机费", "手機費", "携帯電話料金", "Factura móvil", "Facture mobile", "Mobilfunkrechnung"],
         "건강": ["Health", "健康", "健康", "健康", "Salud", "Santé", "Gesundheit"],
         "여가": ["Leisure", "娱乐", "娛樂", "娯楽", "Ocio", "Loisirs", "Freizeit"],
         "급여": ["Salary", "工资", "薪資", "給与", "Salario", "Salaire", "Gehalt"],
@@ -465,6 +473,19 @@ enum AppLocalization {
         "월": ["Month", "月", "月", "月", "Mes", "Mois", "Monat"],
         "카드별 지출": ["Spending by card", "按卡片统计支出", "依卡片統計支出", "カード別支出"],
         "자동 기록": ["Recurring entries", "自动记账", "自動記帳", "自動記録"],
+        "매월 고정 지출 설정": ["Monthly fixed expenses", "每月固定支出设置", "每月固定支出設定", "毎月の固定支出設定"],
+        "고정 지출 추가": ["Add fixed expense", "添加固定支出", "新增固定支出", "固定支出を追加"],
+        "고정 지출 편집": ["Edit fixed expense", "编辑固定支出", "編輯固定支出", "固定支出を編集"],
+        "월 고정 지출 합계": ["Monthly fixed expense total", "每月固定支出合计", "每月固定支出合計", "毎月の固定支出合計"],
+        "고정 지출 없음": ["No fixed expenses yet", "尚未设置固定支出", "尚未設定固定支出", "固定支出は未設定です"],
+        "설정된 고정 지출은 앱을 열 때 지정일에 자동 기록됩니다.": ["Fixed expenses are recorded when you open the app on or after their due date.", "打开应用后，将自动补记到期的固定支出。", "開啟應用程式後，會自動補記到期的固定支出。", "指定日以降にアプリを開くと固定支出が自動記録されます。"],
+        "신용카드 사용액을 이미 지출로 기록했다면 카드 대금을 다시 지출로 넣을 때 이중 계산될 수 있습니다.": ["If card purchases are already recorded as expenses, recording the repayment as another expense may double-count them.", "如果信用卡消费已计入支出，再将信用卡还款计为支出可能造成重复统计。", "若信用卡消費已列入支出，再將還款列為支出可能重複計算。", "カード利用分を支出に記録済みの場合、返済も支出にすると二重計上される可能性があります。"],
+        "활성": ["Enabled", "启用", "啟用", "有効"],
+        "매월 자동 기록": ["Record monthly automatically", "每月自动记账", "每月自動記帳", "毎月自動記録"],
+        "매월 결제일": ["Monthly payment day", "每月扣款日", "每月扣款日", "毎月の支払日"],
+        "선택한 날이 없는 달에는 말일에 기록됩니다.": ["In shorter months, the expense is recorded on the last day.", "当月没有该日期时，在月末记录。", "當月沒有該日期時，於月底記錄。", "指定日がない月は月末に記録されます。"],
+        "규칙 수정은 기존에 기록된 거래를 변경하지 않습니다.": ["Editing a recurring rule does not alter previously recorded transactions.", "修改固定支出设置不会更改已记录的交易。", "修改固定支出設定不會變更已記錄的交易。", "設定の変更は記録済みの取引には影響しません。"],
+        "월급 자동 기록": ["Automatic salary entries", "月薪自动记账", "月薪自動記帳", "給与の自動記録"],
         "나의 구독 관리": ["Manage subscriptions", "订阅管理", "訂閱管理", "サブスク管理"],
         "항목 이름": ["Item name", "项目名称", "項目名稱", "項目名"],
         "금액 (원)": ["Amount (KRW)", "金额（韩元）", "金額（韓元）", "金額（ウォン）"],
