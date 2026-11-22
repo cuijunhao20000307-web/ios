@@ -1787,20 +1787,38 @@ private struct BankLogoMark: View {
     let bank: BankDirectoryEntry?
     let tone: WalletTone
     let size: CGFloat
+    // Full horizontal bank wordmarks are unreadable if shrunk to a square.
+    // Allow additional width only in bank selection rows where text can wrap.
+    var showFullWordmark: Bool = false
+    private var isHorizontalMark: Bool {
+        guard let id = bank?.id else { return false }
+        return ["jp-jppost", "jp-rakuten", "jp-sony", "us-truist", "us-pnc"].contains(id)
+    }
+    private var markWidth: CGFloat {
+        showFullWordmark && isHorizontalMark ? size * 1.55 : size
+    }
     var body: some View {
         Group {
             if let asset = bank?.asset, UIImage(named: asset) != nil {
-                Image(asset).renderingMode(.original).resizable().scaledToFit()
-                    .padding(size * 0.035)
+                Image(asset)
+                    .renderingMode(.original)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .padding(size * 0.04)
+                    .frame(width: markWidth, height: size)
                     .background(Color.white)
             } else {
-                Image(systemName: "building.columns.fill").font(.system(size: size * 0.38))
+                Image(systemName: "building.columns.fill")
+                    .font(.system(size: size * 0.38))
                     .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(LinearGradient(colors: tone.gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: markWidth, height: size)
+                    .background(LinearGradient(colors: tone.gradient,
+                                               startPoint: .topLeading,
+                                               endPoint: .bottomTrailing))
             }
         }
-        .frame(width: size, height: size)
+        .frame(width: markWidth, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.20))
         .accessibilityHidden(true)
     }
@@ -1832,13 +1850,13 @@ private struct BankLogoPicker: View {
                         TextField(L("은행 검색"), text: $search)
                         if !search.isEmpty { Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.plain) }
                     }.padding(12).background(Color(uiColor: .secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 138, maximum: 230), spacing: 10)], spacing: 10) {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 166, maximum: 250), spacing: 10)], spacing: 10) {
                         ForEach(rows) { bank in
                             Button {
                                 choose(bank); dismiss()
                             } label: {
                                 HStack(spacing: 7) {
-                                    BankLogoMark(bank: bank, tone: bank.tone, size: 40)
+                                    BankLogoMark(bank: bank, tone: bank.tone, size: 40, showFullWordmark: true)
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(bank.name).font(.system(size: 13, weight: .semibold))
                                             .lineLimit(2).minimumScaleFactor(0.7)

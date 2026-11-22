@@ -106,3 +106,6 @@ Removed the entire Menu position / system automatic layout section and unused Du
 
 ## Digital Wallet v0.4.29 — 11 missing bank logos restored
 After auditing all 61 `BankDirectory.entries` asset references against `Assets.xcassets`, filled seven missing JP and four missing US image sets. Nine SVG source files are scalable and one further JP historic symbol is a carefully drawn simplified representation; the remaining US PNC logo is a 256px PNG. Existing IDs and stored banking data are unchanged. Sources are documented in BankLogoCredits. The SBI Sumishin bank has rebranded and its legacy list entry is preserved for stored-account compatibility. All bank logos are trademarks of their owners. iCloud, cards and Face ID unaffected.
+
+## Digital Wallet v0.4.30 — legible bank wordmarks
+Keeps the 11 already-bundled Japanese and U.S. vector/logo resources from v0.4.29, with no runtime requests. Widely rectangular bank logo assets (Japan Post Bank, Rakuten Bank, Sony Bank, Truist and PNC) may now use a 1.55× wide frame in the bank-selection grid, rather than forcing the entire wordmark into a 40×40 square. The picker uses a minimum 166-point card width so names remain legible and layout can reduce columns on smaller displays. Square emblems and bank-account rows keep their previous footprint. No changes to stored account IDs, bundle ID or ledger data.
