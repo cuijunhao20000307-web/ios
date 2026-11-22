@@ -234,8 +234,13 @@ struct PrivateWalletView: View {
     @Environment(\.scenePhase) private var phase
     @AppStorage("privateWalletFont") private var font = "기본"
     @AppStorage("privateWalletSize") private var size = "기본"
-    @State var initialSection = 0
-    @State private var section = 0
+    private let initialSection: Int
+    @State private var section: Int
+
+    init(initialSection: Int = 0) {
+        self.initialSection = initialSection
+        _section = State(initialValue: initialSection)
+    }
     @State private var archive: PrivateArchive?
     @State private var record: PrivateRecord?
     @State private var subscription: PrivateSubscription?
@@ -315,7 +320,9 @@ struct PrivateWalletView: View {
                     return false
                 }.environmentObject(store)
             }
-            .sheet(isPresented: Binding(get: { backupMode != nil }, set: { if !$0 { resetBackup() } })) {
+            .sheet(isPresented: Binding(get: { backupMode != nil }, set: { if !$0 { resetBackup() } }), onDismiss: {
+                if exportFile != nil && archive != nil { showExport = true }
+            }) {
                 NavigationStack {
                     Form {
                         if backupMode == "export" {
@@ -373,7 +380,7 @@ struct PrivateWalletView: View {
     }
     private func lock() {
         archive = nil; record = nil; subscription = nil; search = ""
-        resetBackup(); exportFile = nil
+        resetBackup(); exportFile = nil; showExport = false; showImport = false
     }
     private func resetBackup() { backupMode = nil; password = ""; confirmation = ""; incoming = nil }
     @discardableResult private func commit(_ next: PrivateArchive) -> Bool {
@@ -386,7 +393,6 @@ struct PrivateWalletView: View {
             if backupMode == "export" {
                 exportFile = PrivateBackupDocument(bytes: try PrivateBackup.seal(a, password: password))
                 resetBackup()
-                showExport = true
             } else if let incoming {
                 let restored = try PrivateBackup.open(incoming, password: password)
                 if commit(restored) {
