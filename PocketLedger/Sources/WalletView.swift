@@ -269,7 +269,7 @@ struct BankAccountForm: View {
         if !secret.isEmpty && !SecureVault.save(secret, for: id) { saveError = true; return }
         let account = BankAccount(id: id, nickname: nickname, bankName: bank,
                                   accountNumber: accountNumber, balance: balance.toMoneyInt, tone: tone)
-        if let index = store.data.accounts.firstIndex(where: { $0.id == account.id }) { store.data.accounts[index] = account }
+        if let index = store.data.accounts.firstIndex(where: { $0.id == id }) { store.data.accounts[index] = account }
         else { store.data.accounts.append(account) }
         dismiss()
     }
