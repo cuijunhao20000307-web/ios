@@ -12,14 +12,26 @@ enum WalletCardMotion {
         frame(source: source, destination: destination, progress: progress).width / max(source.width, 1)
     }
 
-    // Disjoint visibility envelopes prevent a translucent detail page
-    // being composited over the stacked cards. Both reverse exactly
-    // under interactive pull-to-dismiss.
+    // Smoothstep eases both fade endpoints while preserving disjoint
+    // visibility windows: never alpha-blend two complete wallet screens.
+    private static func smoothstep(_ value: CGFloat) -> CGFloat {
+        let t = min(1, max(0, value))
+        return t * t * (3 - 2 * t)
+    }
     static func siblingOpacity(_ progress: CGFloat) -> CGFloat {
-        min(1, max(0, (0.76 - progress) / 0.10))
+        1 - smoothstep((progress - 0.06) / 0.49)
     }
     static func detailOpacity(_ progress: CGFloat) -> CGFloat {
-        min(1, max(0, (progress - 0.82) / 0.18))
+        smoothstep((progress - 0.72) / 0.28)
+    }
+    // Selected card returns along its original path while siblings remain
+    // offscreen. They slide back only during the final part of dismissal.
+    static func siblingRetreatProgress(_ progress: CGFloat) -> CGFloat {
+        smoothstep(progress / 0.48)
+    }
+    static func stackVisibleHeight(current: CGRect, next: CGRect?) -> CGFloat {
+        guard let next else { return current.height }
+        return min(current.height, max(0, next.minY - current.minY))
     }
 
     static func frame(source: CGRect, destination: CGRect, progress: CGFloat) -> CGRect {
