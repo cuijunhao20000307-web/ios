@@ -10,7 +10,7 @@ Primary reference: the locally supplied `ScreenRecording_11-23-2026 22-49-49_1.m
 
 ## Implemented behavior
 
-The actual source frame includes its deck slot and scroll position. The target uses the unchanged detail layout, including DuoColumns and text layout. A persistent render-only card layer interpolates the two rectangles; ownership returns to the protected detail artwork only at rest. Background cards use the same transition progress. There is no selected-card slot reassignment or delayed page entrance. Animation completion is guarded against stale callbacks.
+The actual source frame includes its deck slot and scroll position. The target uses the unchanged detail layout, including DuoColumns and text layout. A persistent render-only card layer interpolates the two rectangles and continuously reveals the initially exposed strip, avoiding an immediate flash of the hidden artwork; ownership returns to the protected detail artwork only at rest. Background cards use the same transition progress. There is no selected-card slot reassignment or delayed page entrance. Animation completion is guarded against stale callbacks.
 
 The pull recognizer begins only on the measured header/card region, with downward vertical velocity, while the existing detail scroll view is at its top. It observes simultaneously with that scroll view and suppresses its bounce while the dismissal is tracking. Starting on other content remains normal scrolling. Cancellation and upward reversal restore detail. Dismissal never mutates stored order. Reduce Motion skips spatial transforms.
 

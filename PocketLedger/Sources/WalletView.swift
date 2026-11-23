@@ -17,6 +17,7 @@ struct WalletView: View {
     @State private var cardTransitionProgress: CGFloat = 0
     @State private var cardFrames: [UUID: CGRect] = [:]
     @State private var sourceCardFrame: CGRect?
+    @State private var sourceVisibleFraction: CGFloat = 1
     @State private var detailCardFrame: CGRect = .zero
     @State private var transitionStarted = false
     @State private var transitionSettled = false
@@ -81,7 +82,7 @@ struct WalletView: View {
                            let source = sourceCardFrame {
                             WalletFlyingCard(card: card, spent: store.spent(on: card, in: .now),
                                 source: source, destination: detailCardFrame.width > 0 ? detailCardFrame : source,
-                                progress: cardTransitionProgress)
+                                sourceVisibleFraction: sourceVisibleFraction, progress: cardTransitionProgress)
                                 .opacity(transitionSettled ? 0 : 1)
                                 .allowsHitTesting(false)
                                 .accessibilityHidden(true)
@@ -183,6 +184,13 @@ struct WalletView: View {
         deckDragging = false
         transitionToken = UUID()
         sourceCardFrame = cardFrames[id]
+        sourceVisibleFraction = 1
+        if stacked, let source = sourceCardFrame,
+           let index = filteredCards.firstIndex(where: { $0.id == id }),
+           filteredCards.indices.contains(index + 1),
+           let next = cardFrames[filteredCards[index + 1].id] {
+            sourceVisibleFraction = min(1, max(0, (next.minY - source.minY) / max(1, source.height)))
+        }
         detailCardFrame = .zero
         transitionStarted = false
         transitionSettled = false
@@ -487,6 +495,7 @@ private struct WalletFlyingCard: View, Animatable {
     let spent: Int
     let source: CGRect
     let destination: CGRect
+    let sourceVisibleFraction: CGFloat
     var progress: CGFloat
     var animatableData: CGFloat {
         get { progress }
@@ -496,6 +505,12 @@ private struct WalletFlyingCard: View, Animatable {
         let rect = WalletCardMotion.frame(source: source, destination: destination, progress: progress)
         LedgerStackCard(card: card, spent: spent)
             .frame(width: rect.width, height: rect.height)
+            // An exposed strip reveals continuously as it leaves the stack;
+            // lifting its z-order must not flash the entire hidden artwork.
+            .mask(alignment: .top) {
+                Rectangle().frame(height: rect.height *
+                    (sourceVisibleFraction + (1 - sourceVisibleFraction) * min(1, max(0, progress))))
+            }
             .position(x: rect.midX, y: rect.midY)
     }
 }
