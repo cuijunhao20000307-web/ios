@@ -6,6 +6,16 @@ import CoreGraphics
 enum WalletCardMotion {
     static let duration = 0.36
 
+    // Disjoint visibility envelopes prevent a translucent detail page
+    // being composited over the stacked cards. Both reverse exactly
+    // under interactive pull-to-dismiss.
+    static func siblingOpacity(_ progress: CGFloat) -> CGFloat {
+        min(1, max(0, (0.76 - progress) / 0.10))
+    }
+    static func detailOpacity(_ progress: CGFloat) -> CGFloat {
+        min(1, max(0, (progress - 0.82) / 0.18))
+    }
+
     static func frame(source: CGRect, destination: CGRect, progress: CGFloat) -> CGRect {
         let p = min(1, max(0, progress))
         return CGRect(x: source.minX + (destination.minX - source.minX) * p,

@@ -21,6 +21,18 @@ struct WalletCardMotionTests {
                 }
             }
         }
+        // No two complete image/page layers can overlap on any frame.
+        precondition(WalletCardMotion.siblingOpacity(0) == 1)
+        precondition(WalletCardMotion.siblingOpacity(1) == 0)
+        precondition(WalletCardMotion.detailOpacity(0) == 0)
+        precondition(WalletCardMotion.detailOpacity(1) == 1)
+        for i in 0...1000 {
+            let progress = CGFloat(i) / 1000
+            let siblings = WalletCardMotion.siblingOpacity(progress)
+            let detail = WalletCardMotion.detailOpacity(progress)
+            precondition(siblings >= 0 && siblings <= 1 && detail >= 0 && detail <= 1)
+            precondition(siblings * detail == 0, "Ghosted foreground/background")
+        }
         let distance: CGFloat = 300
         precondition(WalletCardMotion.progress(translation: 90, distance: distance) == 0.7)
         precondition(WalletCardMotion.progress(translation: -10, distance: distance) == 1)

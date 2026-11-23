@@ -46,14 +46,42 @@ struct WalletView: View {
                 ZStack(alignment: .top) {
                     walletRoot
                         .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
+                        // Keep original stack mounted for geometry and scroll
+                        // restoration, but never blend it with detail artwork.
+                        .opacity(selectedCard == nil ? 1 : 0)
                         .allowsHitTesting(selectedCard == nil)
                         .accessibilityHidden(selectedCard != nil)
                         .zIndex(0)
                     if let id = selectedCard {
+                        let focus = filteredCards.firstIndex(where: { $0.id == id }) ?? 0
                         LedgerTheme.background
-                            .opacity(Double(cardTransitionProgress))
                             .allowsHitTesting(false)
-                            .zIndex(0.5)
+                            .zIndex(0.2)
+                        // Render the moving background stack only once,
+                        // against an opaque canvas. The selected card flies
+                        // independently on the identical linear frame clock.
+                        if !reduceMotion {
+                            ZStack(alignment: .topLeading) {
+                                ForEach(Array(filteredCards.enumerated()), id: \.element.id) { index, card in
+                                    if card.id != id, let source = cardFrames[card.id] {
+                                        let retreat: CGFloat = index < focus
+                                            ? -viewport.size.height * 0.85
+                                            : viewport.size.height * 1.06
+                                        LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
+                                            .frame(width: source.width, height: source.height)
+                                            .position(x: source.midX,
+                                                y: source.midY + retreat * cardTransitionProgress)
+                                            .opacity(Double(WalletCardMotion.siblingOpacity(cardTransitionProgress)))
+                                            .zIndex(Double(index))
+                                    }
+                                }
+                            }
+                            .frame(width: viewport.size.width, height: viewport.size.height)
+                            .clipped()
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                            .zIndex(0.4)
+                        }
                         LedgerCardDetail(
                             cardID: id,
                             editingCard: editPaymentCard?.id == id,
@@ -65,12 +93,12 @@ struct WalletView: View {
                         )
                         .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
                         .coordinateSpace(name: "walletDetail")
-                        // Metadata follows the same card trajectory, rather than
-                        // bringing a second card in from below the screen.
-                        .offset(y: reduceMotion ? 0 :
-                            ((sourceCardFrame?.minY ?? detailCardFrame.minY) - detailCardFrame.minY) *
-                            (1 - cardTransitionProgress))
-                        .opacity(Double(cardTransitionProgress))
+                        // The selected card is the sole moving foreground
+                        // surface. Opaque detail appears only once moving
+                        // sibling cards have left the screen.
+                        .background(LedgerTheme.background)
+                        .opacity(reduceMotion ? 1 :
+                            Double(WalletCardMotion.detailOpacity(cardTransitionProgress)))
                         .allowsHitTesting(transitionSettled || detailPullActive)
                         .accessibilityHidden(!transitionSettled)
                         .zIndex(1)

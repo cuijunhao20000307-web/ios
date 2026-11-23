@@ -1,4 +1,9 @@
-# PocketLedger v0.4.49
+# PocketLedger v0.4.50
+
+## v0.4.50 / Build 57 — single card scene, no ghosted crossfade
+Based on three November 24 recordings (Build 56 residual/ghost UI and two Apple Wallet reference videos), opening and closing no longer crossfade two entire wallet pages. The root wallet remains mounted for exact geometry and scroll position but becomes visually hidden during a transition; on an opaque canvas, measured background-card sprites retreat above/below while **one selected card** moves in one continuous linear path. Detail UI comes in after the other cards have left, eliminating doubled card faces and labels. Closing reverses the same path; long-press reorder, normal browsing, cards and financial data remain unchanged. A pure Swift regression test asserts that the background-card opacity and detail metadata opacity envelopes never overlap. Hardware visual parity is still unverified.
+
+
 
 ## v0.4.49 Restore returned deck and add drag browsing (Build 56)
 Addresses the Build 55 recording where the card artwork disappeared after return while invisible tap strips remained active. One display-link clock now publishes the actual linear progress for all layers with implicit animations disabled. Closing retargets from the displayed frame; completion resets selection and refreshes only the render-only card layer, keeping the original scroll view, hit strips and saved order. Destination measurement is frozen during motion. A stationary background replaces the moving translucent full-page background that caused ghosted pages.
