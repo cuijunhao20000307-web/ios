@@ -20,6 +20,12 @@ final class WalletUITests: XCTestCase {
         for index in 0..<6 {
             let strip = app.buttons["wallet.card.select.\(index)"]
             XCTAssertTrue(strip.waitForExistence(timeout: 5))
+            // Compare the actual displayed card identity in each persistent
+            // slot, not just the count or touch-region existence. Unlike a
+            // post-test JSON read, this runs before XCTest disposes of the
+            // simulator application container.
+            XCTAssertTrue(strip.label.contains("Demo Card \(index + 1)"),
+                "Card order/identity changed at slot \(index) after \(name): \(strip.label)")
             // The regression kept transparent hit buttons alive over a blank
             // background. Test actual rendered pixels, not just AX existence.
             let image = strip.screenshot().image.cgImage!

@@ -26,6 +26,7 @@ The pull recognizer begins only on the measured header/card region, with downwar
 
 ## Automated checks
 
+- UI checks assert each exposed strip still displays its original synthetic card identity and position after browsing, selection and dismissal, while the application is running. XCTest may re-install/remove its app container at teardown; the runner re-resolves the container for an optional disk-level check, and clearly reports when no post-test container survives. A vanished test container is not considered evidence of a user-data mutation.
 - `swiftc PocketLedger/Sources/WalletCardMotion.swift tests/WalletCardMotionTests.swift -o /tmp/wallet-motion-tests && /tmp/wallet-motion-tests`: endpoints, exact reverse path, aspect ratio across compact/expanded sizes, drag clamping and release thresholds.
 - `python3 scripts/verify_balance_covers.py`: original dimensions and SHA-256 values.
 - CI: full iPhoneOS Release compilation with signing disabled; `verify_balance_covers.py --app ...` verifies compiled Asset Catalog names before packaging.
