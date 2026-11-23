@@ -1,0 +1,79 @@
+name: Build Digital Wallet fallback IPA (macOS 26)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-macos26-fallback-ipa.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  fallback-ipa:
+    # Separate runner pool while official Xcode 27 workflow is stuck queued.
+    # This fallback does not replace the official iOS 27.1+ SDK build.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Identify fallback Xcode SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+          echo "This is a fallback compatibility build. Native Duo UI must be verified with the official xcode-27 IPA."
+      - name: Validate card motion and original currency art
+        run: |
+          set -euo pipefail
+          swiftc PocketLedger/Sources/WalletCardMotion.swift tests/WalletCardMotionTests.swift -o /tmp/wallet-motion-tests
+          /tmp/wallet-motion-tests
+          python3 scripts/verify_balance_covers.py
+      - name: Restore icon and preserve existing bank logos
+        run: |
+          python3 scripts/restore_icon.py
+          python3 scripts/fetch_bank_logos.py
+      - name: Compile unsigned iOS IPA before simulator checks
+        run: |
+          set -o pipefail
+          xcodebuild -project PocketLedger.xcodeproj -scheme PocketLedger -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
+      - name: Verify compiled currency art and app version
+        run: |
+          set -euo pipefail
+          app="build/Build/Products/Release-iphoneos/PocketLedger.app"
+          python3 scripts/verify_balance_covers.py --app "$app"
+          python3 - <<'PY'
+          import plistlib
+          with open('build/Build/Products/Release-iphoneos/PocketLedger.app/Info.plist','rb') as file:
+              info=plistlib.load(file)
+          version=info.get('CFBundleShortVersionString')
+          build=info.get('CFBundleVersion')
+          print('Fallback IPA version:', version, 'Build:', build)
+          assert version == '0.4.50' and build == '57'
+          PY
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          mkdir -p package/Payload
+          cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
+          (cd package && zip -qry Digital-Wallet-v0.4.50-Build57-macos26-fallback-unsigned.ipa Payload && unzip -t Digital-Wallet-v0.4.50-Build57-macos26-fallback-unsigned.ipa | tail -1)
+      - name: Upload unsigned compatibility IPA before UI diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: Digital-Wallet-v0.4.50-Build57-macos26-fallback-ipa
+          path: package/Digital-Wallet-v0.4.50-Build57-macos26-fallback-unsigned.ipa
+          if-no-files-found: error
+      - name: Run optional simulator UI diagnostics after IPA is uploaded
+        continue-on-error: true
+        timeout-minutes: 7
+        run: python3 scripts/run_wallet_ui_tests.py > ui-test.log 2>&1
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Digital-Wallet-Build57-fallback-diagnostics
+          path: |
+            build.log
+            ui-test.log
+            ui-results/
+          if-no-files-found: ignore
