@@ -15,7 +15,8 @@ struct WalletView: View {
     @State private var showAccount = false
     @State private var selectedCard: UUID?
     @State private var focusedCard: UUID?
-    @State private var cardOpenTask: Task<Void, Never>?
+    @State private var cardTransitionProgress: CGFloat = 0
+    @State private var cardTransitionTask: Task<Void, Never>?
     // Interactive pull-down dismissal affects the detail overlay only.
     @State private var detailPullDown: CGFloat = 0
     @Namespace private var cardTransition
@@ -46,32 +47,51 @@ struct WalletView: View {
                         LedgerCardDetail(
                             cardID: id,
                             editingCard: editPaymentCard?.id == id,
-                            onClose: closeCard,
-                            onCardPullDown: { distance in
-                                detailPullDown = max(0, distance)
-                            },
-                            onCardPullEnd: { distance, predicted in
-                                // A deliberate downward drag closes the detail.
-                                // Short drags smoothly return the card to rest.
-                                if distance > 115 || (distance > 55 && predicted > 185) {
-                                    closeCard()
-                                } else {
-                                    withAnimation(reduceMotion ? nil : .linear(duration: 0.22)) {
-                                        detailPullDown = 0
-                                    }
-                                }
-                            }
+                            onClose: closeCard
                         )
                         .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
                         .background(LedgerTheme.background)
                         .clipped()
-                        .offset(y: detailPullDown)
-                        .opacity(reduceMotion ? 1 :
-                            max(0.12, 1 - detailPullDown / max(1, viewport.size.height * 0.68)))
-                        // Native-feeling vertical slide plus fade; layout stays unchanged.
-                        .transition(reduceMotion ? .opacity :
-                            .move(edge: .bottom).combined(with: .opacity))
+                        // One shared progress gives a continuous bottom-up
+                        // slide + fade and precisely reverses on close.
+                        // Keep an in-progress downward pull as the starting
+                        // point of dismissal, preventing a snap upward.
+                        .offset(y: reduceMotion ? 0 :
+                            (1 - cardTransitionProgress) * viewport.size.height +
+                            cardTransitionProgress * detailPullDown)
+                        .opacity(Double(cardTransitionProgress) *
+                            (reduceMotion ? 1 : max(0,
+                                1 - Double(detailPullDown / max(1, viewport.size.height * 0.76)))))
                         .zIndex(1)
+                        // The parent recognizes downward pulls even when
+                        // the detail's ScrollView would consume a child drag.
+                        // Only drags starting in the card/header area dismiss.
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: 10)
+                                .onChanged { value in
+                                    let dy = value.translation.height
+                                    let startLimit = min(460, viewport.size.height * 0.68)
+                                    if cardTransitionProgress > 0.99 &&
+                                       value.startLocation.y < startLimit &&
+                                       dy > 0 && dy > abs(value.translation.width) * 1.12 {
+                                        detailPullDown = dy
+                                    }
+                                }
+                                .onEnded { value in
+                                    let dy = value.translation.height
+                                    let startLimit = min(460, viewport.size.height * 0.68)
+                                    if cardTransitionProgress > 0.99 &&
+                                       value.startLocation.y < startLimit &&
+                                       dy > 0 && dy > abs(value.translation.width) * 1.12 &&
+                                       (dy >= 105 || (dy >= 48 && value.predictedEndTranslation.height >= 195)) {
+                                        closeCard()
+                                    } else if detailPullDown > 0 {
+                                        withAnimation(reduceMotion ? nil : .linear(duration: 0.18)) {
+                                            detailPullDown = 0
+                                        }
+                                    }
+                                }
+                        )
                     }
                 }
                 .frame(width: viewport.size.width, height: viewport.size.height)
@@ -159,33 +179,51 @@ struct WalletView: View {
 
     private func openCard(_ id: UUID) {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
-        cardOpenTask?.cancel()
+        cardTransitionTask?.cancel()
         searchFocused = false
         deckDragging = false
         detailPullDown = 0
-        // Stage 1: move the tapped card to the front of the visible stack.
-        // The stored card order is unchanged; this is purely a visual selection.
-        withAnimation(reduceMotion ? nil : .linear(duration: 0.26)) {
-            focusedCard = id
+        cardTransitionProgress = 0
+        focusedCard = id
+        // Mount the detail below the screen before its first animated frame.
+        // Animation is then shared with all cards in the background deck.
+        selectedCard = id
+        if reduceMotion {
+            cardTransitionProgress = 1
+            return
         }
-        // Stage 2: show details only after the card switch is visible.
-        cardOpenTask = Task { @MainActor in
-            if !reduceMotion {
-                try? await Task.sleep(for: .milliseconds(270))
-            }
-            guard !Task.isCancelled, focusedCard == id, selectedCard == nil else { return }
-            withAnimation(reduceMotion ? nil : .linear(duration: 0.32)) {
-                selectedCard = id
+        cardTransitionTask = Task { @MainActor in
+            do { try await Task.sleep(for: .milliseconds(22)) }
+            catch { return }
+            guard !Task.isCancelled, selectedCard == id else { return }
+            withAnimation(.linear(duration: 0.36)) {
+                cardTransitionProgress = 1
             }
         }
     }
 
     private func closeCard() {
-        cardOpenTask?.cancel()
-        guard selectedCard != nil || focusedCard != nil else { return }
-        withAnimation(reduceMotion ? nil : .linear(duration: 0.32)) {
+        guard selectedCard != nil else { return }
+        cardTransitionTask?.cancel()
+        if reduceMotion {
+            cardTransitionProgress = 0
+            focusedCard = nil
+            selectedCard = nil
+            detailPullDown = 0
+            return
+        }
+        // Do not clear selectedCard or detailPullDown until after the
+        // downward movement ends, so interactive dismissal never jerks up.
+        withAnimation(.linear(duration: 0.34)) {
+            cardTransitionProgress = 0
+        }
+        cardTransitionTask = Task { @MainActor in
+            do { try await Task.sleep(for: .milliseconds(355)) }
+            catch { return }
+            guard !Task.isCancelled, cardTransitionProgress < 0.01 else { return }
             selectedCard = nil
             focusedCard = nil
+            detailPullDown = 0
         }
     }
 
@@ -264,7 +302,7 @@ struct WalletView: View {
             } else {
                 if stacked {
                     InteractiveWalletDeck(cards: cards, transition: cardTransition, selectedCard: selectedCard,
-                        focusedCard: focusedCard,
+                        focusedCard: focusedCard, transitionProgress: cardTransitionProgress,
                         canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
@@ -406,6 +444,7 @@ private struct InteractiveWalletDeck: View {
     // and scroll geometry do not move or shrink.
     let selectedCard: UUID?
     let focusedCard: UUID?
+    let transitionProgress: CGFloat
     let canReorder: Bool
     @Binding var dragging: Bool
     let spent: (PaymentCard) -> Int
@@ -447,29 +486,26 @@ private struct InteractiveWalletDeck: View {
                 ZStack(alignment: .topLeading) {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         let lifted = drag?.id == card.id
-                        let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0) :
-                            CGFloat(focusedCard == nil
-                                ? slot(index, origin: origin, destination: destination)
-                                : displaySlot(index)) * step
-                        // Apple Wallet-like depth: other cards physically recede
-                        // behind the selected card as the detail slides upward.
-                        // Only the card artwork is animated; hit regions remain
-                        // at their original fixed coordinates and sizes.
-                        let behind = selectedCard != nil && selectedCard != card.id
-                        let retreatScale: CGFloat = behind && !reduceMotion ? 0.93 : 1
-                        let retreatOffset: CGFloat = behind && !reduceMotion
-                            ? -CGFloat(cards.count - index) * 3.5 : 0
-                        let selectedLift: CGFloat = selectedCard == card.id && !reduceMotion ? -9 : 0
+                        // A single interpolated position avoids the old
+                        // card teleport from an instantaneous slot change.
+                        let progress: CGFloat = reduceMotion ? 0 : transitionProgress
+                        let originalSlot = CGFloat(slot(index, origin: origin, destination: destination))
+                        let frontSlot = CGFloat(displaySlot(index))
+                        let displayedSlot = originalSlot + (frontSlot - originalSlot) * progress
+                        let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0)
+                            : displayedSlot * step
+                        let otherCard = focusedCard != nil && focusedCard != card.id
+                        let depth = otherCard ? progress : 0
+                        let selectedLift: CGFloat = focusedCard == card.id ? -8 * progress : 0
                         WalletTransitionCard(card: card, spent: spent(card), namespace: transition)
                             .frame(width: width, height: height)
-                            .scaleEffect(lifted && !reduceMotion ? 1.035 : retreatScale, anchor: .top)
+                            .scaleEffect(lifted && !reduceMotion ? 1.035 : (1 - 0.055 * depth), anchor: .top)
                             .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
-                            .offset(y: y + retreatOffset + selectedLift)
-                            .opacity(behind && !reduceMotion ? 0.78 : 1)
-                            .zIndex(lifted ? Double(cards.count + 1) : Double(displaySlot(index)))
+                            .offset(y: y - CGFloat(cards.count - index) * 3 * depth + selectedLift)
+                            .opacity(1 - Double(depth) * 0.16)
+                            .zIndex(lifted ? Double(cards.count + 2) :
+                                (focusedCard == card.id && progress > 0 ? Double(cards.count + 1) : Double(index)))
                             .animation(lifted || reduceMotion ? nil : .linear(duration: 0.22), value: destination)
-                            .animation(reduceMotion ? nil : .linear(duration: 0.26), value: focusedCard)
-                            .animation(reduceMotion ? nil : .linear(duration: 0.32), value: selectedCard)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -766,8 +802,6 @@ struct LedgerCardDetail: View {
     let cardID: UUID
     let editingCard: Bool
     let onClose: () -> Void
-    let onCardPullDown: (CGFloat) -> Void
-    let onCardPullEnd: (CGFloat, CGFloat) -> Void
     @State private var record: PrivateRecord?
     @State private var authorized = false
     @State private var revealCVC = false
@@ -796,24 +830,6 @@ struct LedgerCardDetail: View {
                         }
                         LedgerStackCard(card: card, spent: store.spent(on: card, in: .now), record: authorized ? record : nil, showNumber: authorized)
                             .aspectRatio(1.586, contentMode: .fit)
-                            .contentShape(Rectangle())
-                            .highPriorityGesture(
-                                DragGesture(minimumDistance: 12)
-                                    .onChanged { value in
-                                        let dy = value.translation.height
-                                        if dy > 0 && dy > abs(value.translation.width) * 1.1 {
-                                            onCardPullDown(dy)
-                                        }
-                                    }
-                                    .onEnded { value in
-                                        let dy = value.translation.height
-                                        if dy > 0 && dy > abs(value.translation.width) * 1.1 {
-                                            onCardPullEnd(dy, value.predictedEndTranslation.height)
-                                        } else {
-                                            onCardPullEnd(0, 0)
-                                        }
-                                    }
-                            )
                         HStack {
                             Button {
                                 Task { await unlock(copy: false) }

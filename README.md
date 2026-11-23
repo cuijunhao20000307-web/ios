@@ -1,4 +1,8 @@
-# PocketLedger v0.4.46
+# PocketLedger v0.4.47
+
+## v0.4.47 Continuous linear card animation and reliable pull-down return (Build 54)
+The Wallet card stack and details are linked to one explicit 360ms linear transition progress rather than a delayed two-stage card shuffle + page insertion. The selected card advances smoothly while other cards recede and the detail slides up and fades in. Closing or dragging the detail down reverses that same progress, leaving the physical card order unchanged. The pull-down recognizer is attached to the full detail overlay, with a guarded header/card start region, instead of competing with the card's nested ScrollView. Short drags spring back; long or fast downward drags dismiss. The card sizes and touch regions, auto reorder gesture, bank images, backups, online update, and all account features are preserved. Reduce Motion skips slide motion.
+
 
 ## v0.4.46 Apple-style card auto-switch and readable hint (Build 53)
 When a stacked card is tapped, the selected card first animates to the front/bottom of the stack while neighboring cards slide to their new visual slots (260ms linear); only after that transition does the card detail slide up and fade in. The visual focus never writes to persistent card order. Closing returns the stack to its original positions. The stack card width is reduced from 365 to 320 points and overlap from 43–58 to 35–46 points so the bottom reordering hint is visible on the Duo inner screen. Card artwork aspect ratio, existing touch/long-press controls, details, and other sections are preserved. Accessibility Reduce Motion skips the staged delay.
