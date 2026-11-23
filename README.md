@@ -1,4 +1,8 @@
-# PocketLedger v0.4.44
+# PocketLedger v0.4.45
+
+## v0.4.45 Unlock screen uses actual app icon (Build 52)
+Replace the generic blue lock shield on the protected-ledger launch screen with the same artwork as the installed app icon, using a duplicated runtime image asset referencing the existing AppIcon PNG blob. Keep all authentication, copy, button, screen layout and iPhone Duo behavior unchanged.
+
 
 ## v0.4.44 Split water and electricity expenses (Build 51)
 The old combined "Bills/水电杂费/공과금" entry choice is replaced by two distinct categories: Water bill (水费/수도 요금) and Electricity bill (电费/전기 요금). Both are available in regular transaction entry, CSV import categorization and monthly fixed expense schedules, with distinct SF symbols, colors and individual statistics. The legacy combined enum case remains decodable and visible for previously stored records / existing recurring schedules, but is hidden from new entry selectors. Old transactions are not guessed or reassigned to water or electricity, protecting the historical ledger and backups. Card UI and animation are unchanged.

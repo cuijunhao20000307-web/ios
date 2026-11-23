@@ -208,10 +208,14 @@ struct LockedView: View {
         let _ = languageRefresh
         let _ = moneyRefresh
         VStack(spacing: 18) {
-            Image(systemName: "lock.shield.fill")
-                .font(.system(size: 48)).foregroundStyle(LedgerTheme.accent)
+            // Reuse the exact artwork of the installed app icon, not a
+            // generic security shield. Kept as a named image asset because
+            // the AppIcon.appiconset itself is not a runtime UIImage asset.
+            Image("WalletAppIcon")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
                 .frame(width: 90, height: 90)
-                .background(LedgerTheme.panel, in: RoundedRectangle(cornerRadius: 26))
+                .clipShape(RoundedRectangle(cornerRadius: 22))
             Text(L("나의 가계부")).font(.system(size: 29, weight: .bold))
             Text(L("보호된 가계부입니다")).font(.subheadline).foregroundStyle(LedgerTheme.subtext)
             Button(action: onUnlock) {
