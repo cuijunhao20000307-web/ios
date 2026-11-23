@@ -7,6 +7,7 @@ on:
       - 'PocketLedger/**'
       - 'PocketLedger.xcodeproj/**'
       - 'scripts/**'
+      - 'tests/**'
       - '.github/workflows/build-unsigned-ipa.yml'
 permissions:
   contents: write
@@ -22,6 +23,11 @@ jobs:
           sdk="$(xcrun --sdk iphoneos --show-sdk-version)"
           echo "iPhoneOS SDK: $sdk"
           python3 -c 'import sys; v=tuple(int(x) for x in sys.argv[1].split(".")[:2]); assert v >= (27, 1), "iOS 27.1+ SDK required for native Duo bars"' "$sdk"
+      - name: Check card motion and original balance covers
+        run: |
+          swiftc PocketLedger/Sources/WalletCardMotion.swift tests/WalletCardMotionTests.swift -o /tmp/wallet-motion-tests
+          /tmp/wallet-motion-tests
+          python3 scripts/verify_balance_covers.py
       - name: Restore original icon
         run: python3 scripts/restore_icon.py
       - name: Retrieve remaining bank logos
@@ -30,18 +36,20 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -project PocketLedger.xcodeproj -scheme PocketLedger -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build 2>&1 | tee build.log
+      - name: Verify covers in compiled app
+        run: python3 scripts/verify_balance_covers.py --app build/Build/Products/Release-iphoneos/PocketLedger.app
       - name: Package IPA
         run: |
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
           cd package
-          zip -qry PocketLedger-v0.4.47-unsigned.ipa Payload
-          unzip -t PocketLedger-v0.4.47-unsigned.ipa
+          zip -qry PocketLedger-v0.4.48-unsigned.ipa Payload
+          unzip -t PocketLedger-v0.4.48-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-v0.4.47-unsigned-ipa
-          path: package/PocketLedger-v0.4.47-unsigned.ipa
+          name: PocketLedger-v0.4.48-unsigned-ipa
+          path: package/PocketLedger-v0.4.48-unsigned.ipa
           if-no-files-found: error
       # Public Release assets have direct HTTPS download URLs, unlike the
       # GitHub Actions artifact API, whose ZIP download requires authentication.
@@ -56,7 +64,8 @@ jobs:
           tag="v${version}"
           ipa="package/PocketLedger-v${version}-unsigned.ipa"
           echo "Unsigned IPA. Must be signed with the user's valid iOS provisioning identity before installation." > /tmp/digital-wallet-notes.md
-          echo "This is an app build; no automatic in-app installation is supported." >> /tmp/digital-wallet-notes.md
+          echo "v0.4.48 Build 55: shared card geometry for linear open/return, synchronized background deck, measured header/card pull-down gesture, and four original balance covers compiled into Assets.car." >> /tmp/digital-wallet-notes.md
+          echo "Real-device testing remains pending: Duo inner/outer transitions, scrolling/pull cancellation, long-press reorder, Face ID, security cards, backup/restore and in-app update. CI does not establish visual parity with Apple Wallet." >> /tmp/digital-wallet-notes.md
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$ipa" --clobber
           else

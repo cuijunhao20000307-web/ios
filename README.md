@@ -1,4 +1,11 @@
-# PocketLedger v0.4.47
+# PocketLedger v0.4.48
+
+## v0.4.48 Geometry-linked card selection and original covers (Build 55)
+Card selection now uses the card's measured stack/grid rectangle and the existing detail card's measured rectangle. One artwork layer travels between them with a shared 360ms linear progress; upper background cards retreat and lower cards move below the viewport at the same time. Returning reverses that geometry without changing persisted order. Animation completion replaces fixed delay timers. A downward pan beginning inside the actual header/card region at scroll-top drives the same progress, while controls and transaction scrolling keep their existing behavior. Short/cancelled pulls return to the detail; Reduce Motion omits spatial motion. Existing card dimensions, exposed-strip hit regions, long-press reorder, DuoColumns, protected data and all other features are retained.
+
+The unmodified 2240×1000 KRW/CNY/JPY/USD original covers are now tracked in Assets.xcassets under the existing balance-cover-{CODE} names. Local imported covers retain priority. CI verifies source hashes, motion geometry/release decisions and the four names in the compiled Assets.car before publishing an unsigned IPA.
+
+Physical-device verification and visual acceptance are still pending. See [validation notes](docs/WALLET_MOTION_VALIDATION.md); compilation alone does not establish Apple Wallet parity.
 
 ## v0.4.47 Continuous linear card animation and reliable pull-down return (Build 54)
 The Wallet card stack and details are linked to one explicit 360ms linear transition progress rather than a delayed two-stage card shuffle + page insertion. The selected card advances smoothly while other cards recede and the detail slides up and fades in. Closing or dragging the detail down reverses that same progress, leaving the physical card order unchanged. The pull-down recognizer is attached to the full detail overlay, with a guarded header/card start region, instead of competing with the card's nested ScrollView. Short drags spring back; long or fast downward drags dismiss. The card sizes and touch regions, auto reorder gesture, bank images, backups, online update, and all account features are preserved. Reduce Motion skips slide motion.

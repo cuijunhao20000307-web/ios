@@ -8,6 +8,11 @@
 **Language/stack:** SwiftUI / Swift 5; Korean primary UI, some Chinese and other localization in model. iOS 17 deployment target; Xcode 27.x workflow uses iOS SDK 27.1+ for Duo-aware navigation.  
 **Build status:** v0.4.47 CI build succeeded; animation and touch behavior still require testing on actual iPhone Duo.
 
+## Build 55 continuation
+The existing SwiftUI project has been updated to v0.4.48 (Build 55). `WalletCardMotion.swift` defines shared card geometry and pull-release rules; `WalletView.swift` measures stack and detail card rectangles, retains a continuous artwork layer, synchronizes background retreat, and observes a scoped pan on the existing detail UIScrollView. Fixed transition timers and visual-only fake reordering were removed. The four original cover PNGs are unchanged in Asset Catalog image sets; source hashes and compiled catalog names are checked by CI. Existing local cover imports still override defaults.
+
+The latest native reference is `ScreenRecording_11-23-2026 22-49-49_1.mov`, supplied locally, in addition to the five handoff recordings. No recordings or financial screenshots are committed. See `docs/WALLET_MOTION_VALIDATION.md` for observations and required physical-device checks. Build 55 is not yet user-validated on hardware.
+
 ## What this project is
 An iPhone personal ledger / digital wallet (not actual banking app), built around an Apple Wallet-like card-stack front page, integrated bank account cards, monthly expense and income tracking, recurring rules, financial charts, protected private archive, encrypted user-directed backups, and shareable unsigned IPA update flow. The user uses normal iPhone and iPhone Duo (inner and outer screens). Keep full original functionality and artwork.
 

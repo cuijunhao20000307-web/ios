@@ -2,7 +2,7 @@
 
 ## Source of truth
 - Repository: https://github.com/cuijunhao20000307-web/ios
-- Branch: main. Baseline app before this handoff: **v0.4.47 (Build 54)**.
+- Branch: main. Baseline app before this handoff: **v0.4.47 (Build 54)**. Current implementation: **v0.4.48 (Build 55)**; hardware acceptance is pending.
 - Read `CODEX_HANDOFF.md` and `README.md` first. Do **not** recreate this app from scratch.
 - Xcode project: `PocketLedger.xcodeproj`, shared scheme `PocketLedger`.
 - Main application source: `PocketLedger/Sources/`, especially `WalletView.swift`.
@@ -10,7 +10,7 @@
 
 ## Priority: Apple Wallet-like continuous card selection and dismissal
 - User has reported that even Build 54's card transition is not yet visually right on the actual iPhone Duo and that swipe-down dismissal had failed in a prior build. Treat this as **unresolved until real-device testing**.
-- In `WalletView.swift`, inspect `WalletView.openCard`, `closeCard`, `cardTransitionProgress`, `detailPullDown`, `InteractiveWalletDeck`, and `LedgerCardDetail`.
+- In `WalletView.swift`, inspect `WalletView.openCard`, `closeCard`, `cardTransitionProgress`, `updateCardPull`, `WalletCardMotion`, `WalletCardPullRecognizer`, `InteractiveWalletDeck`, and `LedgerCardDetail`.
 - Match the reference Apple Wallet recording supplied by the user: one uninterrupted, spatially coherent card open/close motion; background cards move in sync; no delayed shuffle, no hard jump between screens; interactive pull-down should track the finger and return to the original stack.
 - Keep the credit-card images, aspect ratio (1.586), card order, touch target geometry, long-press reorder, other layouts, and financial data. Do not claim exact visual parity solely from CI.
 - Support Reduce Motion and preserve inner/outer phone layouts. Do not break scroll gestures and controls within card details.
@@ -36,7 +36,7 @@
   1. `python3 scripts/restore_icon.py`
   2. `python3 scripts/fetch_bank_logos.py` (if logos missing; network dependent)
   3. `xcodebuild -project PocketLedger.xcodeproj -scheme PocketLedger -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build`
-- The build produces an **unsigned IPA**, not an install-ready signed iOS app. Never promise installation without signing/provisioning. GitHub Release IPA does not contain all four original local balance covers by default.
+- The build produces an **unsigned IPA**, not an install-ready signed iOS app. Never promise installation without signing/provisioning. The four original balance covers are now normal Asset Catalog resources; CI verifies their source hashes and compiled names.
 - Current GitHub Actions green build does not prove real-device animations or gesture correctness.
 - Avoid actual banking credentials or real card numbers in examples, logs, commits, issue descriptions, and tests. Use dummy data.
 

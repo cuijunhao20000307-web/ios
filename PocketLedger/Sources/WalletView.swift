@@ -14,12 +14,15 @@ struct WalletView: View {
     @State private var editPaymentCard: PaymentCard?
     @State private var showAccount = false
     @State private var selectedCard: UUID?
-    @State private var focusedCard: UUID?
     @State private var cardTransitionProgress: CGFloat = 0
-    @State private var cardTransitionTask: Task<Void, Never>?
-    // Interactive pull-down dismissal affects the detail overlay only.
-    @State private var detailPullDown: CGFloat = 0
-    @Namespace private var cardTransition
+    @State private var cardFrames: [UUID: CGRect] = [:]
+    @State private var sourceCardFrame: CGRect?
+    @State private var detailCardFrame: CGRect = .zero
+    @State private var transitionStarted = false
+    @State private var transitionSettled = false
+    @State private var transitionClosing = false
+    @State private var transitionToken = UUID()
+    @State private var detailPullActive = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var deckDragging = false
     @State private var search = ""
@@ -47,54 +50,51 @@ struct WalletView: View {
                         LedgerCardDetail(
                             cardID: id,
                             editingCard: editPaymentCard?.id == id,
+                            artworkHidden: !transitionSettled,
+                            dismissEnabled: transitionSettled || detailPullActive,
+                            onPullChanged: updateCardPull,
+                            onPullEnded: finishCardPull,
                             onClose: closeCard
                         )
                         .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
+                        .coordinateSpace(name: "walletDetail")
                         .background(LedgerTheme.background)
-                        .clipped()
-                        // One shared progress gives a continuous bottom-up
-                        // slide + fade and precisely reverses on close.
-                        // Keep an in-progress downward pull as the starting
-                        // point of dismissal, preventing a snap upward.
+                        // Metadata follows the same card trajectory, rather than
+                        // bringing a second card in from below the screen.
                         .offset(y: reduceMotion ? 0 :
-                            (1 - cardTransitionProgress) * viewport.size.height +
-                            cardTransitionProgress * detailPullDown)
-                        .opacity(Double(cardTransitionProgress) *
-                            (reduceMotion ? 1 : max(0,
-                                1 - Double(detailPullDown / max(1, viewport.size.height * 0.76)))))
+                            ((sourceCardFrame?.minY ?? detailCardFrame.minY) - detailCardFrame.minY) *
+                            (1 - cardTransitionProgress))
+                        .opacity(Double(cardTransitionProgress))
+                        .allowsHitTesting(transitionSettled || detailPullActive)
+                        .accessibilityHidden(!transitionSettled)
                         .zIndex(1)
-                        // The parent recognizes downward pulls even when
-                        // the detail's ScrollView would consume a child drag.
-                        // Only drags starting in the card/header area dismiss.
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 10)
-                                .onChanged { value in
-                                    let dy = value.translation.height
-                                    let startLimit = min(460, viewport.size.height * 0.68)
-                                    if cardTransitionProgress > 0.99 &&
-                                       value.startLocation.y < startLimit &&
-                                       dy > 0 && dy > abs(value.translation.width) * 1.12 {
-                                        detailPullDown = dy
-                                    }
-                                }
-                                .onEnded { value in
-                                    let dy = value.translation.height
-                                    let startLimit = min(460, viewport.size.height * 0.68)
-                                    if cardTransitionProgress > 0.99 &&
-                                       value.startLocation.y < startLimit &&
-                                       dy > 0 && dy > abs(value.translation.width) * 1.12 &&
-                                       (dy >= 105 || (dy >= 48 && value.predictedEndTranslation.height >= 195)) {
-                                        closeCard()
-                                    } else if detailPullDown > 0 {
-                                        withAnimation(reduceMotion ? nil : .linear(duration: 0.18)) {
-                                            detailPullDown = 0
-                                        }
-                                    }
-                                }
-                        )
+                        .onPreferenceChange(WalletDetailCardFrameKey.self) { frame in
+                            guard frame.width > 0, frame.height > 0 else { return }
+                            if !detailPullActive && !transitionClosing { detailCardFrame = frame }
+                            if !transitionStarted && !transitionClosing {
+                                if sourceCardFrame == nil { sourceCardFrame = frame }
+                                startCardTransition(id)
+                            }
+                        }
+                        if !reduceMotion,
+                           let card = store.data.cards.first(where: { $0.id == id }),
+                           let source = sourceCardFrame {
+                            WalletFlyingCard(card: card, spent: store.spent(on: card, in: .now),
+                                source: source, destination: detailCardFrame.width > 0 ? detailCardFrame : source,
+                                progress: cardTransitionProgress)
+                                .opacity(transitionSettled ? 0 : 1)
+                                .allowsHitTesting(false)
+                                .accessibilityHidden(true)
+                                .zIndex(2)
+                        }
                     }
                 }
                 .frame(width: viewport.size.width, height: viewport.size.height)
+                .coordinateSpace(name: "walletPresentation")
+                .onPreferenceChange(WalletSourceCardFramesKey.self) { frames in
+                    if selectedCard == nil { cardFrames = frames }
+                }
+                .environment(\.walletRetreatDistance, viewport.size.height)
                 .clipped()
             }
             .background(LedgerTheme.background.ignoresSafeArea())
@@ -179,51 +179,82 @@ struct WalletView: View {
 
     private func openCard(_ id: UUID) {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
-        cardTransitionTask?.cancel()
         searchFocused = false
         deckDragging = false
-        detailPullDown = 0
+        transitionToken = UUID()
+        sourceCardFrame = cardFrames[id]
+        detailCardFrame = .zero
+        transitionStarted = false
+        transitionSettled = false
+        transitionClosing = false
+        detailPullActive = false
         cardTransitionProgress = 0
-        focusedCard = id
-        // Mount the detail below the screen before its first animated frame.
-        // Animation is then shared with all cards in the background deck.
         selectedCard = id
-        if reduceMotion {
+    }
+
+    private func startCardTransition(_ id: UUID) {
+        transitionStarted = true
+        let token = transitionToken
+        // Destination geometry is now laid out. No timer or staged shuffle.
+        withAnimation(reduceMotion ? nil : .linear(duration: WalletCardMotion.duration), completionCriteria: .removed) {
             cardTransitionProgress = 1
-            return
-        }
-        cardTransitionTask = Task { @MainActor in
-            do { try await Task.sleep(for: .milliseconds(22)) }
-            catch { return }
-            guard !Task.isCancelled, selectedCard == id else { return }
-            withAnimation(.linear(duration: 0.36)) {
-                cardTransitionProgress = 1
-            }
+        } completion: {
+            guard transitionToken == token, selectedCard == id, !transitionClosing, !detailPullActive else { return }
+            transitionSettled = true
         }
     }
 
     private func closeCard() {
-        guard selectedCard != nil else { return }
-        cardTransitionTask?.cancel()
-        if reduceMotion {
+        guard selectedCard != nil, !transitionClosing else { return }
+        transitionToken = UUID()
+        let token = transitionToken
+        transitionClosing = true
+        transitionSettled = false
+        detailPullActive = false
+        withAnimation(reduceMotion ? nil : .linear(duration: WalletCardMotion.duration * Double(cardTransitionProgress)),
+                      completionCriteria: .removed) {
             cardTransitionProgress = 0
-            focusedCard = nil
+        } completion: {
+            guard transitionToken == token, transitionClosing else { return }
             selectedCard = nil
-            detailPullDown = 0
-            return
+            sourceCardFrame = nil
+            transitionStarted = false
+            transitionClosing = false
         }
-        // Do not clear selectedCard or detailPullDown until after the
-        // downward movement ends, so interactive dismissal never jerks up.
-        withAnimation(.linear(duration: 0.34)) {
-            cardTransitionProgress = 0
+    }
+
+    private var cardReturnDistance: CGFloat {
+        WalletCardMotion.returnDistance(source: sourceCardFrame, destination: detailCardFrame)
+    }
+
+    private func updateCardPull(_ translation: CGFloat) {
+        guard !transitionClosing, transitionSettled || detailPullActive else { return }
+        if !detailPullActive {
+            transitionToken = UUID()
+            detailPullActive = true
+            transitionSettled = false
         }
-        cardTransitionTask = Task { @MainActor in
-            do { try await Task.sleep(for: .milliseconds(355)) }
-            catch { return }
-            guard !Task.isCancelled, cardTransitionProgress < 0.01 else { return }
-            selectedCard = nil
-            focusedCard = nil
-            detailPullDown = 0
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            cardTransitionProgress = WalletCardMotion.progress(translation: translation, distance: cardReturnDistance)
+        }
+    }
+
+    private func finishCardPull(_ translation: CGFloat, _ velocity: CGFloat, _ cancelled: Bool) {
+        guard detailPullActive, !transitionClosing else { return }
+        if !cancelled && WalletCardMotion.shouldDismiss(translation: translation, velocity: velocity, distance: cardReturnDistance) {
+            closeCard()
+        } else {
+            detailPullActive = false
+            transitionToken = UUID()
+            let token = transitionToken
+            withAnimation(reduceMotion ? nil : .linear(duration: 0.20), completionCriteria: .removed) {
+                cardTransitionProgress = 1
+            } completion: {
+                guard transitionToken == token, selectedCard != nil, !transitionClosing else { return }
+                transitionSettled = true
+            }
         }
     }
 
@@ -301,8 +332,8 @@ struct WalletView: View {
                     .frame(maxWidth: 400)
             } else {
                 if stacked {
-                    InteractiveWalletDeck(cards: cards, transition: cardTransition, selectedCard: selectedCard,
-                        focusedCard: focusedCard, transitionProgress: cardTransitionProgress,
+                    InteractiveWalletDeck(cards: cards, selectedCard: selectedCard,
+                        transitionProgress: cardTransitionProgress,
                         canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
@@ -324,7 +355,10 @@ struct WalletView: View {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 365), spacing: 16)], spacing: 16) {
                         ForEach(cards) { card in
                             Button { openCard(card.id) } label: {
-                                WalletTransitionCard(card: card, spent: store.spent(on: card, in: .now), namespace: cardTransition)
+                                LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
+                                    .aspectRatio(1.586, contentMode: .fit)
+                                    .walletSourceFrame(card.id)
+                                    .opacity(selectedCard == card.id ? 0 : 1)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(card.name + " " + L("카드 정보"))
@@ -417,15 +451,52 @@ private struct LedgerCardBackground: View {
         }
     }
 }
-// Native navigation transition, independent of the deck's drag animation.
-private struct WalletTransitionCard: View {
+// Rectangles are measured in the same viewport, including the deck's scroll offset.
+private struct WalletSourceCardFramesKey: PreferenceKey {
+    static var defaultValue: [UUID: CGRect] = [:]
+    static func reduce(value: inout [UUID: CGRect], nextValue: () -> [UUID: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, new in new })
+    }
+}
+private struct WalletDetailCardFrameKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        let next = nextValue()
+        if next.width > 0 { value = next }
+    }
+}
+private struct WalletRetreatDistanceKey: EnvironmentKey { static let defaultValue: CGFloat = 800 }
+private extension EnvironmentValues {
+    var walletRetreatDistance: CGFloat {
+        get { self[WalletRetreatDistanceKey.self] }
+        set { self[WalletRetreatDistanceKey.self] = newValue }
+    }
+}
+private extension View {
+    func walletSourceFrame(_ id: UUID) -> some View {
+        background {
+            GeometryReader { geometry in
+                Color.clear.preference(key: WalletSourceCardFramesKey.self,
+                    value: [id: geometry.frame(in: .named("walletPresentation"))])
+            }
+        }
+    }
+}
+private struct WalletFlyingCard: View, Animatable {
     let card: PaymentCard
     let spent: Int
-    let namespace: Namespace.ID
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let source: CGRect
+    let destination: CGRect
+    var progress: CGFloat
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
     var body: some View {
-        let art = LedgerStackCard(card: card, spent: spent).aspectRatio(1.586, contentMode: .fit)
-        art
+        let rect = WalletCardMotion.frame(source: source, destination: destination, progress: progress)
+        LedgerStackCard(card: card, spent: spent)
+            .frame(width: rect.width, height: rect.height)
+            .position(x: rect.midX, y: rect.midY)
     }
 }
 
@@ -439,11 +510,9 @@ private struct DeckDragState: Equatable {
 // slot, and only release writes the new order to persistent ledger data.
 private struct InteractiveWalletDeck: View {
     let cards: [PaymentCard]
-    let transition: Namespace.ID
     // Selected card is visual-only state: the original overlay touch regions
     // and scroll geometry do not move or shrink.
     let selectedCard: UUID?
-    let focusedCard: UUID?
     let transitionProgress: CGFloat
     let canReorder: Bool
     @Binding var dragging: Bool
@@ -454,13 +523,9 @@ private struct InteractiveWalletDeck: View {
     @GestureState private var drag: DeckDragState?
     @State private var suppressTapUntil = Date.distantPast
     @Namespace private var dragSpace
+    @Environment(\.walletRetreatDistance) private var retreatDistance
 
     private func stepFor(_ width: CGFloat) -> CGFloat { max(35, min(46, width * 0.14)) }
-    private func displaySlot(_ index: Int) -> Int {
-        guard let id = focusedCard, let focus = cards.firstIndex(where: { $0.id == id }) else { return index }
-        if index == focus { return cards.count - 1 }
-        return index > focus ? index - 1 : index
-    }
     private func target(_ id: UUID, _ distance: CGFloat, _ step: CGFloat) -> Int {
         let origin = cards.firstIndex { $0.id == id } ?? 0
         return min(max(0, origin + Int((distance / step).rounded())), max(0, cards.count - 1))
@@ -486,25 +551,22 @@ private struct InteractiveWalletDeck: View {
                 ZStack(alignment: .topLeading) {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         let lifted = drag?.id == card.id
-                        // A single interpolated position avoids the old
-                        // card teleport from an instantaneous slot change.
                         let progress: CGFloat = reduceMotion ? 0 : transitionProgress
-                        let originalSlot = CGFloat(slot(index, origin: origin, destination: destination))
-                        let frontSlot = CGFloat(displaySlot(index))
-                        let displayedSlot = originalSlot + (frontSlot - originalSlot) * progress
                         let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0)
-                            : displayedSlot * step
-                        let otherCard = focusedCard != nil && focusedCard != card.id
-                        let depth = otherCard ? progress : 0
-                        let selectedLift: CGFloat = focusedCard == card.id ? -8 * progress : 0
-                        WalletTransitionCard(card: card, spent: spent(card), namespace: transition)
+                            : CGFloat(slot(index, origin: origin, destination: destination)) * step
+                        let focus = selectedCard.flatMap { id in cards.firstIndex { $0.id == id } }
+                        // Upper cards retreat together; lower cards leave below.
+                        // Selection never invents a new stack order.
+                        let retreat: CGFloat = focus.map { index < $0 ? -height * 0.6 : retreatDistance } ?? 0
+                        LedgerStackCard(card: card, spent: spent(card))
                             .frame(width: width, height: height)
-                            .scaleEffect(lifted && !reduceMotion ? 1.035 : (1 - 0.055 * depth), anchor: .top)
+                            .walletSourceFrame(card.id)
+                            .scaleEffect(lifted && !reduceMotion ? 1.035 : 1, anchor: .top)
                             .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
-                            .offset(y: y - CGFloat(cards.count - index) * 3 * depth + selectedLift)
-                            .opacity(1 - Double(depth) * 0.16)
-                            .zIndex(lifted ? Double(cards.count + 2) :
-                                (focusedCard == card.id && progress > 0 ? Double(cards.count + 1) : Double(index)))
+                            .offset(y: y + retreat * progress)
+                            .opacity(selectedCard == card.id ? 0 : 1 - Double(transitionProgress))
+                            .blur(radius: reduceMotion ? 0 : 3 * transitionProgress)
+                            .zIndex(lifted ? Double(cards.count + 2) : Double(index))
                             .animation(lifted || reduceMotion ? nil : .linear(duration: 0.22), value: destination)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
@@ -793,6 +855,107 @@ private struct NeutralCardActionStyle: ButtonStyle {
     }
 }
 
+// Observe the existing detail ScrollView's pan stream. Only a downward,
+// vertical pull beginning on the measured header/card at scroll-top is claimed.
+// Starting on controls or transaction rows leaves normal scrolling untouched.
+private struct WalletCardPullRecognizer: UIViewRepresentable {
+    let enabled: Bool
+    let onChanged: (CGFloat) -> Void
+    let onEnded: (CGFloat, CGFloat, Bool) -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeUIView(context: Context) -> Marker {
+        let marker = Marker()
+        marker.isUserInteractionEnabled = false
+        context.coordinator.marker = marker
+        marker.onMove = { [weak coordinator = context.coordinator] in coordinator?.attach() }
+        return marker
+    }
+    func updateUIView(_ view: Marker, context: Context) {
+        context.coordinator.parent = self
+        context.coordinator.attach()
+    }
+    static func dismantleUIView(_ view: Marker, coordinator: Coordinator) { coordinator.detach() }
+
+    final class Marker: UIView {
+        var onMove: (() -> Void)?
+        override func didMoveToWindow() { super.didMoveToWindow(); onMove?() }
+        override func didMoveToSuperview() { super.didMoveToSuperview(); onMove?() }
+    }
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: WalletCardPullRecognizer
+        weak var marker: Marker?
+        weak var scroll: UIScrollView?
+        private var tracking = false
+        private var savedBounces = true
+        private lazy var pan: UIPanGestureRecognizer = {
+            let pan = UIPanGestureRecognizer(target: self, action: #selector(handle(_:)))
+            pan.delegate = self
+            pan.maximumNumberOfTouches = 1
+            pan.cancelsTouchesInView = false
+            return pan
+        }()
+        init(_ parent: WalletCardPullRecognizer) { self.parent = parent }
+        func attach() {
+            var ancestor = marker?.superview
+            while let view = ancestor {
+                if let candidate = view as? UIScrollView {
+                    if candidate !== scroll {
+                        detach()
+                        scroll = candidate
+                        candidate.addGestureRecognizer(pan)
+                    }
+                    return
+                }
+                ancestor = view.superview
+            }
+        }
+        func detach() {
+            if tracking {
+                scroll?.bounces = savedBounces
+                tracking = false
+            }
+            scroll?.removeGestureRecognizer(pan)
+            scroll = nil
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            guard parent.enabled, let marker else { return false }
+            return marker.bounds.contains(touch.location(in: marker))
+        }
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard parent.enabled, let marker, let scroll, marker.window != nil,
+                  marker.bounds.contains(pan.location(in: marker)),
+                  scroll.contentOffset.y <= -scroll.adjustedContentInset.top + 1 else { return false }
+            let velocity = pan.velocity(in: scroll)
+            return velocity.y > 0 && velocity.y > abs(velocity.x) * 1.12
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+            other === scroll?.panGestureRecognizer
+        }
+        @objc private func handle(_ recognizer: UIPanGestureRecognizer) {
+            guard let scroll else { return }
+            let translation = max(0, recognizer.translation(in: scroll).y)
+            switch recognizer.state {
+            case .began:
+                tracking = true
+                savedBounces = scroll.bounces
+                scroll.bounces = false
+                scroll.setContentOffset(CGPoint(x: scroll.contentOffset.x, y: -scroll.adjustedContentInset.top), animated: false)
+                parent.onChanged(translation)
+            case .changed:
+                if tracking { parent.onChanged(translation) }
+            case .ended, .cancelled, .failed:
+                guard tracking else { return }
+                tracking = false
+                scroll.bounces = savedBounces
+                parent.onEnded(translation, recognizer.velocity(in: scroll).y, recognizer.state != .ended)
+            default: break
+            }
+        }
+    }
+}
+
 struct LedgerCardDetail: View {
     @Environment(\.appLanguageRevision) private var languageRefresh
     @Environment(\.displayCurrencyRevision) private var moneyRefresh
@@ -801,6 +964,10 @@ struct LedgerCardDetail: View {
     @Environment(\.scenePhase) private var phase
     let cardID: UUID
     let editingCard: Bool
+    let artworkHidden: Bool
+    let dismissEnabled: Bool
+    let onPullChanged: (CGFloat) -> Void
+    let onPullEnded: (CGFloat, CGFloat, Bool) -> Void
     let onClose: () -> Void
     @State private var record: PrivateRecord?
     @State private var authorized = false
@@ -824,12 +991,25 @@ struct LedgerCardDetail: View {
                 ScrollView {
                     DuoColumns(spacing: 24, minWidth: 620) {
                         VStack(alignment: .leading, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 18) {
                         VStack(alignment: .leading, spacing: 7) {
                             Text(card.issuer).font(.headline).foregroundStyle(.secondary)
                             Text(card.name).font(.largeTitle.bold())
                         }
                         LedgerStackCard(card: card, spent: store.spent(on: card, in: .now), record: authorized ? record : nil, showNumber: authorized)
                             .aspectRatio(1.586, contentMode: .fit)
+                            .background {
+                                GeometryReader { geometry in
+                                    Color.clear.preference(key: WalletDetailCardFrameKey.self,
+                                        value: geometry.frame(in: .named("walletDetail")))
+                                }
+                            }
+                            .opacity(artworkHidden ? 0 : 1)
+                        }
+                        .background {
+                            WalletCardPullRecognizer(enabled: dismissEnabled,
+                                onChanged: onPullChanged, onEnded: onPullEnded)
+                        }
                         HStack {
                             Button {
                                 Task { await unlock(copy: false) }
@@ -932,6 +1112,7 @@ struct LedgerCardDetail: View {
             }
         }
         .sheet(item: $editingTransaction) { TransactionForm(existing: $0) }
+        .onChange(of: artworkHidden) { _, hidden in if hidden { clear() } }
         .onChange(of: editingCard) { _, value in if value { clear() } }
         .onChange(of: phase) { _, p in if p == .background { clear() } }
         .overlay { if phase != .active { Color(uiColor: .systemBackground).ignoresSafeArea() } }
