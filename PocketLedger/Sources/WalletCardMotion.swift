@@ -6,6 +6,12 @@ import CoreGraphics
 enum WalletCardMotion {
     static let duration = 0.36
 
+    // Apply a compositor scale to fixed-size card content instead of changing
+    // the SwiftUI layout size on every animation frame.
+    static func flightScale(source: CGRect, destination: CGRect, progress: CGFloat) -> CGFloat {
+        frame(source: source, destination: destination, progress: progress).width / max(source.width, 1)
+    }
+
     // Disjoint visibility envelopes prevent a translucent detail page
     // being composited over the stacked cards. Both reverse exactly
     // under interactive pull-to-dismiss.
