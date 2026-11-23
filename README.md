@@ -1,4 +1,8 @@
-# PocketLedger v0.4.45
+# PocketLedger v0.4.46
+
+## v0.4.46 Apple-style card auto-switch and readable hint (Build 53)
+When a stacked card is tapped, the selected card first animates to the front/bottom of the stack while neighboring cards slide to their new visual slots (260ms linear); only after that transition does the card detail slide up and fade in. The visual focus never writes to persistent card order. Closing returns the stack to its original positions. The stack card width is reduced from 365 to 320 points and overlap from 43–58 to 35–46 points so the bottom reordering hint is visible on the Duo inner screen. Card artwork aspect ratio, existing touch/long-press controls, details, and other sections are preserved. Accessibility Reduce Motion skips the staged delay.
+
 
 ## v0.4.45 Unlock screen uses actual app icon (Build 52)
 Replace the generic blue lock shield on the protected-ledger launch screen with the same artwork as the installed app icon, using a duplicated runtime image asset referencing the existing AppIcon PNG blob. Keep all authentication, copy, button, screen layout and iPhone Duo behavior unchanged.

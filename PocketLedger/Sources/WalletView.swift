@@ -14,6 +14,8 @@ struct WalletView: View {
     @State private var editPaymentCard: PaymentCard?
     @State private var showAccount = false
     @State private var selectedCard: UUID?
+    @State private var focusedCard: UUID?
+    @State private var cardOpenTask: Task<Void, Never>?
     // Interactive pull-down dismissal affects the detail overlay only.
     @State private var detailPullDown: CGFloat = 0
     @Namespace private var cardTransition
@@ -157,20 +159,33 @@ struct WalletView: View {
 
     private func openCard(_ id: UUID) {
         guard selectedCard == nil, store.data.cards.contains(where: { $0.id == id }) else { return }
+        cardOpenTask?.cancel()
         searchFocused = false
         deckDragging = false
         detailPullDown = 0
-        withAnimation(reduceMotion ? nil : .linear(duration: 0.35)) {
-            selectedCard = id
+        // Stage 1: move the tapped card to the front of the visible stack.
+        // The stored card order is unchanged; this is purely a visual selection.
+        withAnimation(reduceMotion ? nil : .linear(duration: 0.26)) {
+            focusedCard = id
+        }
+        // Stage 2: show details only after the card switch is visible.
+        cardOpenTask = Task { @MainActor in
+            if !reduceMotion {
+                try? await Task.sleep(for: .milliseconds(270))
+            }
+            guard !Task.isCancelled, focusedCard == id, selectedCard == nil else { return }
+            withAnimation(reduceMotion ? nil : .linear(duration: 0.32)) {
+                selectedCard = id
+            }
         }
     }
 
     private func closeCard() {
-        guard selectedCard != nil else { return }
-        // Keep the current interactive offset during the removal animation.
-        // It resets before the next card is opened, avoiding a release-time jump.
+        cardOpenTask?.cancel()
+        guard selectedCard != nil || focusedCard != nil else { return }
         withAnimation(reduceMotion ? nil : .linear(duration: 0.32)) {
             selectedCard = nil
+            focusedCard = nil
         }
     }
 
@@ -249,6 +264,7 @@ struct WalletView: View {
             } else {
                 if stacked {
                     InteractiveWalletDeck(cards: cards, transition: cardTransition, selectedCard: selectedCard,
+                        focusedCard: focusedCard,
                         canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
@@ -261,7 +277,7 @@ struct WalletView: View {
                                 store.data.cards.move(fromOffsets: IndexSet(integer: index), toOffset: target > index ? target + 1 : target)
                             }
                         })
-                        .frame(maxWidth: 365)
+                        .frame(maxWidth: 320)
                     if search.isEmpty && cards.count > 1 {
                         Text(L("카드를 길게 눌러 순서를 변경할 수 있어요"))
                             .font(.caption).foregroundStyle(.secondary)
@@ -389,6 +405,7 @@ private struct InteractiveWalletDeck: View {
     // Selected card is visual-only state: the original overlay touch regions
     // and scroll geometry do not move or shrink.
     let selectedCard: UUID?
+    let focusedCard: UUID?
     let canReorder: Bool
     @Binding var dragging: Bool
     let spent: (PaymentCard) -> Int
@@ -399,7 +416,12 @@ private struct InteractiveWalletDeck: View {
     @State private var suppressTapUntil = Date.distantPast
     @Namespace private var dragSpace
 
-    private func stepFor(_ width: CGFloat) -> CGFloat { max(43, min(58, width * 0.155)) }
+    private func stepFor(_ width: CGFloat) -> CGFloat { max(35, min(46, width * 0.14)) }
+    private func displaySlot(_ index: Int) -> Int {
+        guard let id = focusedCard, let focus = cards.firstIndex(where: { $0.id == id }) else { return index }
+        if index == focus { return cards.count - 1 }
+        return index > focus ? index - 1 : index
+    }
     private func target(_ id: UUID, _ distance: CGFloat, _ step: CGFloat) -> Int {
         let origin = cards.firstIndex { $0.id == id } ?? 0
         return min(max(0, origin + Int((distance / step).rounded())), max(0, cards.count - 1))
@@ -417,7 +439,7 @@ private struct InteractiveWalletDeck: View {
         }
         .overlay {
             GeometryReader { geo in
-                let width = min(365, geo.size.width)
+                let width = min(320, geo.size.width)
                 let height = width / 1.586
                 let step = stepFor(width)
                 let origin = drag.flatMap { value in cards.firstIndex { $0.id == value.id } }
@@ -426,7 +448,9 @@ private struct InteractiveWalletDeck: View {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         let lifted = drag?.id == card.id
                         let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0) :
-                            CGFloat(slot(index, origin: origin, destination: destination)) * step
+                            CGFloat(focusedCard == nil
+                                ? slot(index, origin: origin, destination: destination)
+                                : displaySlot(index)) * step
                         // Apple Wallet-like depth: other cards physically recede
                         // behind the selected card as the detail slides upward.
                         // Only the card artwork is animated; hit regions remain
@@ -442,9 +466,10 @@ private struct InteractiveWalletDeck: View {
                             .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
                             .offset(y: y + retreatOffset + selectedLift)
                             .opacity(behind && !reduceMotion ? 0.78 : 1)
-                            .zIndex(lifted ? Double(cards.count + 1) : Double(index))
+                            .zIndex(lifted ? Double(cards.count + 1) : Double(displaySlot(index)))
                             .animation(lifted || reduceMotion ? nil : .linear(duration: 0.22), value: destination)
-                            .animation(reduceMotion ? nil : .linear(duration: 0.35), value: selectedCard)
+                            .animation(reduceMotion ? nil : .linear(duration: 0.26), value: focusedCard)
+                            .animation(reduceMotion ? nil : .linear(duration: 0.32), value: selectedCard)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -513,14 +538,14 @@ private struct InteractiveWalletDeck: View {
 
 private struct WalletDeckLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = min(proposal.width ?? 365, 365)
+        let width = min(proposal.width ?? 320, 320)
         guard !subviews.isEmpty else { return CGSize(width: width, height: 0) }
-        let step = max(43, min(58, width * 0.155))
+        let step = max(35, min(46, width * 0.14))
         return CGSize(width: width, height: width / 1.586 + CGFloat(subviews.count - 1) * step)
     }
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let width = min(bounds.width, 365)
-        let step = max(43, min(58, width * 0.155))
+        let width = min(bounds.width, 320)
+        let step = max(35, min(46, width * 0.14))
         for i in subviews.indices {
             subviews[i].place(at: CGPoint(x: bounds.midX - width / 2, y: bounds.minY + CGFloat(i) * step),
                               anchor: .topLeading, proposal: ProposedViewSize(width: width, height: width / 1.586))
