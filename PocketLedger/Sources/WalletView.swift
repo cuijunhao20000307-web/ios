@@ -58,7 +58,7 @@ struct WalletView: View {
                             cardID: id, cards: filteredCards, frames: cardFrames,
                             source: sourceCardFrame, destination: detailCardFrame,
                             sourceVisibleFraction: sourceVisibleFraction,
-                            editingCard: editPaymentCard?.id == id,
+                            stacked: stacked, editingCard: editPaymentCard?.id == id,
                             settled: transitionSettled, pulling: detailPullActive,
                             viewport: viewport.size, motion: cardMotion,
                             onPullChanged: updateCardPull, onPullEnded: finishCardPull,
@@ -519,6 +519,7 @@ private struct WalletTransitionScene: View {
     let source: CGRect?
     let destination: CGRect
     let sourceVisibleFraction: CGFloat
+    let stacked: Bool
     let editingCard: Bool
     let settled: Bool
     let pulling: Bool
@@ -540,9 +541,21 @@ private struct WalletTransitionScene: View {
                         if card.id != cardID, let frame = frames[card.id] {
                             let retreat: CGFloat = index < focus
                                 ? -viewport.height * 0.85 : viewport.height * 1.06
+                            // During return keep the original exposed strip;
+                            // do not uncover full card faces between slots.
+                            let nextFrame = index + 1 < cards.count
+                                ? frames[cards[index + 1].id] : nil
+                            let exposed = stacked
+                                ? WalletCardMotion.stackVisibleHeight(
+                                    current: frame, next: nextFrame)
+                                : frame.height
                             LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                                 .frame(width: frame.width, height: frame.height)
-                                .position(x: frame.midX, y: frame.midY + retreat * progress)
+                                .mask(alignment: .top) {
+                                    Rectangle().frame(height: exposed)
+                                }
+                                .position(x: frame.midX, y: frame.midY +
+                                    retreat * WalletCardMotion.siblingRetreatProgress(progress))
                                 .opacity(Double(WalletCardMotion.siblingOpacity(progress)))
                                 .zIndex(Double(index))
                         }
