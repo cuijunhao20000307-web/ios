@@ -1,4 +1,9 @@
-# PocketLedger v0.4.50
+# PocketLedger v0.4.51
+
+## v0.4.51 / Build 58 — smooth card transition optimization
+A perceived dropped-frame regression was reported on the physical iPhone Duo with Build 57. Build 58 isolates CADisplayLink's animation progress in a dedicated observed SwiftUI scene; updating progress no longer invalidates the entire NavigationStack, card deck, accounts list and ledger content. The flying selected card uses a constant source layout, compositor scaling and positioning rather than reshaping its card content each frame. Card artwork UIImage providers are cached in memory, invalidated by card ID and a lightweight data fingerprint. Selection and reverse transitions retain their geometric endpoints, fade envelopes, protected card data and original 2240×1000 currency cover assets. The symptom has not yet been remeasured on a physical Duo; a successful compile cannot establish 60/120 fps.
+
+
 
 ## v0.4.50 / Build 57 — single card scene, no ghosted crossfade
 Based on three November 24 recordings (Build 56 residual/ghost UI and two Apple Wallet reference videos), opening and closing no longer crossfade two entire wallet pages. The root wallet remains mounted for exact geometry and scroll position but becomes visually hidden during a transition; on an opaque canvas, measured background-card sprites retreat above/below while **one selected card** moves in one continuous linear path. Detail UI comes in after the other cards have left, eliminating doubled card faces and labels. Closing reverses the same path; long-press reorder, normal browsing, cards and financial data remain unchanged. A pure Swift regression test asserts that the background-card opacity and detail metadata opacity envelopes never overlap. Hardware visual parity is still unverified.
