@@ -14,9 +14,10 @@ struct WalletView: View {
     @State private var editPaymentCard: PaymentCard?
     @State private var showAccount = false
     @State private var selectedCard: UUID?
-    @StateObject private var cardMotion = WalletMotionDriver()
+    // Keep the driver alive without subscribing the entire wallet page to
+    // each display-link tick. The isolated scene is the only observer.
+    @State private var cardMotion = WalletMotionDriver()
     @State private var deckRenderRevision = 0
-    private var cardTransitionProgress: CGFloat { selectedCard == nil ? 0 : cardMotion.value }
     @State private var cardFrames: [UUID: CGRect] = [:]
     @State private var sourceCardFrame: CGRect?
     @State private var sourceVisibleFraction: CGFloat = 1
@@ -53,75 +54,24 @@ struct WalletView: View {
                         .accessibilityHidden(selectedCard != nil)
                         .zIndex(0)
                     if let id = selectedCard {
-                        let focus = filteredCards.firstIndex(where: { $0.id == id }) ?? 0
-                        LedgerTheme.background
-                            .allowsHitTesting(false)
-                            .zIndex(0.2)
-                        // Render the moving background stack only once,
-                        // against an opaque canvas. The selected card flies
-                        // independently on the identical linear frame clock.
-                        if !reduceMotion {
-                            ZStack(alignment: .topLeading) {
-                                ForEach(Array(filteredCards.enumerated()), id: \.element.id) { index, card in
-                                    if card.id != id, let source = cardFrames[card.id] {
-                                        let retreat: CGFloat = index < focus
-                                            ? -viewport.size.height * 0.85
-                                            : viewport.size.height * 1.06
-                                        LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
-                                            .frame(width: source.width, height: source.height)
-                                            .position(x: source.midX,
-                                                y: source.midY + retreat * cardTransitionProgress)
-                                            .opacity(Double(WalletCardMotion.siblingOpacity(cardTransitionProgress)))
-                                            .zIndex(Double(index))
-                                    }
-                                }
-                            }
-                            .frame(width: viewport.size.width, height: viewport.size.height)
-                            .clipped()
-                            .allowsHitTesting(false)
-                            .accessibilityHidden(true)
-                            .zIndex(0.4)
-                        }
-                        LedgerCardDetail(
-                            cardID: id,
+                        WalletTransitionScene(
+                            cardID: id, cards: filteredCards, frames: cardFrames,
+                            source: sourceCardFrame, destination: detailCardFrame,
+                            sourceVisibleFraction: sourceVisibleFraction,
                             editingCard: editPaymentCard?.id == id,
-                            artworkHidden: !transitionSettled,
-                            dismissEnabled: transitionSettled || detailPullActive,
-                            onPullChanged: updateCardPull,
-                            onPullEnded: finishCardPull,
-                            onClose: closeCard
-                        )
-                        .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
-                        .coordinateSpace(name: "walletDetail")
-                        // The selected card is the sole moving foreground
-                        // surface. Opaque detail appears only once moving
-                        // sibling cards have left the screen.
-                        .background(LedgerTheme.background)
-                        .opacity(reduceMotion ? 1 :
-                            Double(WalletCardMotion.detailOpacity(cardTransitionProgress)))
-                        .allowsHitTesting(transitionSettled || detailPullActive)
-                        .accessibilityHidden(!transitionSettled)
-                        .zIndex(1)
-                        .onPreferenceChange(WalletDetailCardFrameKey.self) { frame in
-                            guard frame.width > 0, frame.height > 0 else { return }
-                            if !transitionStarted || transitionSettled { detailCardFrame = frame }
-                            if !transitionStarted && !transitionClosing {
-                                if sourceCardFrame == nil { sourceCardFrame = frame }
-                                startCardTransition(id)
-                            }
-                        }
-                        if !reduceMotion,
-                           let card = store.data.cards.first(where: { $0.id == id }),
-                           let source = sourceCardFrame {
-                            WalletFlyingCard(card: card, spent: store.spent(on: card, in: .now),
-                                source: source, destination: detailCardFrame.width > 0 ? detailCardFrame : source,
-                                sourceVisibleFraction: sourceVisibleFraction, retreatDistance: viewport.size.height,
-                                progress: cardTransitionProgress)
-                                .opacity(transitionSettled ? 0 : 1)
-                                .allowsHitTesting(false)
-                                .accessibilityHidden(true)
-                                .zIndex(2)
-                        }
+                            settled: transitionSettled, pulling: detailPullActive,
+                            viewport: viewport.size, motion: cardMotion,
+                            onPullChanged: updateCardPull, onPullEnded: finishCardPull,
+                            onClose: closeCard,
+                            onDetailFrame: { frame in
+                                guard frame.width > 0, frame.height > 0 else { return }
+                                if !transitionStarted || transitionSettled { detailCardFrame = frame }
+                                if !transitionStarted && !transitionClosing {
+                                    if sourceCardFrame == nil { sourceCardFrame = frame }
+                                    startCardTransition(id)
+                                }
+                            })
+                            .zIndex(1)
                     }
                 }
                 .frame(width: viewport.size.width, height: viewport.size.height)
@@ -377,7 +327,7 @@ struct WalletView: View {
             } else {
                 if stacked {
                     InteractiveWalletDeck(cards: cards, selectedCard: selectedCard,
-                        transitionProgress: cardTransitionProgress, renderRevision: deckRenderRevision,
+                        transitionProgress: 0, renderRevision: deckRenderRevision,
                         canReorder: search.isEmpty,
                         dragging: $deckDragging,
                         spent: { store.spent(on: $0, in: .now) },
@@ -478,13 +428,45 @@ struct WalletView: View {
 }
 
 
+// Reuse artwork UIImage providers across deck, flying card and detail.
+// No card pixels or other private fields leave process memory.
+@MainActor private enum LedgerArtworkPreviewCache {
+    private static let images: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 24
+        cache.totalCostLimit = 96 * 1024 * 1024
+        return cache
+    }()
+    private static func signature(_ data: Data) -> String {
+        let count = data.count
+        return data.withUnsafeBytes { buffer in
+            let marks = [0, 1, 2, count / 7, count / 3, count / 2,
+                (count * 2) / 3, (count * 6) / 7, count - 3, count - 2, count - 1]
+            var fingerprint: UInt64 = 14695981039346656037
+            for i in marks where i >= 0 && i < count {
+                fingerprint = (fingerprint ^ UInt64(buffer[i])) &* 1099511628211
+            }
+            return String(count) + "-" + String(fingerprint, radix: 16)
+        }
+    }
+    static func image(for card: PaymentCard) -> UIImage? {
+        guard let data = card.artwork, !data.isEmpty else { return nil }
+        let key = NSString(string: card.id.uuidString + "-" + signature(data))
+        if let hit = images.object(forKey: key) { return hit }
+        guard let decoded = UIImage(data: data) else { return nil }
+        images.setObject(decoded, forKey: key,
+            cost: Int(decoded.size.width * decoded.size.height * 4))
+        return decoded
+    }
+}
+
 private struct LedgerCardBackground: View {
     let card: PaymentCard
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 LinearGradient(colors: card.tone.gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
-                if let artwork = card.artwork, let decoded = UIImage(data: artwork) {
+                if let decoded = LedgerArtworkPreviewCache.image(for: card) {
                     Image(uiImage: decoded).resizable().scaledToFit()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
@@ -526,6 +508,78 @@ private extension View {
         }
     }
 }
+// The frame clock only invalidates this small animation scene, never the
+// NavigationStack, wallet root, unrelated ledger panels or transaction list.
+private struct WalletTransitionScene: View {
+    @EnvironmentObject private var store: LedgerStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let cardID: UUID
+    let cards: [PaymentCard]
+    let frames: [UUID: CGRect]
+    let source: CGRect?
+    let destination: CGRect
+    let sourceVisibleFraction: CGFloat
+    let editingCard: Bool
+    let settled: Bool
+    let pulling: Bool
+    let viewport: CGSize
+    @ObservedObject var motion: WalletMotionDriver
+    let onPullChanged: (CGFloat) -> Void
+    let onPullEnded: (CGFloat, CGFloat, Bool) -> Void
+    let onClose: () -> Void
+    let onDetailFrame: (CGRect) -> Void
+
+    var body: some View {
+        let progress = motion.value
+        let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
+        ZStack(alignment: .top) {
+            LedgerTheme.background
+            if !reduceMotion {
+                ZStack(alignment: .topLeading) {
+                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                        if card.id != cardID, let frame = frames[card.id] {
+                            let retreat: CGFloat = index < focus
+                                ? -viewport.height * 0.85 : viewport.height * 1.06
+                            LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
+                                .frame(width: frame.width, height: frame.height)
+                                .position(x: frame.midX, y: frame.midY + retreat * progress)
+                                .opacity(Double(WalletCardMotion.siblingOpacity(progress)))
+                                .zIndex(Double(index))
+                        }
+                    }
+                }
+                .frame(width: viewport.width, height: viewport.height)
+                .clipped()
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            }
+            LedgerCardDetail(cardID: cardID, editingCard: editingCard,
+                artworkHidden: !settled, dismissEnabled: settled || pulling,
+                onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose)
+                .frame(width: viewport.width, height: viewport.height, alignment: .top)
+                .coordinateSpace(name: "walletDetail")
+                .background(LedgerTheme.background)
+                .opacity(reduceMotion ? 1 :
+                    Double(WalletCardMotion.detailOpacity(progress)))
+                .allowsHitTesting(settled || pulling)
+                .accessibilityHidden(!settled)
+                .onPreferenceChange(WalletDetailCardFrameKey.self, perform: onDetailFrame)
+            if !reduceMotion, let card = cards.first(where: { $0.id == cardID }), let source {
+                WalletFlyingCard(card: card, spent: store.spent(on: card, in: .now),
+                    source: source, destination: destination.width > 0 ? destination : source,
+                    sourceVisibleFraction: sourceVisibleFraction, retreatDistance: viewport.height,
+                    progress: progress)
+                    .opacity(settled ? 0 : 1)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+                    .zIndex(2)
+            }
+        }
+        .frame(width: viewport.width, height: viewport.height)
+        .clipped()
+    }
+}
+
 private struct WalletFlyingCard: View {
     let card: PaymentCard
     let spent: Int
@@ -536,14 +590,16 @@ private struct WalletFlyingCard: View {
     var progress: CGFloat
     var body: some View {
         let rect = WalletCardMotion.frame(source: source, destination: destination, progress: progress)
+        let scale = rect.width / max(1, source.width)
         LedgerStackCard(card: card, spent: spent)
-            .frame(width: rect.width, height: rect.height)
-            // An exposed strip reveals continuously as it leaves the stack;
-            // lifting its z-order must not flash the entire hidden artwork.
+            // Keep text/layout fixed. Only apply scale and position every frame.
+            .frame(width: source.width, height: source.height)
             .mask(alignment: .top) {
                 Rectangle().frame(height: WalletCardMotion.visibleHeight(source: source, current: rect,
-                    visibleFraction: sourceVisibleFraction, retreat: retreatDistance, progress: progress))
+                    visibleFraction: sourceVisibleFraction, retreat: retreatDistance,
+                    progress: progress) / max(scale, 0.001))
             }
+            .scaleEffect(scale)
             .position(x: rect.midX, y: rect.midY)
     }
 }
