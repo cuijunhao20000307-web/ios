@@ -33,6 +33,25 @@ struct WalletCardMotionTests {
             precondition(siblings >= 0 && siblings <= 1 && detail >= 0 && detail <= 1)
             precondition(siblings * detail == 0, "Ghosted foreground/background")
         }
+        // Regression: fade is continuous, reversible, and no duplicate page
+        // is visible at any point in the selection/return transition.
+        precondition(WalletCardMotion.siblingOpacity(0.06) == 1)
+        precondition(WalletCardMotion.siblingOpacity(0.55) == 0)
+        precondition(WalletCardMotion.detailOpacity(0.72) == 0)
+        precondition(WalletCardMotion.siblingRetreatProgress(0) == 0)
+        precondition(WalletCardMotion.siblingRetreatProgress(0.48) == 1)
+        precondition(WalletCardMotion.siblingRetreatProgress(1) == 1)
+        for i in 1...1000 {
+            let before = CGFloat(i - 1) / 1000
+            let after = CGFloat(i) / 1000
+            precondition(WalletCardMotion.siblingOpacity(after) <= WalletCardMotion.siblingOpacity(before) + 0.00001)
+            precondition(WalletCardMotion.detailOpacity(after) + 0.00001 >= WalletCardMotion.detailOpacity(before))
+            precondition(WalletCardMotion.siblingRetreatProgress(after) + 0.00001 >= WalletCardMotion.siblingRetreatProgress(before))
+        }
+        let strip = CGRect(x: 20, y: 180, width: 320, height: 202)
+        let nextStrip = CGRect(x: 20, y: 225, width: 320, height: 202)
+        precondition(WalletCardMotion.stackVisibleHeight(current: strip, next: nextStrip) == 45)
+        precondition(WalletCardMotion.stackVisibleHeight(current: strip, next: nil) == 202)
         let small = CGRect(x: 20, y: 220, width: 320, height: 320 / 1.586)
         let large = CGRect(x: 20, y: 80, width: 400, height: 400 / 1.586)
         precondition(WalletCardMotion.flightScale(source: small, destination: large, progress: 0) == 1)
