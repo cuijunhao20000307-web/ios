@@ -1,4 +1,10 @@
-# PocketLedger v0.4.52
+# PocketLedger v0.4.53
+
+## v0.4.53 / Build 60 — centered card stack and coordinated spring motion
+The stack uses a shared base width, 14pt clipping, a centered 0.92–1 ease-out scale and a subtle per-card shadow. Long press lifts the card with haptics, dims its neighbors, animates vacant slots and commits order only after snapping into place. Selection keeps one artwork layer linked by matchedGeometryEffect to a measured moving anchor, with spring-driven scale and interactive pull-down. Closing fades/blurs details over 150ms, returns sibling strips from above at 30ms intervals and restores all home chrome in the final 200ms. AnimationConfig holds timing, spring and appearance parameters. Existing data, private storage, currency art and native navigation remain intact.
+
+The presentation frame clock evaluates the configured damped spring and normalizes its endpoint to a 450ms budget. Reorder uses SwiftUI's requested 0.35 / 0.8 spring; settling may outlast its response parameter. Build and physical-device verification results are recorded separately; source changes do not establish real-device visual acceptance.
+
 
 ## v0.4.52 / Build 59 — soft fade and smooth card return
 The user's November 24 exit-video shows full background card faces overlapping as the selected card flies back into its original exposed slot. Card siblings now stay withdrawn until the late part of the reverse animation, then return with a smoothstep movement curve. Their artwork is clipped to its measured original visible strip so adjacent cards never temporarily reveal full faces. The background card alpha and detail metadata alpha use gentler smoothstep fade windows, kept strictly non-overlapping to prevent ghosted double pages. Selecting and returning uses the same reversible progress function, while the selected flying card remains above all sibling cards. Performance optimizations, privacy, bank images, balances and all existing functions are preserved. Real iPhone Duo acceptance remains pending.

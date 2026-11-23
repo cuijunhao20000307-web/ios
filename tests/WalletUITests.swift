@@ -17,6 +17,9 @@ final class WalletUITests: XCTestCase {
         XCTAssertTrue(app.buttons["wallet.card.reveal"].waitForExistence(timeout: 5))
     }
     private func assertPaintedDeck(_ app: XCUIApplication, name: String) {
+        XCTAssertTrue(app.staticTexts["wallet.title"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls["wallet.sections"].exists)
+        XCTAssertTrue(app.staticTexts["wallet.hint"].exists)
         for index in 0..<6 {
             let strip = app.buttons["wallet.card.select.\(index)"]
             XCTAssertTrue(strip.waitForExistence(timeout: 5))
@@ -63,6 +66,18 @@ final class WalletUITests: XCTestCase {
         app.buttons["wallet.close"].tap()
         assertPaintedDeck(app, name: "interrupted-opening")
     }
+    func testLongPressReorderPersistsAndRestores() {
+        let app = wallet()
+        let first = app.buttons["wallet.card.select.0"]
+        let last = app.buttons["wallet.card.select.5"]
+        first.press(forDuration: 0.4, thenDragTo: last)
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(app.buttons["wallet.card.select.5"].label.contains("Demo Card 1"))
+        app.buttons["wallet.card.select.5"].press(forDuration: 0.4, thenDragTo: app.buttons["wallet.card.select.0"])
+        Thread.sleep(forTimeInterval: 0.8)
+        assertPaintedDeck(app, name: "reorder-restored")
+    }
+
     func testDeckBrowsingAndPullDownReturn() {
         let app = wallet()
         let strip = app.buttons["wallet.card.select.3"]

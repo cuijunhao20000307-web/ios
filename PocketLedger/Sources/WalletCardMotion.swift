@@ -1,10 +1,69 @@
 import Foundation
 import CoreGraphics
 
+// All timing and geometry controls for the wallet presentation live here.
+// Reordering deliberately uses the user's faster 0.35 / 0.8 spring.
+struct AnimationConfig {
+    static let duration: TimeInterval = 0.45
+    static let response: TimeInterval = 0.45
+    static let damping: Double = 0.82
+    static let reorderResponse: TimeInterval = 0.35
+    static let reorderDamping: Double = 0.8
+    static let detailFadeOut: TimeInterval = 0.15
+    static let chromeFade: TimeInterval = 0.20
+    static let stagger: TimeInterval = 0.03
+    static let cardBlur: CGFloat = 10
+    static let detailBlur: CGFloat = 8
+    static let iconBlur: CGFloat = 4
+    static let iconScale: CGFloat = 0.8
+    static let backScale: CGFloat = 0.92
+    static let liftedScale: CGFloat = 1.04
+    static let dimming: Double = 0.08
+    static let cornerRadius: CGFloat = 14
+    static let shadowRadius: CGFloat = 6
+    static let shadowOpacity: Double = 0.12
+    static let returnOffset: CGFloat = 64
+
+    static func easeOut(_ value: CGFloat) -> CGFloat {
+        let t = min(1, max(0, value))
+        return 1 - (1 - t) * (1 - t)
+    }
+    static func scale(forIndex index: Int, count: Int) -> CGFloat {
+        guard count > 1 else { return 1 }
+        return backScale + (1 - backScale) * easeOut(CGFloat(index) / CGFloat(count - 1))
+    }
+    // Same damped spring parameters as SwiftUI; normalize the small remaining
+    // tail so the frame clock reaches an exact endpoint at 0.45 seconds.
+    static func springProgress(_ fraction: CGFloat) -> CGFloat {
+        let t = Double(min(1, max(0, fraction)))
+        let omega = 2 * Double.pi / response
+        let wd = omega * sqrt(1 - damping * damping)
+        func sample(_ time: Double) -> Double {
+            1 - exp(-damping * omega * time) *
+                (cos(wd * time) + damping * omega / wd * sin(wd * time))
+        }
+        return min(1, max(0, CGFloat(sample(t * duration) / sample(duration))))
+    }
+    static func returnDelay(index: Int, count: Int) -> TimeInterval {
+        let interval = min(stagger, 0.15 / Double(max(1, count - 1)))
+        return detailFadeOut + Double(index) * interval
+    }
+    static func returnProgress(elapsed: TimeInterval, index: Int, count: Int) -> CGFloat {
+        // Detail fades first. Six cards then start at 30ms intervals and all
+        // reach their exact home slots within the same 450ms budget.
+        let delay = returnDelay(index: index, count: count)
+        return springProgress(CGFloat((elapsed - delay) / max(0.01, duration - delay)))
+    }
+    static func fade(_ fraction: CGFloat) -> CGFloat {
+        let t = min(1, max(0, fraction))
+        return t * t * (3 - 2 * t)
+    }
+}
+
 // Shared geometry for selection, interactive return and release decisions.
 // This contains no wallet data and can also run in the command-line regression check.
 enum WalletCardMotion {
-    static let duration = 0.36
+    static let duration = AnimationConfig.duration
 
     // Apply a compositor scale to fixed-size card content instead of changing
     // the SwiftUI layout size on every animation frame.
@@ -76,13 +135,18 @@ struct WalletLinearTrack {
     private var target: CGFloat = 0
     private var start: TimeInterval = 0
     private var duration: TimeInterval = 0
+    private var spring = false
+    private(set) var elapsed: TimeInterval = 0
     private(set) var running = false
 
     mutating func set(_ value: CGFloat) {
         self.value = value
+        elapsed = 0
         running = false
     }
-    mutating func animate(to target: CGFloat, at time: TimeInterval, duration: TimeInterval) {
+    mutating func animate(to target: CGFloat, at time: TimeInterval, duration: TimeInterval, spring: Bool = false) {
+        self.spring = spring
+        elapsed = 0
         origin = value
         self.target = target
         start = time
@@ -92,8 +156,10 @@ struct WalletLinearTrack {
     }
     @discardableResult mutating func advance(to time: TimeInterval) -> Bool {
         guard running else { return false }
-        let fraction = min(1, max(0, (time - start) / duration))
-        value = origin + (target - origin) * fraction
+        elapsed = min(duration, max(0, time - start))
+        let fraction = min(1, max(0, elapsed / duration))
+        let curved = spring ? AnimationConfig.springProgress(CGFloat(fraction)) : CGFloat(fraction)
+        value = origin + (target - origin) * curved
         if fraction == 1 { value = target; running = false }
         return !running
     }

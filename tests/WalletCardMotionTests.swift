@@ -4,6 +4,37 @@ import CoreGraphics
 @main
 struct WalletCardMotionTests {
     static func main() {
+        // Curved depth is centered, monotonic and has one shared front width.
+        for count in [0, 1, 2, 6, 30] {
+            for index in 0..<count {
+                let scale = AnimationConfig.scale(forIndex: index, count: count)
+                precondition(scale >= 0.92 && scale <= 1)
+                if index > 0 {
+                    precondition(scale >= AnimationConfig.scale(forIndex: index - 1, count: count))
+                }
+                let width: CGFloat = 320
+                let x = (width - width * scale) / 2
+                precondition(abs((x + width * scale / 2) - width / 2) < 0.00001)
+                precondition(AnimationConfig.returnProgress(elapsed: 0.45, index: index, count: count) == 1)
+            }
+        }
+        precondition(AnimationConfig.scale(forIndex: 0, count: 6) == 0.92)
+        precondition(AnimationConfig.scale(forIndex: 5, count: 6) == 1)
+        precondition(AnimationConfig.returnProgress(elapsed: 0.179, index: 1, count: 6) == 0)
+        var springTrack = WalletLinearTrack()
+        for _ in 0..<100 {
+            springTrack.set(0)
+            springTrack.animate(to: 1, at: 1, duration: 0.45, spring: true)
+            springTrack.advance(to: 1.12)
+            let interrupted = springTrack.value
+            precondition(interrupted > 0 && interrupted < 1)
+            springTrack.animate(to: 0, at: 1.12, duration: 0.45, spring: true)
+            precondition(springTrack.value == interrupted)
+            springTrack.advance(to: 2)
+            precondition(springTrack.value == 0 && !springTrack.running)
+            springTrack.animate(to: 1, at: 3, duration: 0, spring: true)
+            precondition(springTrack.value == 1 && !springTrack.running)
+        }
         // First/middle/last cards, a scrolled stack, narrow and expanded layouts.
         for width: CGFloat in [280, 320, 393, 880] {
             for y: CGFloat in [-80, 140, 280, 500] {
