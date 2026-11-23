@@ -2,7 +2,7 @@
 
 ## Source of truth
 - Repository: https://github.com/cuijunhao20000307-web/ios
-- Branch: main. Baseline app before this handoff: **v0.4.47 (Build 54)**. Current implementation: **v0.4.48 (Build 55)**; hardware acceptance is pending.
+- Branch: main. Baseline app before this handoff: **v0.4.47 (Build 54)**. Current implementation: **v0.4.49 (Build 56)**; hardware acceptance is pending.
 - Read `CODEX_HANDOFF.md` and `README.md` first. Do **not** recreate this app from scratch.
 - Xcode project: `PocketLedger.xcodeproj`, shared scheme `PocketLedger`.
 - Main application source: `PocketLedger/Sources/`, especially `WalletView.swift`.

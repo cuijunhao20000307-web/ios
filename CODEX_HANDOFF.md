@@ -8,6 +8,9 @@
 **Language/stack:** SwiftUI / Swift 5; Korean primary UI, some Chinese and other localization in model. iOS 17 deployment target; Xcode 27.x workflow uses iOS SDK 27.1+ for Duo-aware navigation.  
 **Build status:** v0.4.47 CI build succeeded; animation and touch behavior still require testing on actual iPhone Duo.
 
+## Build 56 continuation
+User feedback recording `ScreenRecording_11-23-2026 23-31-34_1.MP4` shows blank artwork after return with live hit strips and overlapping page ghosts. `ScreenRecording_11-23-2026 23.mov` identifies a previously omitted effect: interactive vertical stack browsing. Build 56 uses `WalletMotionDriver` and `WalletLinearTrack` for actual per-frame progress, resets the render layer on dismissal, freezes target geometry during movement, and adds `WalletDeckBrowseRecognizer`/`WalletDeckFan`. Ordinary browsing does not change saved order; long-press reorder remains separate. The simulator verification uses six synthetic cards and checks painted strip pixels after repeated returns, browsing and pull-down. Recordings remain local. Hardware acceptance is still required.
+
 ## Build 55 continuation
 The existing SwiftUI project has been updated to v0.4.48 (Build 55). `WalletCardMotion.swift` defines shared card geometry and pull-release rules; `WalletView.swift` measures stack and detail card rectangles, retains a continuous artwork layer, synchronizes background retreat, and observes a scoped pan on the existing detail UIScrollView. Fixed transition timers and visual-only fake reordering were removed. The four original cover PNGs are unchanged in Asset Catalog image sets; source hashes and compiled catalog names are checked by CI. Existing local cover imports still override defaults.
 

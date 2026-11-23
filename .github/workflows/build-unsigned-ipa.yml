@@ -32,6 +32,8 @@ jobs:
         run: python3 scripts/restore_icon.py
       - name: Retrieve remaining bank logos
         run: python3 scripts/fetch_bank_logos.py
+      - name: Exercise wallet rendering and gestures on compact and wide simulators
+        run: python3 scripts/run_wallet_ui_tests.py > ui-test.log 2>&1
       - name: Build iOS app without signing
         run: |
           set -o pipefail
@@ -43,13 +45,13 @@ jobs:
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
           cd package
-          zip -qry PocketLedger-v0.4.48-unsigned.ipa Payload
-          unzip -t PocketLedger-v0.4.48-unsigned.ipa
+          zip -qry PocketLedger-v0.4.49-unsigned.ipa Payload
+          unzip -t PocketLedger-v0.4.49-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-v0.4.48-unsigned-ipa
-          path: package/PocketLedger-v0.4.48-unsigned.ipa
+          name: PocketLedger-v0.4.49-unsigned-ipa
+          path: package/PocketLedger-v0.4.49-unsigned.ipa
           if-no-files-found: error
       # Public Release assets have direct HTTPS download URLs, unlike the
       # GitHub Actions artifact API, whose ZIP download requires authentication.
@@ -64,13 +66,22 @@ jobs:
           tag="v${version}"
           ipa="package/PocketLedger-v${version}-unsigned.ipa"
           echo "Unsigned IPA. Must be signed with the user's valid iOS provisioning identity before installation." > /tmp/digital-wallet-notes.md
-          echo "v0.4.48 Build 55: shared card geometry for linear open/return, synchronized background deck, measured header/card pull-down gesture, and four original balance covers compiled into Assets.car." >> /tmp/digital-wallet-notes.md
+          echo "v0.4.49 Build 56: fix blank card deck after return, synchronize linear progress on a single frame clock, add ordinary drag-to-fan browsing without changing saved order; retain original artwork and all four balance covers." >> /tmp/digital-wallet-notes.md
           echo "Real-device testing remains pending: Duo inner/outer transitions, scrolling/pull cancellation, long-press reorder, Face ID, security cards, backup/restore and in-app update. CI does not establish visual parity with Apple Wallet." >> /tmp/digital-wallet-notes.md
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$ipa" --clobber
           else
             gh release create "$tag" "$ipa" --title "Digital Wallet $tag (unsigned)" --notes-file /tmp/digital-wallet-notes.md
           fi
+      - name: Upload simulator verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketLedger-wallet-ui-verification
+          path: |
+            ui-results/
+            ui-test.log
+          if-no-files-found: ignore
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4

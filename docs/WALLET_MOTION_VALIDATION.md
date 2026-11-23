@@ -1,4 +1,14 @@
-# Wallet motion validation — v0.4.48 / Build 55
+# Wallet motion validation — v0.4.49 / Build 56
+
+## Build 56 regression and verification
+
+The new user feedback video demonstrates a persistent blank deck after returning, while the same hit strips still open details. A second 5.19-second native reference explicitly requests ordinary interactive fan/accordion browsing. Both are now in scope; the previous patch omitted browsing.
+
+The new `WalletMotionDriver` publishes actual displayed progress on CADisplayLink, in one transaction with implicit animation disabled. A retargetable track handles interrupted opening and cancelled pulls. Idle decks explicitly use zero transition progress and the render-only artwork identities are refreshed on return; touch targets and root scroll identity remain unchanged. Destination geometry is frozen during the transition. Background cards stay opaque beneath a stationary fading backdrop, avoiding the prior double page crossfade.
+
+`WalletDeckFan` moves the touched card with the drag and spreads neighbors around it. A scoped UIKit recognizer suspends the surrounding scroll only while browsing, restores it on release/cancellation, and yields if long-press sorting has started. Only the original reorder callback writes order.
+
+CI runs `WalletUITests` on compact and wide iOS simulators with a synthetic six-card ledger. It checks actual colored pixels in each exposed strip after repeated first/middle/last selections and returns, interrupted opening, up/down browsing, short pull cancellation, and full pull dismissal. A post-test file check verifies persisted card IDs remain in the original order. Test movies and xcresult bundles are uploaded. These checks do not replace real Duo testing.
 
 ## Reference observations
 
@@ -6,7 +16,7 @@ Primary reference: the locally supplied `ScreenRecording_11-23-2026 22-49-49_1.m
 
 - Approximately 14.51–14.87 seconds: the selected foreground card moves from its current stack position toward the top. Its artwork remains spatially continuous, the remaining stack retreats, and transaction details appear beneath it.
 - Approximately 13.27–13.84 seconds: return restores the stack while the selected card returns to its stack position and the lower foreground card re-enters from below.
-- The native recording also contains interactive stack browsing and payment/default-card system behavior. This patch targets card-to-detail selection and return; it preserves the app's existing long-press ordering rather than adding system payment functionality.
+- The native recording also contains interactive stack browsing and payment/default-card system behavior. The app now supports ordinary interactive stack browsing as well as card-to-detail selection/return and its separate long-press ordering. System payment/default-card behavior is not part of this local ledger.
 
 ## Implemented behavior
 

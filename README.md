@@ -1,4 +1,9 @@
-# PocketLedger v0.4.48
+# PocketLedger v0.4.49
+
+## v0.4.49 Restore returned deck and add drag browsing (Build 56)
+Addresses the Build 55 recording where the card artwork disappeared after return while invisible tap strips remained active. One display-link clock now publishes the actual linear progress for all layers with implicit animations disabled. Closing retargets from the displayed frame; completion resets selection and refreshes only the render-only card layer, keeping the original scroll view, hit strips and saved order. Destination measurement is frozen during motion. A stationary background replaces the moving translucent full-page background that caused ghosted pages.
+
+Ordinary vertical dragging within the stack now fans cards around the touched strip, with neighboring cards moving together and a linear return on release. Browsing does not save order. Holding first retains the existing long-press reorder. Original artwork, dimensions, covers, protected data and all other features remain. CI runs real pixel-visibility and gesture regression tests on compact and wide simulators before packaging. Physical Duo verification and comparison with native Wallet remain pending.
 
 ## v0.4.48 Geometry-linked card selection and original covers (Build 55)
 Card selection now uses the card's measured stack/grid rectangle and the existing detail card's measured rectangle. One artwork layer travels between them with a shared 360ms linear progress; upper background cards retreat and lower cards move below the viewport at the same time. Returning reverses that geometry without changing persisted order. Animation completion replaces fixed delay timers. A downward pan beginning inside the actual header/card region at scroll-top drives the same progress, while controls and transaction scrolling keep their existing behavior. Short/cancelled pulls return to the detail; Reduce Motion omits spatial motion. Existing card dimensions, exposed-strip hit regions, long-press reorder, DuoColumns, protected data and all other features are retained.

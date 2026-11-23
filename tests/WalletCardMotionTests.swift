@@ -30,6 +30,43 @@ struct WalletCardMotionTests {
         precondition(WalletCardMotion.shouldDismiss(translation: 50, velocity: 800, distance: distance))
         precondition(!WalletCardMotion.shouldDismiss(translation: 5, velocity: 800, distance: distance))
         precondition(!WalletCardMotion.shouldDismiss(translation: 110, velocity: -300, distance: distance))
+        // Regression: close halfway through opening must start at the displayed
+        // frame; completed/cancelled tracks must never leave progress at one.
+        var track = WalletLinearTrack()
+        for _ in 0..<100 {
+            track.set(0)
+            track.animate(to: 1, at: 10, duration: 0.36)
+            track.advance(to: 10.18)
+            precondition(abs(track.value - 0.5) < 0.00001)
+            track.animate(to: 0, at: 10.18, duration: 0.18)
+            track.advance(to: 10.27)
+            precondition(abs(track.value - 0.25) < 0.00001)
+            track.advance(to: 11)
+            precondition(track.value == 0 && !track.running)
+            track.animate(to: 1, at: 12, duration: 0)
+            precondition(track.value == 1 && !track.running)
+            track.set(0.7)
+            track.animate(to: 1, at: 13, duration: 0.2)
+            track.advance(to: 14)
+            precondition(track.value == 1)
+            track.set(0)
+        }
+        for anchor in 0..<6 {
+            for translation: CGFloat in [-150, -50, 0, 50, 150] {
+                let values = (0..<6).map { WalletDeckFan.offset(index: $0, anchor: anchor,
+                    translation: translation, height: 202, step: 45) }
+                precondition(values[anchor] == translation)
+                if translation == 0 { precondition(values.allSatisfy { $0 == 0 }) }
+                for i in 1..<6 { precondition(values[i] >= values[i - 1]) }
+            }
+        }
+        let original = CGRect(x: 0, y: 200, width: 320, height: 202)
+        let destination = CGRect(x: 0, y: 80, width: 320, height: 202)
+        precondition(abs(WalletCardMotion.visibleHeight(source: original, current: original,
+            visibleFraction: 45 / 202, retreat: 700, progress: 0) - 45) < 0.00001)
+        let middle = WalletCardMotion.frame(source: original, destination: destination, progress: 0.3)
+        precondition(WalletCardMotion.visibleHeight(source: original, current: middle,
+            visibleFraction: 45 / 202, retreat: 700, progress: 0.3) == middle.height)
         print("Wallet motion: geometry endpoints, reverse path, aspect ratio, pull progress and release thresholds passed")
     }
 }

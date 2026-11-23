@@ -5,6 +5,9 @@
       <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="63E04387B5737D8EE9B5E474" BuildableName="PocketLedger.app" BlueprintName="PocketLedger" ReferencedContainer="container:PocketLedger.xcodeproj"/>
     </BuildActionEntry></BuildActionEntries>
   </BuildAction>
+  <TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES">
+    <Testables><TestableReference skipped="NO"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A05600000000000000000018" BuildableName="PocketLedgerUITests.xctest" BlueprintName="PocketLedgerUITests" ReferencedContainer="container:PocketLedger.xcodeproj"/></TestableReference></Testables>
+  </TestAction>
   <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES">
     <BuildableProductRunnable runnableDebuggingMode="0"><BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="63E04387B5737D8EE9B5E474" BuildableName="PocketLedger.app" BlueprintName="PocketLedger" ReferencedContainer="container:PocketLedger.xcodeproj"/></BuildableProductRunnable>
   </LaunchAction>
