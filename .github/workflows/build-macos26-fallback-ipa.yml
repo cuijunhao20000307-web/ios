@@ -49,19 +49,19 @@ jobs:
           version=info.get('CFBundleShortVersionString')
           build=info.get('CFBundleVersion')
           print('Fallback IPA version:', version, 'Build:', build)
-          assert version == '0.4.51' and build == '58'
+          assert version == '0.4.52' and build == '59'
           PY
       - name: Package unsigned IPA
         run: |
           set -euo pipefail
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
-          (cd package && zip -qry Digital-Wallet-v0.4.51-Build58-macos26-fallback-unsigned.ipa Payload && unzip -t Digital-Wallet-v0.4.51-Build58-macos26-fallback-unsigned.ipa | tail -1)
+          (cd package && zip -qry Digital-Wallet-v0.4.52-Build59-macos26-fallback-unsigned.ipa Payload && unzip -t Digital-Wallet-v0.4.52-Build59-macos26-fallback-unsigned.ipa | tail -1)
       - name: Upload unsigned compatibility IPA before UI diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: Digital-Wallet-v0.4.51-Build58-macos26-fallback-ipa
-          path: package/Digital-Wallet-v0.4.51-Build58-macos26-fallback-unsigned.ipa
+          name: Digital-Wallet-v0.4.52-Build59-macos26-fallback-ipa
+          path: package/Digital-Wallet-v0.4.52-Build59-macos26-fallback-unsigned.ipa
           if-no-files-found: error
       - name: Run optional simulator UI diagnostics after IPA is uploaded
         continue-on-error: true
@@ -71,7 +71,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Digital-Wallet-Build58-fallback-diagnostics
+          name: Digital-Wallet-Build59-fallback-diagnostics
           path: |
             build.log
             ui-test.log
