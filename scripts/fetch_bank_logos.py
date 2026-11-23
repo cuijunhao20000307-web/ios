@@ -1,4 +1,4 @@
-"""Fetch the remaining identified public bank-logo SVGs at build time.
+"""Fetch only missing identified public bank-logo SVGs at build time.
 No application runtime network access, and no financial data is transmitted.
 A failed download leaves the honest generic fallback in the app.
 """
@@ -44,6 +44,17 @@ def validate(data):
     return data
 
 for bank, filename in FILES.items():
+    folder = ROOT / ("bank-" + bank + ".imageset")
+    # Preserve the checked-in artwork, including PNG sets such as PNC.
+    # The network is only a fallback for genuinely absent resources.
+    try:
+        images = json.loads((folder / "Contents.json").read_text())["images"]
+        bundled = [folder / image["filename"] for image in images if "filename" in image]
+        if bundled and all(image.is_file() and image.stat().st_size > 0 for image in bundled):
+            print("Bundled:", bank)
+            continue
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     try:
         name = filename.replace(" ", "_")
         digest = hashlib.md5(name.encode()).hexdigest()
@@ -51,7 +62,6 @@ for bank, filename in FILES.items():
         req = urllib.request.Request(url, headers={"User-Agent": "PocketLedgerBankLogoBuild/1.0 (bank identification artwork; Github Actions)"})
         with urllib.request.urlopen(req, timeout=12) as response:
             data = validate(response.read(500001))
-        folder = ROOT / ("bank-" + bank + ".imageset")
         folder.mkdir(parents=True, exist_ok=True)
         (folder / "logo.svg").write_bytes(data)
         (folder / "Contents.json").write_text(json.dumps({

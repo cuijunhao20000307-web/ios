@@ -19,6 +19,7 @@ The pull recognizer begins only on the measured header/card region, with downwar
 - `swiftc PocketLedger/Sources/WalletCardMotion.swift tests/WalletCardMotionTests.swift -o /tmp/wallet-motion-tests && /tmp/wallet-motion-tests`: endpoints, exact reverse path, aspect ratio across compact/expanded sizes, drag clamping and release thresholds.
 - `python3 scripts/verify_balance_covers.py`: original dimensions and SHA-256 values.
 - CI: full iPhoneOS Release compilation with signing disabled; `verify_balance_covers.py --app ...` verifies compiled Asset Catalog names before packaging.
+- Existing bank-logo resources are retained; the legacy download script now only fills missing image sets.
 - IPA packaging checks ZIP integrity. App bundle identifier and data models are unchanged.
 
 ## Still required on physical devices
