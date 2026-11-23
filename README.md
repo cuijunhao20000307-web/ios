@@ -1,4 +1,9 @@
-# PocketLedger v0.4.51
+# PocketLedger v0.4.52
+
+## v0.4.52 / Build 59 — soft fade and smooth card return
+The user's November 24 exit-video shows full background card faces overlapping as the selected card flies back into its original exposed slot. Card siblings now stay withdrawn until the late part of the reverse animation, then return with a smoothstep movement curve. Their artwork is clipped to its measured original visible strip so adjacent cards never temporarily reveal full faces. The background card alpha and detail metadata alpha use gentler smoothstep fade windows, kept strictly non-overlapping to prevent ghosted double pages. Selecting and returning uses the same reversible progress function, while the selected flying card remains above all sibling cards. Performance optimizations, privacy, bank images, balances and all existing functions are preserved. Real iPhone Duo acceptance remains pending.
+
+
 
 ## v0.4.51 / Build 58 — smooth card transition optimization
 A perceived dropped-frame regression was reported on the physical iPhone Duo with Build 57. Build 58 isolates CADisplayLink's animation progress in a dedicated observed SwiftUI scene; updating progress no longer invalidates the entire NavigationStack, card deck, accounts list and ledger content. The flying selected card uses a constant source layout, compositor scaling and positioning rather than reshaping its card content each frame. Card artwork UIImage providers are cached in memory, invalidated by card ID and a lightweight data fingerprint. Selection and reverse transitions retain their geometric endpoints, fade envelopes, protected card data and original 2240×1000 currency cover assets. The symptom has not yet been remeasured on a physical Duo; a successful compile cannot establish 60/120 fps.
