@@ -33,6 +33,11 @@ struct WalletCardMotionTests {
             precondition(siblings >= 0 && siblings <= 1 && detail >= 0 && detail <= 1)
             precondition(siblings * detail == 0, "Ghosted foreground/background")
         }
+        let small = CGRect(x: 20, y: 220, width: 320, height: 320 / 1.586)
+        let large = CGRect(x: 20, y: 80, width: 400, height: 400 / 1.586)
+        precondition(WalletCardMotion.flightScale(source: small, destination: large, progress: 0) == 1)
+        precondition(abs(WalletCardMotion.flightScale(source: small, destination: large, progress: 0.5) - 1.125) < 0.0001)
+        precondition(abs(WalletCardMotion.flightScale(source: small, destination: large, progress: 1) - 1.25) < 0.0001)
         let distance: CGFloat = 300
         precondition(WalletCardMotion.progress(translation: 90, distance: distance) == 0.7)
         precondition(WalletCardMotion.progress(translation: -10, distance: distance) == 1)
