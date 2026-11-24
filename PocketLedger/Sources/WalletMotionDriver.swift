@@ -10,6 +10,7 @@ final class WalletMotionDriver: ObservableObject {
     private var track = WalletLinearTrack()
     private var link: CADisplayLink?
     private var completion: (() -> Void)?
+    private var pendingStart: (target: CGFloat, duration: TimeInterval)?
 
     @MainActor private final class Target: NSObject {
         weak var owner: WalletMotionDriver?
@@ -24,15 +25,25 @@ final class WalletMotionDriver: ObservableObject {
     }
     func animate(to value: CGFloat, duration: TimeInterval, completion: @escaping () -> Void) {
         invalidate()
-        track.animate(to: value, at: CACurrentMediaTime(), duration: duration)
         self.completion = completion
-        if !track.running { finish(); return }
+        if duration <= 0 || track.value == value {
+            track.set(value)
+            finish()
+            return
+        }
+        pendingStart = (value, duration)
         target.owner = self
         let link = CADisplayLink(target: target, selector: #selector(Target.tick(_:)))
         self.link = link
         link.add(to: .main, forMode: .common)
     }
     private func tick(_ link: CADisplayLink) {
+        if let start = pendingStart {
+            pendingStart = nil
+            track.animate(to: start.target, at: link.targetTimestamp, duration: start.duration)
+            publish(track.value)
+            return
+        }
         if track.advance(to: link.targetTimestamp) { finish() }
         else { publish(track.value) }
     }
@@ -57,6 +68,7 @@ final class WalletMotionDriver: ObservableObject {
         link?.invalidate()
         link = nil
         completion = nil
+        pendingStart = nil
     }
     deinit { link?.invalidate() }
 }
