@@ -47,9 +47,6 @@ struct WalletView: View {
                 ZStack(alignment: .top) {
                     walletRoot
                         .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
-                        // Keep original stack mounted for geometry and scroll
-                        // restoration, but never blend it with detail artwork.
-                        .opacity(selectedCard == nil ? 1 : 0)
                         .allowsHitTesting(selectedCard == nil)
                         .accessibilityHidden(selectedCard != nil)
                         .zIndex(0)
@@ -285,6 +282,7 @@ struct WalletView: View {
                 }
                 walletSections
             }
+            .modifier(WalletChromeFade(motion: cardMotion, presenting: selectedCard != nil))
             .padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 16)
             .frame(maxWidth: 920).frame(maxWidth: .infinity)
             if section == 2 {
@@ -344,6 +342,7 @@ struct WalletView: View {
                     if search.isEmpty && cards.count > 1 {
                         Text(L("카드를 길게 눌러 순서를 변경할 수 있어요"))
                             .font(.caption).foregroundStyle(.secondary)
+                            .modifier(WalletChromeFade(motion: cardMotion, presenting: selectedCard != nil))
                     }
                 } else {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 260, maximum: 365), spacing: 16)], spacing: 16) {
@@ -352,7 +351,7 @@ struct WalletView: View {
                                 LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                                     .aspectRatio(1.586, contentMode: .fit)
                                     .walletSourceFrame(card.id)
-                                    .opacity(selectedCard == card.id ? 0 : 1)
+                                    .opacity(selectedCard == nil ? 1 : 0)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(card.name + " " + L("카드 정보"))
@@ -362,6 +361,7 @@ struct WalletView: View {
                 }
                 Text(String(cards.count) + " " + L("카드"))
                     .font(.caption).foregroundStyle(.secondary)
+                    .modifier(WalletChromeFade(motion: cardMotion, presenting: selectedCard != nil))
             }
         }
         .padding(.top, 5)
@@ -508,6 +508,17 @@ private extension View {
         }
     }
 }
+// Keep chrome in its original layout; fade it from the same displayed progress
+// as the card. No root-page observation or implicit offset animation is needed.
+private struct WalletChromeFade: ViewModifier {
+    @ObservedObject var motion: WalletMotionDriver
+    let presenting: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func body(content: Content) -> some View {
+        content.opacity(!presenting ? 1 : reduceMotion ? 0 : Double(WalletCardMotion.homeOpacity(motion.value)))
+    }
+}
+
 // The frame clock only invalidates this small animation scene, never the
 // NavigationStack, wallet root, unrelated ledger panels or transaction list.
 private struct WalletTransitionScene: View {
@@ -534,13 +545,10 @@ private struct WalletTransitionScene: View {
         let progress = motion.value
         let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
         ZStack(alignment: .top) {
-            LedgerTheme.background
             if !reduceMotion {
                 ZStack(alignment: .topLeading) {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         if card.id != cardID, let frame = frames[card.id] {
-                            let retreat: CGFloat = index < focus
-                                ? -viewport.height * 0.85 : viewport.height * 1.06
                             // During return keep the original exposed strip;
                             // do not uncover full card faces between slots.
                             let nextFrame = index + 1 < cards.count
@@ -554,8 +562,10 @@ private struct WalletTransitionScene: View {
                                 .mask(alignment: .top) {
                                     Rectangle().frame(height: exposed)
                                 }
+                                .scaleEffect(1 - 0.025 * WalletCardMotion.siblingRetreatProgress(progress), anchor: .top)
+                                .blur(radius: 1.5 * WalletCardMotion.siblingRetreatProgress(progress))
                                 .position(x: frame.midX, y: frame.midY +
-                                    retreat * WalletCardMotion.siblingRetreatProgress(progress))
+                                    WalletCardMotion.siblingOffset(index: index, focus: focus, progress: progress))
                                 .opacity(Double(WalletCardMotion.siblingOpacity(progress)))
                                 .zIndex(Double(index))
                         }
@@ -571,9 +581,10 @@ private struct WalletTransitionScene: View {
                 onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose)
                 .frame(width: viewport.width, height: viewport.height, alignment: .top)
                 .coordinateSpace(name: "walletDetail")
-                .background(LedgerTheme.background)
+                .blur(radius: reduceMotion ? 0 : 3 * (1 - WalletCardMotion.detailOpacity(progress)))
                 .opacity(reduceMotion ? 1 :
                     Double(WalletCardMotion.detailOpacity(progress)))
+                .offset(y: reduceMotion ? 0 : 10 * (1 - WalletCardMotion.detailOpacity(progress)))
                 .allowsHitTesting(settled || pulling)
                 .accessibilityHidden(!settled)
                 .onPreferenceChange(WalletDetailCardFrameKey.self, perform: onDetailFrame)
@@ -686,7 +697,7 @@ private struct InteractiveWalletDeck: View {
                             .scaleEffect(lifted && !reduceMotion ? 1.035 : 1, anchor: .top)
                             .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
                             .offset(y: y + retreat * progress + (reduceMotion ? 0 : fan))
-                            .opacity(selectedCard == card.id ? 0 : 1)
+                            .opacity(selectedCard == nil ? 1 : 0)
                             .id("\(card.id)-\(renderRevision)")
                             .transition(.identity)
                             .zIndex(lifted ? Double(cards.count + 2) : Double(index))

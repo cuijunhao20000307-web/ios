@@ -4,7 +4,7 @@ import CoreGraphics
 // Shared geometry for selection, interactive return and release decisions.
 // This contains no wallet data and can also run in the command-line regression check.
 enum WalletCardMotion {
-    static let duration = 0.36
+    static let duration = 0.42
 
     // Apply a compositor scale to fixed-size card content instead of changing
     // the SwiftUI layout size on every animation frame.
@@ -22,12 +22,21 @@ enum WalletCardMotion {
         1 - smoothstep((progress - 0.06) / 0.49)
     }
     static func detailOpacity(_ progress: CGFloat) -> CGFloat {
-        smoothstep((progress - 0.72) / 0.28)
+        smoothstep((progress - 0.56) / 0.44)
     }
     // Selected card returns along its original path while siblings remain
     // offscreen. They slide back only during the final part of dismissal.
     static func siblingRetreatProgress(_ progress: CGFloat) -> CGFloat {
         smoothstep(progress / 0.48)
+    }
+    static func homeOpacity(_ progress: CGFloat) -> CGFloat {
+        1 - smoothstep(progress / 0.5)
+    }
+    static func siblingOffset(index: Int, focus: Int, progress: CGFloat) -> CGFloat {
+        // A bounded depth cue keeps strips near their own slots. The previous
+        // viewport-sized travel showed disconnected strips across the screen
+        // during slow, repeated interactive pulls.
+        (index < focus ? -24 : 32) * siblingRetreatProgress(progress)
     }
     static func stackVisibleHeight(current: CGRect, next: CGRect?) -> CGFloat {
         guard let next else { return current.height }

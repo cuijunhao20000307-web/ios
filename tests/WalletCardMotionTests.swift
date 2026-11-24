@@ -37,7 +37,7 @@ struct WalletCardMotionTests {
         // is visible at any point in the selection/return transition.
         precondition(WalletCardMotion.siblingOpacity(0.06) == 1)
         precondition(WalletCardMotion.siblingOpacity(0.55) == 0)
-        precondition(WalletCardMotion.detailOpacity(0.72) == 0)
+        precondition(WalletCardMotion.detailOpacity(0.56) == 0)
         precondition(WalletCardMotion.siblingRetreatProgress(0) == 0)
         precondition(WalletCardMotion.siblingRetreatProgress(0.48) == 1)
         precondition(WalletCardMotion.siblingRetreatProgress(1) == 1)
@@ -47,6 +47,19 @@ struct WalletCardMotionTests {
             precondition(WalletCardMotion.siblingOpacity(after) <= WalletCardMotion.siblingOpacity(before) + 0.00001)
             precondition(WalletCardMotion.detailOpacity(after) + 0.00001 >= WalletCardMotion.detailOpacity(before))
             precondition(WalletCardMotion.siblingRetreatProgress(after) + 0.00001 >= WalletCardMotion.siblingRetreatProgress(before))
+        }
+        // Slow interactive scrubbing must keep background strips close to
+        // their source slots and restore home chrome continuously at zero.
+        precondition(WalletCardMotion.homeOpacity(0) == 1)
+        precondition(WalletCardMotion.homeOpacity(1) == 0)
+        for i in 0...1000 {
+            let p = CGFloat(i) / 1000
+            for index in 0..<6 {
+                let offset = WalletCardMotion.siblingOffset(index: index, focus: 3, progress: p)
+                precondition(abs(offset) <= 32)
+                if p == 0 { precondition(offset == 0) }
+            }
+            precondition(WalletCardMotion.homeOpacity(p) * WalletCardMotion.detailOpacity(p) == 0)
         }
         let strip = CGRect(x: 20, y: 180, width: 320, height: 202)
         let nextStrip = CGRect(x: 20, y: 225, width: 320, height: 202)

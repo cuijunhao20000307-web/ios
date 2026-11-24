@@ -1,4 +1,8 @@
-# PocketLedger v0.4.55
+# PocketLedger v0.4.56
+
+## v0.4.56 / Build 63 — refine interactive presentation on the restored baseline
+The device video shows disconnected background strips moving across the viewport during repeated pulls, metadata vanishing early and home chrome appearing only at reset. Keep the Build 59/62 layout, card measurement, tap regions and gestures. Limit decorative sibling retreat to -24/+32pt with a slight depth scale/blur; fade the home header/footer with the same displayed progress, bring details in earlier and add a subtle 10pt rise and blur. The source deck remains mounted and only its artwork is hidden while the scene is active; one selected artwork remains visible. Forward and reverse effects are continuous functions of the same interactive progress, within 420ms for a full transition. Device acceptance remains pending and must not be inferred from compilation.
+
 
 ## v0.4.55 / Build 62 — restore the morning Build 59 wallet implementation
 The physical-device feedback for Builds 60 and 61 reports lowered placement, unresponsive card taps and failed card switching. At the user's request, restore WalletView.swift, WalletMotionDriver.swift, WalletCardMotion.swift and their tests byte-for-byte from the morning Build 59 commit 5d60edc01dafc66c814c488387ae63b29371334f. This restores the prior layout, detail header order, linear transition, tap strips, browsing and GestureState-based long-press handling. Remove the experimental shared-anchor spring presentation and persistent drag/tap-suppression state through that restoration. Existing stored order is retained; any order already changed in the app remains user data. Version metadata is incremented to deliver the recovery as an update. Do not claim new animation improvements or hardware acceptance; device confirmation remains required.
