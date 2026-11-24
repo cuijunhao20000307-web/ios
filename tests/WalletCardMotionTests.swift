@@ -35,9 +35,9 @@ struct WalletCardMotionTests {
         }
         // Regression: fade is continuous, reversible, and no duplicate page
         // is visible at any point in the selection/return transition.
-        precondition(WalletCardMotion.siblingOpacity(0.06) == 1)
-        precondition(WalletCardMotion.siblingOpacity(0.55) == 0)
-        precondition(WalletCardMotion.detailOpacity(0.56) == 0)
+        precondition(WalletCardMotion.siblingOpacity(0.02) == 1)
+        precondition(WalletCardMotion.siblingOpacity(0.20) == 0)
+        precondition(WalletCardMotion.detailOpacity(0.20) == 0)
         precondition(WalletCardMotion.siblingRetreatProgress(0) == 0)
         precondition(WalletCardMotion.siblingRetreatProgress(0.48) == 1)
         precondition(WalletCardMotion.siblingRetreatProgress(1) == 1)
@@ -64,6 +64,30 @@ struct WalletCardMotionTests {
                 precondition(abs(currentY - previousY - 45) < 0.000001)
             }
             precondition(WalletCardMotion.homeOpacity(p) * WalletCardMotion.detailOpacity(p) == 0)
+        }
+        // The lower cards travel together offscreen, maintaining their gaps.
+        for top: CGFloat in [-40, 100, 280, 500] {
+            let end = WalletCardMotion.lowerDeckOffset(1, viewportHeight: 650, top: top)
+            precondition(top + end >= 650)
+            precondition(WalletCardMotion.lowerDeckOffset(0, viewportHeight: 650, top: top) == 0)
+            for i in 1...100 {
+                let before = WalletCardMotion.lowerDeckOffset(CGFloat(i - 1) / 100, viewportHeight: 650, top: top)
+                let after = WalletCardMotion.lowerDeckOffset(CGFloat(i) / 100, viewportHeight: 650, top: top)
+                precondition(after >= before)
+            }
+        }
+        precondition(AnimationConfig.easeOut(0) == 0 && AnimationConfig.easeOut(1) == 1)
+        var eased = WalletLinearTrack()
+        for _ in 0..<100 {
+            eased.set(0)
+            eased.animate(to: 1, at: 10, duration: 0.45, eased: true)
+            eased.advance(to: 10.225)
+            precondition(abs(eased.value - 0.875) < 0.00001)
+            let displayed = eased.value
+            eased.animate(to: 0, at: 10.225, duration: 0.3, eased: true)
+            precondition(eased.value == displayed)
+            eased.advance(to: 11)
+            precondition(eased.value == 0 && !eased.running)
         }
         let strip = CGRect(x: 20, y: 180, width: 320, height: 202)
         let nextStrip = CGRect(x: 20, y: 225, width: 320, height: 202)

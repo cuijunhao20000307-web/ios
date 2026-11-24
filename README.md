@@ -1,4 +1,8 @@
-# PocketLedger v0.4.57
+# PocketLedger v0.4.58
+
+## v0.4.58 / Build 65 — native-reference connected motion and less frame work
+The native recording shows the lower cards sliding down as one connected stack, reversing upward on return. Preserve full rounded cards and z-order, split background siblings above/below selection, and move the lower group beyond the bottom edge. Link all geometry to displayed progress with a 450ms cubic ease-out clock for tap/release settling; interactive dragging remains direct. Reveal details while the lower stack departs, rather than waiting until motion nearly finishes. Home/upper text fades precede metadata to avoid duplicate labels. Use an equatable detail wrapper to keep frame-clock ticks from rebuilding the transaction subtree, snapshot monthly spending once per selection and remove full-page animated blur. Request the screen's supported frame rate and enable high-refresh scheduling in Info.plist. Source/touch layouts, browsing and long-press reorder remain as in Build 62. Neither the 30fps recordings nor compilation establish achieved device frame rate; physical acceptance remains pending.
+
 
 ## v0.4.57 / Build 64 — keep background-card corners continuous during return
 The device recording shows background cards as narrow, blurred rectangular strips that change back to the rounded resting deck on dismissal. Remove per-card rectangular strip masks, depth scaling and blur. Draw the same full LedgerStackCard views at their measured frames and original z-order, allowing opaque higher cards to occlude lower ones naturally. Composite those layers before fading the whole group; a shared 12pt retreat preserves relative gaps and edges. The selected card retains its single flying artwork, source geometry and existing touch behavior. Build 63's chrome fade timing remains. Physical-device acceptance is pending.

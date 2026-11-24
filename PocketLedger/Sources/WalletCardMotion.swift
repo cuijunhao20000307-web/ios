@@ -1,10 +1,21 @@
 import Foundation
 import CoreGraphics
 
+// Presentation-only settings; drag progress remains a direct finger mapping.
+struct AnimationConfig {
+    static let duration: TimeInterval = 0.45
+    static let upperRetreat: CGFloat = 12
+    static let contentRise: CGFloat = 10
+    static func easeOut(_ fraction: CGFloat) -> CGFloat {
+        let t = min(1, max(0, fraction))
+        return 1 - (1 - t) * (1 - t) * (1 - t)
+    }
+}
+
 // Shared geometry for selection, interactive return and release decisions.
 // This contains no wallet data and can also run in the command-line regression check.
 enum WalletCardMotion {
-    static let duration = 0.42
+    static let duration = AnimationConfig.duration
 
     // Apply a compositor scale to fixed-size card content instead of changing
     // the SwiftUI layout size on every animation frame.
@@ -19,10 +30,10 @@ enum WalletCardMotion {
         return t * t * (3 - 2 * t)
     }
     static func siblingOpacity(_ progress: CGFloat) -> CGFloat {
-        1 - smoothstep((progress - 0.06) / 0.49)
+        1 - smoothstep((progress - 0.02) / 0.18)
     }
     static func detailOpacity(_ progress: CGFloat) -> CGFloat {
-        smoothstep((progress - 0.56) / 0.44)
+        smoothstep((progress - 0.20) / 0.80)
     }
     // Selected card returns along its original path while siblings remain
     // offscreen. They slide back only during the final part of dismissal.
@@ -30,12 +41,16 @@ enum WalletCardMotion {
         smoothstep(progress / 0.48)
     }
     static func homeOpacity(_ progress: CGFloat) -> CGFloat {
-        1 - smoothstep(progress / 0.5)
+        1 - smoothstep(progress / 0.20)
     }
     static func backgroundDeckOffset(_ progress: CGFloat) -> CGFloat {
         // One group translation preserves all relative edges, rounded corners,
         // widths and overlap. No individual scale/blur or strip clipping.
-        -12 * siblingRetreatProgress(progress)
+        -AnimationConfig.upperRetreat * min(1, max(0, progress))
+    }
+    static func lowerDeckOffset(_ progress: CGFloat, viewportHeight: CGFloat, top: CGFloat) -> CGFloat {
+        // Move the lower deck as one connected stack beyond the lower edge.
+        max(0, viewportHeight - top + 24) * min(1, max(0, progress))
     }
     static func stackVisibleHeight(current: CGRect, next: CGRect?) -> CGFloat {
         guard let next else { return current.height }
@@ -84,13 +99,15 @@ struct WalletLinearTrack {
     private var target: CGFloat = 0
     private var start: TimeInterval = 0
     private var duration: TimeInterval = 0
+    private var eased = false
     private(set) var running = false
 
     mutating func set(_ value: CGFloat) {
         self.value = value
         running = false
     }
-    mutating func animate(to target: CGFloat, at time: TimeInterval, duration: TimeInterval) {
+    mutating func animate(to target: CGFloat, at time: TimeInterval, duration: TimeInterval, eased: Bool = false) {
+        self.eased = eased
         origin = value
         self.target = target
         start = time
@@ -101,7 +118,8 @@ struct WalletLinearTrack {
     @discardableResult mutating func advance(to time: TimeInterval) -> Bool {
         guard running else { return false }
         let fraction = min(1, max(0, (time - start) / duration))
-        value = origin + (target - origin) * fraction
+        let curved = eased ? AnimationConfig.easeOut(CGFloat(fraction)) : CGFloat(fraction)
+        value = origin + (target - origin) * curved
         if fraction == 1 { value = target; running = false }
         return !running
     }

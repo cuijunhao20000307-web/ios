@@ -19,6 +19,7 @@ struct WalletView: View {
     @State private var cardMotion = WalletMotionDriver()
     @State private var deckRenderRevision = 0
     @State private var cardFrames: [UUID: CGRect] = [:]
+    @State private var motionSpending: [UUID: Int] = [:]
     @State private var sourceCardFrame: CGRect?
     @State private var sourceVisibleFraction: CGFloat = 1
     @State private var detailCardFrame: CGRect = .zero
@@ -52,7 +53,7 @@ struct WalletView: View {
                         .zIndex(0)
                     if let id = selectedCard {
                         WalletTransitionScene(
-                            cardID: id, cards: filteredCards, frames: cardFrames,
+                            cardID: id, cards: filteredCards, frames: cardFrames, spending: motionSpending,
                             source: sourceCardFrame, destination: detailCardFrame,
                             sourceVisibleFraction: sourceVisibleFraction,
                             stacked: stacked, editingCard: editPaymentCard?.id == id,
@@ -176,6 +177,7 @@ struct WalletView: View {
         searchFocused = false
         deckDragging = false
         transitionToken = UUID()
+        motionSpending = Dictionary(uniqueKeysWithValues: filteredCards.map { ($0.id, store.spent(on: $0, in: .now)) })
         sourceCardFrame = cardFrames[id]
         sourceVisibleFraction = 1
         if stacked, let source = sourceCardFrame,
@@ -197,7 +199,7 @@ struct WalletView: View {
         transitionStarted = true
         let token = transitionToken
         // Destination geometry is now laid out. No timer or staged shuffle.
-        cardMotion.animate(to: 1, duration: reduceMotion ? 0 : WalletCardMotion.duration) {
+        cardMotion.animate(to: 1, duration: reduceMotion ? 0 : WalletCardMotion.duration, eased: true) {
             guard transitionToken == token, selectedCard == id, !transitionClosing, !detailPullActive else { return }
             transitionSettled = true
         }
@@ -210,7 +212,7 @@ struct WalletView: View {
         transitionClosing = true
         transitionSettled = false
         detailPullActive = false
-        cardMotion.animate(to: 0, duration: reduceMotion ? 0 : WalletCardMotion.duration * Double(cardMotion.value)) {
+        cardMotion.animate(to: 0, duration: reduceMotion ? 0 : max(0.12, WalletCardMotion.duration * Double(cardMotion.value)), eased: true) {
             guard transitionToken == token, transitionClosing else { return }
             selectedCard = nil
             deckRenderRevision += 1
@@ -242,7 +244,7 @@ struct WalletView: View {
             detailPullActive = false
             transitionToken = UUID()
             let token = transitionToken
-            cardMotion.animate(to: 1, duration: reduceMotion ? 0 : 0.20) {
+            cardMotion.animate(to: 1, duration: reduceMotion ? 0 : 0.28, eased: true) {
                 guard transitionToken == token, selectedCard != nil, !transitionClosing else { return }
                 transitionSettled = true
             }
@@ -519,6 +521,27 @@ private struct WalletChromeFade: ViewModifier {
     }
 }
 
+// The frame clock changes compositor modifiers, not the transaction list.
+// Editing, authentication and environment updates still reach LedgerCardDetail.
+private struct WalletStableDetail: View, Equatable {
+    let cardID: UUID
+    let editingCard: Bool
+    let artworkHidden: Bool
+    let dismissEnabled: Bool
+    let onPullChanged: (CGFloat) -> Void
+    let onPullEnded: (CGFloat, CGFloat, Bool) -> Void
+    let onClose: () -> Void
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.cardID == rhs.cardID && lhs.editingCard == rhs.editingCard &&
+        lhs.artworkHidden == rhs.artworkHidden && lhs.dismissEnabled == rhs.dismissEnabled
+    }
+    var body: some View {
+        LedgerCardDetail(cardID: cardID, editingCard: editingCard,
+            artworkHidden: artworkHidden, dismissEnabled: dismissEnabled,
+            onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose)
+    }
+}
+
 // The frame clock only invalidates this small animation scene, never the
 // NavigationStack, wallet root, unrelated ledger panels or transaction list.
 private struct WalletTransitionScene: View {
@@ -527,6 +550,7 @@ private struct WalletTransitionScene: View {
     let cardID: UUID
     let cards: [PaymentCard]
     let frames: [UUID: CGRect]
+    let spending: [UUID: Int]
     let source: CGRect?
     let destination: CGRect
     let sourceVisibleFraction: CGFloat
@@ -543,46 +567,34 @@ private struct WalletTransitionScene: View {
 
     var body: some View {
         let progress = motion.value
+        let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
+        let lowerTop = cards.indices.contains(focus + 1) ? frames[cards[focus + 1].id]?.minY : nil
+        let revealTravel = WalletCardMotion.lowerDeckOffset(1, viewportHeight: viewport.height,
+            top: lowerTop ?? viewport.height)
         ZStack(alignment: .top) {
             if !reduceMotion {
-                ZStack(alignment: .topLeading) {
-                    ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
-                        if card.id != cardID, let frame = frames[card.id] {
-                            // Draw the same full rounded card as the resting deck.
-                            // Opaque cards above it provide natural occlusion.
-                            LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
-                                .frame(width: frame.width, height: frame.height)
-                                .position(x: frame.midX, y: frame.midY)
-                                .zIndex(Double(index))
-                        }
-                    }
-                }
-                .frame(width: viewport.width, height: viewport.height)
-                // Composite opaque rounded layers first. Fading individual
-                // cards lets the hidden full faces bleed through one another.
-                .compositingGroup()
-                .offset(y: WalletCardMotion.backgroundDeckOffset(progress))
-                .opacity(Double(WalletCardMotion.siblingOpacity(progress)))
-                .clipped()
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+                backgroundDeck(lower: false, focus: focus, progress: progress)
+                    .zIndex(0)
+                backgroundDeck(lower: true, focus: focus, progress: progress)
+                    .zIndex(1)
             }
-            LedgerCardDetail(cardID: cardID, editingCard: editingCard,
+            WalletStableDetail(cardID: cardID, editingCard: editingCard,
                 artworkHidden: !settled, dismissEnabled: settled || pulling,
                 onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose)
+                .equatable()
                 .frame(width: viewport.width, height: viewport.height, alignment: .top)
                 .coordinateSpace(name: "walletDetail")
-                .blur(radius: reduceMotion ? 0 : 3 * (1 - WalletCardMotion.detailOpacity(progress)))
                 .opacity(reduceMotion ? 1 :
                     Double(WalletCardMotion.detailOpacity(progress)))
-                .offset(y: reduceMotion ? 0 : 10 * (1 - WalletCardMotion.detailOpacity(progress)))
+                .offset(y: reduceMotion ? 0 : AnimationConfig.contentRise * (1 - WalletCardMotion.detailOpacity(progress)))
                 .allowsHitTesting(settled || pulling)
                 .accessibilityHidden(!settled)
                 .onPreferenceChange(WalletDetailCardFrameKey.self, perform: onDetailFrame)
+                .zIndex(0.5)
             if !reduceMotion, let card = cards.first(where: { $0.id == cardID }), let source {
-                WalletFlyingCard(card: card, spent: store.spent(on: card, in: .now),
+                WalletFlyingCard(card: card, spent: spending[card.id] ?? 0,
                     source: source, destination: destination.width > 0 ? destination : source,
-                    sourceVisibleFraction: sourceVisibleFraction, retreatDistance: viewport.height,
+                    sourceVisibleFraction: sourceVisibleFraction, retreatDistance: revealTravel,
                     progress: progress)
                     .opacity(settled ? 0 : 1)
                     .allowsHitTesting(false)
@@ -593,6 +605,31 @@ private struct WalletTransitionScene: View {
         .frame(width: viewport.width, height: viewport.height)
         .clipped()
     }
+
+    private func backgroundDeck(lower: Bool, focus: Int, progress: CGFloat) -> some View {
+        let firstLower = cards.indices.contains(focus + 1) ? frames[cards[focus + 1].id]?.minY : nil
+        let travel = lower ? WalletCardMotion.lowerDeckOffset(progress,
+            viewportHeight: viewport.height, top: firstLower ?? viewport.height)
+            : WalletCardMotion.backgroundDeckOffset(progress)
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
+                if (lower ? index > focus : index < focus), let frame = frames[card.id] {
+                    LedgerStackCard(card: card, spent: spending[card.id] ?? 0)
+                        .frame(width: frame.width, height: frame.height)
+                        .position(x: frame.midX, y: frame.midY)
+                        .zIndex(Double(index))
+                }
+            }
+        }
+        .frame(width: viewport.width, height: viewport.height)
+        .compositingGroup()
+        .offset(y: travel)
+        .opacity(lower ? 1 : Double(WalletCardMotion.siblingOpacity(progress)))
+        .clipped()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
 }
 
 private struct WalletFlyingCard: View {
