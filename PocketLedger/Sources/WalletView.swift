@@ -568,9 +568,6 @@ private struct WalletTransitionScene: View {
     var body: some View {
         let progress = motion.value
         let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
-        let lowerTop = cards.indices.contains(focus + 1) ? frames[cards[focus + 1].id]?.minY : nil
-        let revealTravel = WalletCardMotion.lowerDeckOffset(1, viewportHeight: viewport.height,
-            top: lowerTop ?? viewport.height)
         ZStack(alignment: .top) {
             if !reduceMotion {
                 backgroundDeck(lower: false, focus: focus, progress: progress)
@@ -594,12 +591,13 @@ private struct WalletTransitionScene: View {
             if !reduceMotion, let card = cards.first(where: { $0.id == cardID }), let source {
                 WalletFlyingCard(card: card, spent: spending[card.id] ?? 0,
                     source: source, destination: destination.width > 0 ? destination : source,
-                    sourceVisibleFraction: sourceVisibleFraction, retreatDistance: revealTravel,
                     progress: progress)
                     .opacity(settled ? 0 : 1)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
-                    .zIndex(2)
+                    // Lower cards naturally cover only the selected card's
+                    // hidden portion until they slide away; no strip mask.
+                    .zIndex(0.75)
             }
         }
         .frame(width: viewport.width, height: viewport.height)
@@ -637,8 +635,6 @@ private struct WalletFlyingCard: View {
     let spent: Int
     let source: CGRect
     let destination: CGRect
-    let sourceVisibleFraction: CGFloat
-    let retreatDistance: CGFloat
     var progress: CGFloat
     var body: some View {
         let rect = WalletCardMotion.frame(source: source, destination: destination, progress: progress)
@@ -646,11 +642,6 @@ private struct WalletFlyingCard: View {
         LedgerStackCard(card: card, spent: spent)
             // Keep text/layout fixed. Only apply scale and position every frame.
             .frame(width: source.width, height: source.height)
-            .mask(alignment: .top) {
-                Rectangle().frame(height: WalletCardMotion.visibleHeight(source: source, current: rect,
-                    visibleFraction: sourceVisibleFraction, retreat: retreatDistance,
-                    progress: progress) / max(scale, 0.001))
-            }
             .scaleEffect(scale)
             .position(x: rect.midX, y: rect.midY)
     }
