@@ -49,7 +49,7 @@ struct WalletView: View {
                         .frame(width: viewport.size.width, height: viewport.size.height, alignment: .top)
                         // Keep original stack mounted for geometry and scroll
                         // restoration, but never blend it with detail artwork.
-                        .opacity(selectedCard == nil ? 1 : 0)
+                        .opacity(transitionStarted ? 0 : 1)
                         .allowsHitTesting(selectedCard == nil)
                         .accessibilityHidden(selectedCard != nil)
                         .zIndex(0)
@@ -59,7 +59,7 @@ struct WalletView: View {
                             source: sourceCardFrame, destination: detailCardFrame,
                             sourceVisibleFraction: sourceVisibleFraction,
                             stacked: stacked, editingCard: editPaymentCard?.id == id,
-                            settled: transitionSettled, pulling: detailPullActive,
+                            ready: transitionStarted, settled: transitionSettled, pulling: detailPullActive,
                             viewport: viewport.size, motion: cardMotion,
                             onPullChanged: updateCardPull, onPullEnded: finishCardPull,
                             onClose: closeCard,
@@ -67,10 +67,10 @@ struct WalletView: View {
                                 guard frame.width > 0, frame.height > 0 else { return }
                                 if !transitionStarted || transitionSettled { detailCardFrame = frame }
                                 if !transitionStarted && !transitionClosing {
-                                    if sourceCardFrame == nil { sourceCardFrame = frame }
                                     startCardTransition(id)
                                 }
                             })
+                            .transition(.identity)
                             .zIndex(1)
                     }
                 }
@@ -197,10 +197,13 @@ struct WalletView: View {
     }
 
     private func startCardTransition(_ id: UUID) {
-        transitionStarted = true
+        guard selectedCard == id, !transitionStarted, !transitionClosing else { return }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) { transitionStarted = true }
         let token = transitionToken
         // Destination geometry is now laid out. No timer or staged shuffle.
-        cardMotion.animate(to: 1, duration: reduceMotion ? 0 : WalletCardMotion.duration) {
+        cardMotion.animate(to: 1, duration: reduceMotion || sourceCardFrame == nil ? 0 : WalletCardMotion.duration) {
             guard transitionToken == token, selectedCard == id, !transitionClosing, !detailPullActive else { return }
             transitionSettled = true
         }
@@ -213,10 +216,9 @@ struct WalletView: View {
         transitionClosing = true
         transitionSettled = false
         detailPullActive = false
-        cardMotion.animate(to: 0, duration: reduceMotion ? 0 : WalletCardMotion.duration * Double(cardMotion.value)) {
+        cardMotion.animate(to: 0, duration: reduceMotion || sourceCardFrame == nil ? 0 : WalletCardMotion.duration * Double(cardMotion.value)) {
             guard transitionToken == token, transitionClosing else { return }
             selectedCard = nil
-            deckRenderRevision += 1
             sourceCardFrame = nil
             transitionStarted = false
             transitionClosing = false
@@ -326,7 +328,7 @@ struct WalletView: View {
                     .frame(maxWidth: 400)
             } else {
                 if stacked {
-                    InteractiveWalletDeck(cards: cards, selectedCard: selectedCard,
+                    InteractiveWalletDeck(cards: cards, selectedCard: transitionStarted ? selectedCard : nil,
                         transitionProgress: 0, renderRevision: deckRenderRevision,
                         canReorder: search.isEmpty,
                         dragging: $deckDragging,
@@ -352,7 +354,7 @@ struct WalletView: View {
                                 LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                                     .aspectRatio(1.586, contentMode: .fit)
                                     .walletSourceFrame(card.id)
-                                    .opacity(selectedCard == card.id ? 0 : 1)
+                                    .opacity(transitionStarted && selectedCard == card.id ? 0 : 1)
                             }
                             .buttonStyle(.plain)
                             .accessibilityLabel(card.name + " " + L("카드 정보"))
@@ -521,6 +523,7 @@ private struct WalletTransitionScene: View {
     let sourceVisibleFraction: CGFloat
     let stacked: Bool
     let editingCard: Bool
+    let ready: Bool
     let settled: Bool
     let pulling: Bool
     let viewport: CGSize
@@ -534,8 +537,8 @@ private struct WalletTransitionScene: View {
         let progress = motion.value
         let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
         ZStack(alignment: .top) {
-            LedgerTheme.background
-            if !reduceMotion {
+            LedgerTheme.background.opacity(ready ? 1 : 0)
+            if ready && !reduceMotion && source != nil {
                 ZStack(alignment: .topLeading) {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         if card.id != cardID, let frame = frames[card.id] {
@@ -567,22 +570,23 @@ private struct WalletTransitionScene: View {
                 .accessibilityHidden(true)
             }
             LedgerCardDetail(cardID: cardID, editingCard: editingCard,
-                artworkHidden: !settled, dismissEnabled: settled || pulling,
+                artworkHidden: !settled && source != nil && !reduceMotion, dismissEnabled: settled || pulling,
                 onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose)
                 .frame(width: viewport.width, height: viewport.height, alignment: .top)
                 .coordinateSpace(name: "walletDetail")
                 .background(LedgerTheme.background)
-                .opacity(reduceMotion ? 1 :
+                .opacity(!ready ? 0 : reduceMotion ? 1 :
                     Double(WalletCardMotion.detailOpacity(progress)))
                 .allowsHitTesting(settled || pulling)
                 .accessibilityHidden(!settled)
                 .onPreferenceChange(WalletDetailCardFrameKey.self, perform: onDetailFrame)
-            if !reduceMotion, let card = cards.first(where: { $0.id == cardID }), let source {
+            if ready && !reduceMotion, let card = cards.first(where: { $0.id == cardID }), let source {
                 WalletFlyingCard(card: card, spent: store.spent(on: card, in: .now),
                     source: source, destination: destination.width > 0 ? destination : source,
                     sourceVisibleFraction: sourceVisibleFraction, retreatDistance: viewport.height,
                     progress: progress)
                     .opacity(settled ? 0 : 1)
+                    .transition(.identity)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
                     .zIndex(2)
