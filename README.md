@@ -1,4 +1,8 @@
-# PocketLedger v0.4.54
+# PocketLedger v0.4.55
+
+## v0.4.55 / Build 62 — restore the morning Build 59 wallet implementation
+The physical-device feedback for Builds 60 and 61 reports lowered placement, unresponsive card taps and failed card switching. At the user's request, restore WalletView.swift, WalletMotionDriver.swift, WalletCardMotion.swift and their tests byte-for-byte from the morning Build 59 commit 5d60edc01dafc66c814c488387ae63b29371334f. This restores the prior layout, detail header order, linear transition, tap strips, browsing and GestureState-based long-press handling. Remove the experimental shared-anchor spring presentation and persistent drag/tap-suppression state through that restoration. Existing stored order is retained; any order already changed in the app remains user data. Version metadata is incremented to deliver the recovery as an update. Do not claim new animation improvements or hardware acceptance; device confirmation remains required.
+
 
 ## v0.4.54 / Build 61 — correct the real card return coordinates
 The November 24 device recording shows the selected bottom card returning to the first slot before jumping down, with background cards appearing only at the final reset. Build 60 measured a background outside the artwork's offset modifiers; all source frames therefore used the unshifted layout Y. Measure the deck once and derive each resting frame from its actual slot, centered scale and scroll offset. This also restores nonzero exposed-strip masks for background cards. Add first/middle/last, six/eight-card and scrolled-deck geometry regressions. Keep artwork, account data, interactions and animation settings unchanged. Simulator preparation now overlaps boot with compilation, uses only the active architecture and logs/bounds each command. Physical-device visual acceptance is still required.
