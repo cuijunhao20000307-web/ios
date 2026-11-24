@@ -1,5 +1,6 @@
 import SwiftUI
 import QuartzCore
+import UIKit
 
 // One frame clock updates all card layers in the same non-animated transaction.
 // SwiftUI therefore never has independent opacity/offset animations to finish
@@ -22,14 +23,18 @@ final class WalletMotionDriver: ObservableObject {
         track.set(value)
         publish(value)
     }
-    func animate(to value: CGFloat, duration: TimeInterval, completion: @escaping () -> Void) {
+    func animate(to value: CGFloat, duration: TimeInterval, eased: Bool = false, completion: @escaping () -> Void) {
         invalidate()
-        track.animate(to: value, at: CACurrentMediaTime(), duration: duration)
+        track.animate(to: value, at: CACurrentMediaTime(), duration: duration, eased: eased)
         self.completion = completion
         if !track.running { finish(); return }
         target.owner = self
         let link = CADisplayLink(target: target, selector: #selector(Target.tick(_:)))
         self.link = link
+        // Follow the current display rate rather than CADisplayLink's default.
+        // This is a scheduling preference, not proof of achieved frame rate.
+        let maximum = Float(UIScreen.main.maximumFramesPerSecond)
+        link.preferredFrameRateRange = CAFrameRateRange(minimum: min(60, maximum), maximum: maximum, preferred: maximum)
         link.add(to: .main, forMode: .common)
     }
     private func tick(_ link: CADisplayLink) {
