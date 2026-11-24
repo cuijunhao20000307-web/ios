@@ -1,4 +1,8 @@
-# PocketLedger v0.4.53
+# PocketLedger v0.4.54
+
+## v0.4.54 / Build 61 — correct the real card return coordinates
+The November 24 device recording shows the selected bottom card returning to the first slot before jumping down, with background cards appearing only at the final reset. Build 60 measured a background outside the artwork's offset modifiers; all source frames therefore used the unshifted layout Y. Measure the deck once and derive each resting frame from its actual slot, centered scale and scroll offset. This also restores nonzero exposed-strip masks for background cards. Add first/middle/last, six/eight-card and scrolled-deck geometry regressions. Keep artwork, account data, interactions and animation settings unchanged. Simulator preparation now overlaps boot with compilation, uses only the active architecture and logs/bounds each command. Physical-device visual acceptance is still required.
+
 
 ## v0.4.53 / Build 60 — centered card stack and coordinated spring motion
 The stack uses a shared base width, 14pt clipping, a centered 0.92–1 ease-out scale and a subtle per-card shadow. Long press lifts the card with haptics, dims its neighbors, animates vacant slots and commits order only after snapping into place. Selection keeps one artwork layer linked by matchedGeometryEffect to a measured moving anchor, with spring-driven scale and interactive pull-down. Closing fades/blurs details over 150ms, returns sibling strips from above at 30ms intervals and restores all home chrome in the final 200ms. AnimationConfig holds timing, spring and appearance parameters. Existing data, private storage, currency art and native navigation remain intact.

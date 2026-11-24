@@ -65,6 +65,16 @@ struct AnimationConfig {
 enum WalletCardMotion {
     static let duration = AnimationConfig.duration
 
+    // Canonical resting geometry shared with deck rendering: one base width,
+    // centered scale and equally spaced top edges, including scroll offset.
+    static func stackFrame(deck: CGRect, width: CGFloat, index: Int, count: Int) -> CGRect {
+        let scale = AnimationConfig.scale(forIndex: index, count: count)
+        let step = max(35, min(46, width * 0.14))
+        return CGRect(x: deck.minX + (width - width * scale) / 2,
+                      y: deck.minY + CGFloat(index) * step,
+                      width: width * scale, height: width / 1.586 * scale)
+    }
+
     // Apply a compositor scale to fixed-size card content instead of changing
     // the SwiftUI layout size on every animation frame.
     static func flightScale(source: CGRect, destination: CGRect, progress: CGFloat) -> CGFloat {

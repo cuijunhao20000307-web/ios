@@ -35,6 +35,31 @@ struct WalletCardMotionTests {
             springTrack.animate(to: 1, at: 3, duration: 0, spring: true)
             precondition(springTrack.value == 1 && !springTrack.running)
         }
+        // Device-video regression: every measured source previously shared
+        // the first slot Y. That erased sibling strips and snapped the last
+        // card from the first slot to the last when the real deck reappeared.
+        for count in [1, 6, 8] {
+            for width: CGFloat in [240, 280, 320] {
+                for scrollY: CGFloat in [-180, 0, 145] {
+                    let deck = CGRect(x: 34, y: scrollY, width: width, height: 700)
+                    let step = max(35, min(46, width * 0.14))
+                    let frames = (0..<count).map {
+                        WalletCardMotion.stackFrame(deck: deck, width: width, index: $0, count: count)
+                    }
+                    for index in 0..<count {
+                        let frame = frames[index]
+                        precondition(abs(frame.minY - (scrollY + CGFloat(index) * step)) < 0.000001)
+                        precondition(abs(frame.midX - (34 + width / 2)) < 0.000001)
+                        let next = index + 1 < count ? frames[index + 1] : nil
+                        let exposed = WalletCardMotion.stackVisibleHeight(current: frame, next: next)
+                        precondition(abs(exposed - (next == nil ? frame.height : step)) < 0.000001)
+                        let returned = WalletCardMotion.frame(source: frame,
+                            destination: CGRect(x: 20, y: 20, width: 380, height: 380 / 1.586), progress: 0)
+                        precondition(returned == frame)
+                    }
+                }
+            }
+        }
         // First/middle/last cards, a scrolled stack, narrow and expanded layouts.
         for width: CGFloat in [280, 320, 393, 880] {
             for y: CGFloat in [-80, 140, 280, 500] {

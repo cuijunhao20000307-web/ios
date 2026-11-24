@@ -761,6 +761,15 @@ private struct InteractiveWalletDeck: View {
                     .zIndex(Double(cards.count + 3))
                 }
                 .frame(width: width, height: geo.size.height, alignment: .topLeading)
+                // Measure the deck once in viewport coordinates. Child offsets
+                // do not affect layout; a background attached AFTER offset reads
+                // the unshifted box (Build 60's identical source Y for all cards).
+                .preference(key: WalletSourceCardFramesKey.self, value:
+                    Dictionary(uniqueKeysWithValues: cards.enumerated().map { index, card in
+                        (card.id, WalletCardMotion.stackFrame(
+                            deck: geo.frame(in: .named("walletPresentation")),
+                            width: width, index: index, count: cards.count))
+                    }))
                 .coordinateSpace(name: dragSpace)
                 .background {
                     WalletDeckBrowseRecognizer(enabled: selectedCard == nil && !dragging,
@@ -812,14 +821,6 @@ private struct InteractiveWalletDeck: View {
             .animation(reduceMotion ? nil : AnimationConfig.reorderSpring, value: drag?.id)
             // Finger translation is outside implicit slot animations.
             .offset(y: lifted ? (drag?.translation ?? 0) : (reduceMotion ? 0 : fan))
-            .background {
-                GeometryReader { geometry in
-                    let base = geometry.frame(in: .named("walletPresentation"))
-                    Color.clear.preference(key: WalletSourceCardFramesKey.self, value: [card.id:
-                        CGRect(x: base.midX - width * layerScale / 2, y: base.minY,
-                               width: width * layerScale, height: height * layerScale)])
-                }
-            }
             .opacity(selectedCard == nil ? 1 : 0)
             .zIndex(lifted ? Double(cards.count + 2) : Double(visualSlot))
             .allowsHitTesting(false)
