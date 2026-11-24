@@ -1,4 +1,8 @@
-# PocketLedger v0.4.56
+# PocketLedger v0.4.57
+
+## v0.4.57 / Build 64 — keep background-card corners continuous during return
+The device recording shows background cards as narrow, blurred rectangular strips that change back to the rounded resting deck on dismissal. Remove per-card rectangular strip masks, depth scaling and blur. Draw the same full LedgerStackCard views at their measured frames and original z-order, allowing opaque higher cards to occlude lower ones naturally. Composite those layers before fading the whole group; a shared 12pt retreat preserves relative gaps and edges. The selected card retains its single flying artwork, source geometry and existing touch behavior. Build 63's chrome fade timing remains. Physical-device acceptance is pending.
+
 
 ## v0.4.56 / Build 63 — refine interactive presentation on the restored baseline
 The device video shows disconnected background strips moving across the viewport during repeated pulls, metadata vanishing early and home chrome appearing only at reset. Keep the Build 59/62 layout, card measurement, tap regions and gestures. Limit decorative sibling retreat to -24/+32pt with a slight depth scale/blur; fade the home header/footer with the same displayed progress, bring details in earlier and add a subtle 10pt rise and blur. The source deck remains mounted and only its artwork is hidden while the scene is active; one selected artwork remains visible. Forward and reverse effects are continuous functions of the same interactive progress, within 420ms for a full transition. Device acceptance remains pending and must not be inferred from compilation.

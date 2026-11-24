@@ -54,10 +54,14 @@ struct WalletCardMotionTests {
         precondition(WalletCardMotion.homeOpacity(1) == 0)
         for i in 0...1000 {
             let p = CGFloat(i) / 1000
-            for index in 0..<6 {
-                let offset = WalletCardMotion.siblingOffset(index: index, focus: 3, progress: p)
-                precondition(abs(offset) <= 32)
-                if p == 0 { precondition(offset == 0) }
+            let offset = WalletCardMotion.backgroundDeckOffset(p)
+            precondition(abs(offset) <= 12)
+            if p == 0 { precondition(offset == 0) }
+            // Applying one translation keeps every inter-card gap unchanged.
+            for index in 1..<6 {
+                let previousY = CGFloat(index - 1) * 45 + offset
+                let currentY = CGFloat(index) * 45 + offset
+                precondition(abs(currentY - previousY - 45) < 0.000001)
             }
             precondition(WalletCardMotion.homeOpacity(p) * WalletCardMotion.detailOpacity(p) == 0)
         }

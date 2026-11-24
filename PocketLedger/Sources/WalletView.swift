@@ -543,35 +543,26 @@ private struct WalletTransitionScene: View {
 
     var body: some View {
         let progress = motion.value
-        let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
         ZStack(alignment: .top) {
             if !reduceMotion {
                 ZStack(alignment: .topLeading) {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         if card.id != cardID, let frame = frames[card.id] {
-                            // During return keep the original exposed strip;
-                            // do not uncover full card faces between slots.
-                            let nextFrame = index + 1 < cards.count
-                                ? frames[cards[index + 1].id] : nil
-                            let exposed = stacked
-                                ? WalletCardMotion.stackVisibleHeight(
-                                    current: frame, next: nextFrame)
-                                : frame.height
+                            // Draw the same full rounded card as the resting deck.
+                            // Opaque cards above it provide natural occlusion.
                             LedgerStackCard(card: card, spent: store.spent(on: card, in: .now))
                                 .frame(width: frame.width, height: frame.height)
-                                .mask(alignment: .top) {
-                                    Rectangle().frame(height: exposed)
-                                }
-                                .scaleEffect(1 - 0.025 * WalletCardMotion.siblingRetreatProgress(progress), anchor: .top)
-                                .blur(radius: 1.5 * WalletCardMotion.siblingRetreatProgress(progress))
-                                .position(x: frame.midX, y: frame.midY +
-                                    WalletCardMotion.siblingOffset(index: index, focus: focus, progress: progress))
-                                .opacity(Double(WalletCardMotion.siblingOpacity(progress)))
+                                .position(x: frame.midX, y: frame.midY)
                                 .zIndex(Double(index))
                         }
                     }
                 }
                 .frame(width: viewport.width, height: viewport.height)
+                // Composite opaque rounded layers first. Fading individual
+                // cards lets the hidden full faces bleed through one another.
+                .compositingGroup()
+                .offset(y: WalletCardMotion.backgroundDeckOffset(progress))
+                .opacity(Double(WalletCardMotion.siblingOpacity(progress)))
                 .clipped()
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)

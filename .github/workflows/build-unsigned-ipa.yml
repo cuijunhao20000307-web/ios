@@ -45,13 +45,13 @@ jobs:
           mkdir -p package/Payload
           cp -R build/Build/Products/Release-iphoneos/PocketLedger.app package/Payload/
           cd package
-          zip -qry PocketLedger-v0.4.56-unsigned.ipa Payload
-          unzip -t PocketLedger-v0.4.56-unsigned.ipa
+          zip -qry PocketLedger-v0.4.57-unsigned.ipa Payload
+          unzip -t PocketLedger-v0.4.57-unsigned.ipa
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
-          name: PocketLedger-v0.4.56-unsigned-ipa
-          path: package/PocketLedger-v0.4.56-unsigned.ipa
+          name: PocketLedger-v0.4.57-unsigned-ipa
+          path: package/PocketLedger-v0.4.57-unsigned.ipa
           if-no-files-found: error
       # Public Release assets have direct HTTPS download URLs, unlike the
       # GitHub Actions artifact API, whose ZIP download requires authentication.
@@ -66,7 +66,7 @@ jobs:
           tag="v${version}"
           ipa="package/PocketLedger-v${version}-unsigned.ipa"
           echo "Unsigned IPA. Must be signed with the user's valid iOS provisioning identity before installation." > /tmp/digital-wallet-notes.md
-          echo "v0.4.56 Build 63: refine Build 62 visual presentation with bounded background-card retreat, continuous home chrome fades and earlier detail reveal; keep source geometry and gestures. Original card data and currency covers unchanged." >> /tmp/digital-wallet-notes.md
+          echo "v0.4.57 Build 64: draw full rounded background cards with natural occlusion and composite the stack before fading; remove rectangular strip masks and individual scale/blur. Original card data and currency covers unchanged." >> /tmp/digital-wallet-notes.md
           echo "Real-device testing remains pending: Duo inner/outer transitions, scrolling/pull cancellation, long-press reorder, Face ID, security cards, backup/restore and in-app update. CI does not establish visual parity with Apple Wallet." >> /tmp/digital-wallet-notes.md
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release upload "$tag" "$ipa" --clobber

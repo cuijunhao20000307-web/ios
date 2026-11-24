@@ -32,11 +32,10 @@ enum WalletCardMotion {
     static func homeOpacity(_ progress: CGFloat) -> CGFloat {
         1 - smoothstep(progress / 0.5)
     }
-    static func siblingOffset(index: Int, focus: Int, progress: CGFloat) -> CGFloat {
-        // A bounded depth cue keeps strips near their own slots. The previous
-        // viewport-sized travel showed disconnected strips across the screen
-        // during slow, repeated interactive pulls.
-        (index < focus ? -24 : 32) * siblingRetreatProgress(progress)
+    static func backgroundDeckOffset(_ progress: CGFloat) -> CGFloat {
+        // One group translation preserves all relative edges, rounded corners,
+        // widths and overlap. No individual scale/blur or strip clipping.
+        -12 * siblingRetreatProgress(progress)
     }
     static func stackVisibleHeight(current: CGRect, next: CGRect?) -> CGFloat {
         guard let next else { return current.height }
