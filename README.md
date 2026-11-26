@@ -1,3 +1,7 @@
+# PocketLedger v0.4.62 / Build 69
+
+Fix the recurring disconnected stack: remove background strip masks and opposing viewport-sized retreat offsets. Render full rounded background cards at their measured resting slots and preserve the selected card between its original upper/lower neighbors for natural occlusion. Composite each background group before opacity; remove the selected artwork rectangle reveal mask as well. Closing resets the exact zero-progress home state in one nonanimated transaction. Retains Build 68 shared-artwork flash handling and bidirectional security-card lookup. Source-frame measurement, hit strips and long-press reorder remain unchanged. Device visual acceptance remains pending.
+
 # PocketLedger v0.4.61 / Build 68
 
 Keep the same shared artwork layer through transition settlement instead of replacing it with a separately laid-out detail card. Authenticated card reveal still uses the protected detail renderer and clears on close. Security lookup fields now follow the printed pair order: known prefix on the left, known suffix on the right; duplicate results show both halves. Existing prefix/suffix matching and encrypted storage are preserved. Physical-device flash verification remains pending.
