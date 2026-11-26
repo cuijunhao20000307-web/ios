@@ -23,6 +23,20 @@ struct WalletCardMotionTests {
             }
         }
         precondition(WalletDeckReorder.depth(index: 5, origin: 5, destination: 5, count: 6) == 8)
+        // A fully white middle interval contains only shared artwork. Reverse
+        // playback uses the same values and returns to the original endpoint.
+        precondition(WalletCardMotion.whiteBackdropOpacity(0) == 0)
+        precondition(abs(WalletCardMotion.whiteBackdropOpacity(1)) < 0.000001)
+        for i in 0...1000 {
+            let p = CGFloat(i) / 1000
+            let white = WalletCardMotion.whiteBackdropOpacity(p)
+            precondition(white >= 0 && white <= 1)
+            if p >= 0.20 && p <= 0.80 {
+                precondition(white == 1)
+                precondition(WalletCardMotion.siblingOpacity(p) == 0)
+                precondition(WalletCardMotion.detailOpacity(p) == 0)
+            }
+        }
         // First/middle/last cards, a scrolled stack, narrow and expanded layouts.
         for width: CGFloat in [280, 320, 393, 880] {
             for y: CGFloat in [-80, 140, 280, 500] {
@@ -54,9 +68,9 @@ struct WalletCardMotionTests {
         }
         // Regression: fade is continuous, reversible, and no duplicate page
         // is visible at any point in the selection/return transition.
-        precondition(WalletCardMotion.siblingOpacity(0.06) == 1)
-        precondition(WalletCardMotion.siblingOpacity(0.55) == 0)
-        precondition(WalletCardMotion.detailOpacity(0.72) == 0)
+        precondition(WalletCardMotion.siblingOpacity(0) == 1)
+        precondition(WalletCardMotion.siblingOpacity(0.20) == 0)
+        precondition(WalletCardMotion.detailOpacity(0.80) == 0)
         precondition(WalletCardMotion.siblingRetreatProgress(0) == 0)
         precondition(WalletCardMotion.siblingRetreatProgress(0.48) == 1)
         precondition(WalletCardMotion.siblingRetreatProgress(1) == 1)

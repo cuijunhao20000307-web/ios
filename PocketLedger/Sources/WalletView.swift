@@ -549,7 +549,11 @@ private struct WalletTransitionScene: View {
         let progress = motion.value
         let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
         ZStack(alignment: .top) {
-            LedgerTheme.background.opacity(ready ? 1 : 0)
+            LedgerTheme.background
+                .overlay {
+                    Color.white.opacity(reduceMotion ? 0 : Double(WalletCardMotion.whiteBackdropOpacity(progress)))
+                }
+                .opacity(ready ? 1 : 0)
             if ready && !reduceMotion && source != nil {
                 restingCards(before: true, focus: focus, progress: progress).zIndex(0)
                 restingCards(before: false, focus: focus, progress: progress).zIndex(1)

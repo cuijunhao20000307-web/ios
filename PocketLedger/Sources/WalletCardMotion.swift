@@ -4,7 +4,7 @@ import CoreGraphics
 // Shared geometry for selection, interactive return and release decisions.
 // This contains no wallet data and can also run in the command-line regression check.
 enum WalletCardMotion {
-    static let duration = 0.36
+    static let duration = 0.45
 
     // Apply a compositor scale to fixed-size card content instead of changing
     // the SwiftUI layout size on every animation frame.
@@ -19,10 +19,18 @@ enum WalletCardMotion {
         return t * t * (3 - 2 * t)
     }
     static func siblingOpacity(_ progress: CGFloat) -> CGFloat {
-        1 - smoothstep((progress - 0.06) / 0.49)
+        1 - smoothstep(progress / 0.20)
     }
     static func detailOpacity(_ progress: CGFloat) -> CGFloat {
-        smoothstep((progress - 0.72) / 0.28)
+        smoothstep((progress - 0.80) / 0.20)
+    }
+    // Keep a pure white canvas behind the shared card during the middle
+    // phase. Zero at either endpoint keeps the home/detail theme unchanged.
+    static func whiteBackdropOpacity(_ progress: CGFloat) -> CGFloat {
+        let p = min(1, max(0, progress))
+        if p <= 0.20 { return smoothstep(p / 0.20) }
+        if p <= 0.80 { return 1 }
+        return 1 - smoothstep((p - 0.80) / 0.20)
     }
     // Selected card returns along its original path while siblings remain
     // offscreen. They slide back only during the final part of dismissal.

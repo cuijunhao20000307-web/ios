@@ -1,3 +1,7 @@
+# PocketLedger v0.4.64 / Build 71
+
+Add the requested plain-white middle phase to selection and dismissal. Over a 450ms full transition, sibling cards fade out in the first 20%, only the shared artwork remains on a pure white canvas through 20–80%, then detail metadata appears and the original theme returns in the final 20%. Closing reverses the same progress; no separate timer or empty frame is inserted. Reduce Motion omits the decorative white stage. Preserve Build 70's source geometry, rounded occlusion, direct drag handling and long-press slot/depth preview. Device visual timing acceptance is pending.
+
 # PocketLedger v0.4.63 / Build 70
 
 Long-press reorder now previews both slots and drawing depth: as a held card moves backwards, crossed cards spring forward and cover it naturally. The initial lift has a light haptic and shadow; once inserted, it returns to normal size and its proposed depth. Saved order still changes only on release; GestureState handles cancellation and existing short tap suppression remains. Exhaustive small-deck permutation/depth regression checks exercise both directions. Build 69 detail presentation, shared artwork, layout and security-card lookup are unchanged. Device interaction acceptance remains pending.
