@@ -1,3 +1,7 @@
+# PocketLedger v0.4.61 / Build 68
+
+Keep the same shared artwork layer through transition settlement instead of replacing it with a separately laid-out detail card. Authenticated card reveal still uses the protected detail renderer and clears on close. Security lookup fields now follow the printed pair order: known prefix on the left, known suffix on the right; duplicate results show both halves. Existing prefix/suffix matching and encrypted storage are preserved. Physical-device flash verification remains pending.
+
 # PocketLedger v0.4.52
 
 ## v0.4.52 / Build 59 — soft fade and smooth card return

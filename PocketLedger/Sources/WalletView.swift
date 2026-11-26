@@ -533,6 +533,8 @@ private struct WalletTransitionScene: View {
     let onClose: () -> Void
     let onDetailFrame: (CGRect) -> Void
 
+    @State private var revealedArtwork = false
+
     var body: some View {
         let progress = motion.value
         let focus = cards.firstIndex(where: { $0.id == cardID }) ?? 0
@@ -571,7 +573,9 @@ private struct WalletTransitionScene: View {
             }
             LedgerCardDetail(cardID: cardID, editingCard: editingCard,
                 artworkHidden: !settled && source != nil && !reduceMotion, dismissEnabled: settled || pulling,
-                onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose)
+                onPullChanged: onPullChanged, onPullEnded: onPullEnded, onClose: onClose,
+                usesSharedArtwork: source != nil && !reduceMotion,
+                onRevealChanged: { revealedArtwork = $0 })
                 .frame(width: viewport.width, height: viewport.height, alignment: .top)
                 .coordinateSpace(name: "walletDetail")
                 .background(LedgerTheme.background)
@@ -585,7 +589,7 @@ private struct WalletTransitionScene: View {
                     source: source, destination: destination.width > 0 ? destination : source,
                     sourceVisibleFraction: sourceVisibleFraction, retreatDistance: viewport.height,
                     progress: progress)
-                    .opacity(settled ? 0 : 1)
+                    .opacity(settled && revealedArtwork ? 0 : 1)
                     .transition(.identity)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
@@ -1217,6 +1221,8 @@ struct LedgerCardDetail: View {
     let onPullChanged: (CGFloat) -> Void
     let onPullEnded: (CGFloat, CGFloat, Bool) -> Void
     let onClose: () -> Void
+    let usesSharedArtwork: Bool
+    let onRevealChanged: (Bool) -> Void
     @State private var record: PrivateRecord?
     @State private var authorized = false
     @State private var revealCVC = false
@@ -1252,7 +1258,7 @@ struct LedgerCardDetail: View {
                                         value: geometry.frame(in: .named("walletDetail")))
                                 }
                             }
-                            .opacity(artworkHidden ? 0 : 1)
+                            .opacity(artworkHidden || (usesSharedArtwork && !authorized) ? 0 : 1)
                         }
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier("wallet.detail.header")
@@ -1363,6 +1369,7 @@ struct LedgerCardDetail: View {
             }
         }
         .sheet(item: $editingTransaction) { TransactionForm(existing: $0) }
+        .onChange(of: authorized) { _, value in onRevealChanged(value) }
         .onChange(of: artworkHidden) { _, hidden in if hidden { clear() } }
         .onChange(of: editingCard) { _, value in if value { clear() } }
         .onChange(of: phase) { _, p in if p == .background { clear() } }
@@ -2210,15 +2217,16 @@ struct BankSecurityCardView: View {
     }
     private func lookupRow(_ title: String, number: Binding<String>,
                            matches: [BankSecurityPairMatch], first: Bool) -> some View {
-        // A unique result appears inline, where the old UI showed its code.
-        // Multiple matches are displayed with ordinal numbers below the row.
         let counterpart = matches.count == 1
-            ? (first ? matches[0].lastTwo : matches[0].firstTwo)
-            : "••"
+            ? (first ? matches[0].lastTwo : matches[0].firstTwo) : "xx"
         return HStack {
             Text(title)
             Spacer()
-            TextField("01", text: Binding(
+            if !first {
+                Text(counterpart).font(.headline.monospacedDigit())
+                    .frame(width: 60).privacySensitive()
+            }
+            TextField("00", text: Binding(
                 get: { number.wrappedValue },
                 set: { number.wrappedValue = BankSecurityCard.digits($0, max: 2) }
             ))
@@ -2227,10 +2235,11 @@ struct BankSecurityCardView: View {
             .font(.body.monospacedDigit())
             .frame(width: 60)
             .accessibilityLabel(title)
-            Text(counterpart)
-                .font(.headline.monospacedDigit())
-                .frame(width: 60)
-                .privacySensitive()
+            .accessibilityIdentifier(first ? "security.lookup.front" : "security.lookup.back")
+            if first {
+                Text(counterpart).font(.headline.monospacedDigit())
+                    .frame(width: 60).privacySensitive()
+            }
         }
     }
     @ViewBuilder private func lookupFeedback(_ matches: [BankSecurityPairMatch],
@@ -2241,7 +2250,7 @@ struct BankSecurityCardView: View {
                 .foregroundStyle(.secondary)
         } else if matches.count > 1 {
             VStack(alignment: .leading, spacing: 10) {
-                Text(L("같은 앞 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요."))
+                Text(L(first ? "같은 앞 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요." : "같은 뒤 두 자리가 여러 개 있습니다. 카드 번호를 확인하세요."))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 ForEach(matches) { matched in
@@ -2250,7 +2259,7 @@ struct BankSecurityCardView: View {
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text(first ? matched.lastTwo : matched.firstTwo)
+                        Text(matched.firstTwo + "  " + matched.lastTwo)
                             .font(.headline.monospacedDigit())
                             .privacySensitive()
                     }
