@@ -348,7 +348,7 @@ struct WalletView: View {
                             guard search.isEmpty,
                                   let index = store.data.cards.firstIndex(where: { $0.id == id }),
                                   store.data.cards.indices.contains(target), index != target else { return }
-                            withAnimation(reduceMotion ? nil : .linear(duration: 0.30)) {
+                            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8)) {
                                 store.data.cards.move(fromOffsets: IndexSet(integer: index), toOffset: target > index ? target + 1 : target)
                             }
                         })
@@ -655,13 +655,6 @@ private struct InteractiveWalletDeck: View {
         let origin = cards.firstIndex { $0.id == id } ?? 0
         return min(max(0, origin + Int((distance / step).rounded())), max(0, cards.count - 1))
     }
-    private func slot(_ index: Int, origin: Int?, destination: Int?) -> Int {
-        guard let origin, let destination else { return index }
-        if index == origin { return destination }
-        if origin < destination && index > origin && index <= destination { return index - 1 }
-        if destination < origin && index >= destination && index < origin { return index + 1 }
-        return index
-    }
     var body: some View {
         WalletDeckLayout {
             ForEach(cards) { _ in Color.clear }
@@ -676,11 +669,12 @@ private struct InteractiveWalletDeck: View {
                 ZStack(alignment: .topLeading) {
                     ForEach(Array(cards.enumerated()), id: \.element.id) { index, card in
                         let lifted = drag?.id == card.id
+                        let pushed = lifted && origin != destination
                         let progress: CGFloat = selectedCard == nil || reduceMotion ? 0 : transitionProgress
                         let fan = browseAnchor.map { WalletDeckFan.offset(index: index, anchor: $0,
                             translation: browseMotion.value, height: height, step: step) } ?? 0
                         let y = lifted ? CGFloat(index) * step + (drag?.translation ?? 0)
-                            : CGFloat(slot(index, origin: origin, destination: destination)) * step
+                            : CGFloat(WalletDeckReorder.slot(index, origin: origin, destination: destination)) * step
                         let focus = selectedCard.flatMap { id in cards.firstIndex { $0.id == id } }
                         // Upper cards retreat together; lower cards leave below.
                         // Selection never invents a new stack order.
@@ -688,14 +682,15 @@ private struct InteractiveWalletDeck: View {
                         LedgerStackCard(card: card, spent: spent(card))
                             .frame(width: width, height: height)
                             .walletSourceFrame(card.id)
-                            .scaleEffect(lifted && !reduceMotion ? 1.035 : 1, anchor: .top)
-                            .shadow(color: .black.opacity(lifted ? 0.22 : 0), radius: 9, y: 4)
+                            .scaleEffect(lifted && !pushed && !reduceMotion ? 1.035 : 1, anchor: .top)
+                            .shadow(color: .black.opacity(lifted && !pushed ? 0.22 : 0), radius: 9, y: 4)
+                            .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8), value: pushed)
                             .offset(y: y + retreat * progress + (reduceMotion ? 0 : fan))
                             .opacity(selectedCard == card.id ? 0 : 1)
                             .id("\(card.id)-\(renderRevision)")
                             .transition(.identity)
-                            .zIndex(lifted ? Double(cards.count + 2) : Double(index))
-                            .animation(lifted || reduceMotion ? nil : .linear(duration: 0.22), value: destination)
+                            .zIndex(WalletDeckReorder.depth(index: index, origin: origin, destination: destination, count: cards.count))
+                            .animation(lifted || reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.8), value: destination)
                             .allowsHitTesting(false)
                             .accessibilityHidden(true)
                     }
@@ -726,7 +721,10 @@ private struct InteractiveWalletDeck: View {
         }
         .onChange(of: drag?.id) { old, id in
             dragging = id != nil
-            if id != nil { browseMotion.set(0); browseAnchor = nil }
+            if id != nil {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                browseMotion.set(0); browseAnchor = nil
+            }
             if old != nil && id == nil { suppressTapUntil = .now.addingTimeInterval(0.25) }
         }
         .onChange(of: selectedCard) { _, _ in browseMotion.set(0); browseAnchor = nil }

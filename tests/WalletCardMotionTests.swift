@@ -4,6 +4,25 @@ import CoreGraphics
 @main
 struct WalletCardMotionTests {
     static func main() {
+        // All proposed reorders must remain a permutation with one slot per
+        // card. Pushing towards the back advances the crossed cards forwards.
+        for count in 2...8 {
+            for origin in 0..<count {
+                for destination in 0..<count {
+                    let slots = (0..<count).map { WalletDeckReorder.slot($0, origin: origin, destination: destination) }
+                    precondition(slots.sorted() == Array(0..<count))
+                    precondition(slots[origin] == destination)
+                    if destination < origin {
+                        for crossed in destination..<origin {
+                            precondition(slots[crossed] == crossed + 1)
+                            precondition(WalletDeckReorder.depth(index: crossed, origin: origin, destination: destination, count: count) >
+                                WalletDeckReorder.depth(index: origin, origin: origin, destination: destination, count: count))
+                        }
+                    }
+                }
+            }
+        }
+        precondition(WalletDeckReorder.depth(index: 5, origin: 5, destination: 5, count: 6) == 8)
         // First/middle/last cards, a scrolled stack, narrow and expanded layouts.
         for width: CGFloat in [280, 320, 393, 880] {
             for y: CGFloat in [-80, 140, 280, 500] {

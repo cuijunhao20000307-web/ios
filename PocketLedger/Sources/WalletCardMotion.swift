@@ -109,3 +109,23 @@ enum WalletDeckFan {
         min(max(0, Int(max(0, y) / max(1, step))), max(0, count - 1))
     }
 }
+
+// Proposed slots change only the preview; persistent order changes on release.
+enum WalletDeckReorder {
+    static func slot(_ index: Int, origin: Int?, destination: Int?) -> Int {
+        guard let origin, let destination else { return index }
+        if index == origin { return destination }
+        if origin < destination && index > origin && index <= destination { return index - 1 }
+        if destination < origin && index >= destination && index < origin { return index + 1 }
+        return index
+    }
+    static func depth(index: Int, origin: Int?, destination: Int?, count: Int) -> Double {
+        let proposed = slot(index, origin: origin, destination: destination)
+        if index == origin {
+            // First lift above the deck; after crossing a slot, let cards in
+            // front cover the card being pushed backwards into the stack.
+            return origin == destination ? Double(count + 2) : Double(proposed) + 0.5
+        }
+        return Double(proposed)
+    }
+}

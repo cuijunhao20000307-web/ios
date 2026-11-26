@@ -1,3 +1,7 @@
+# PocketLedger v0.4.63 / Build 70
+
+Long-press reorder now previews both slots and drawing depth: as a held card moves backwards, crossed cards spring forward and cover it naturally. The initial lift has a light haptic and shadow; once inserted, it returns to normal size and its proposed depth. Saved order still changes only on release; GestureState handles cancellation and existing short tap suppression remains. Exhaustive small-deck permutation/depth regression checks exercise both directions. Build 69 detail presentation, shared artwork, layout and security-card lookup are unchanged. Device interaction acceptance remains pending.
+
 # PocketLedger v0.4.62 / Build 69
 
 Fix the recurring disconnected stack: remove background strip masks and opposing viewport-sized retreat offsets. Render full rounded background cards at their measured resting slots and preserve the selected card between its original upper/lower neighbors for natural occlusion. Composite each background group before opacity; remove the selected artwork rectangle reveal mask as well. Closing resets the exact zero-progress home state in one nonanimated transaction. Retains Build 68 shared-artwork flash handling and bidirectional security-card lookup. Source-frame measurement, hit strips and long-press reorder remain unchanged. Device visual acceptance remains pending.
